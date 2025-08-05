@@ -1,0 +1,79 @@
+html {
+    font-family: monospace;
+    height: 100%;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    margin: 0px;
+    background-color: black;
+}
+
+#player {
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    display: flex;
+    position: relative;
+    overflow: hidden;
+}
+
+#controls {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 30px;
+    overflow: hidden;
+}
+
+button {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding: 0px;
+    margin-left: 6px;
+    margin-right: 6px;
+    border: none;
+    background: none;
+    color: white;
+    font-family: inherit;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+span {
+    display: flex;
+    margin-left: 12px;
+    margin-right: 12px;
+    align-items: center;
+    height: 100%;
+    color: white;
+    font-size: 18px;
+    white-space: pre;
+}
+
+input {
+    margin-left: -6px;
+    margin-right: -6px;
+    flex: 1;
+    cursor: pointer;
+}
+
+canvas {
+    display: block;
+    image-rendering: pixelated;
+}
+
+.floating {
+    position: absolute;
+    right: 64px;
+    bottom: 64px;
+    width: 384px;
+    height: 240px;
+    border: 2px solid white;
+    border-radius: 4px;
+}

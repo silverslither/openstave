@@ -1,0 +1,7 @@
+{
+    "compilerOptions": {
+        "module": "nodenext",
+        "lib": [ "esnext" ],
+        "allowImportingTsExtensions": true
+    }
+}

@@ -1,8 +1,9 @@
 import * as net from "node:net";
 import { activePlayers } from "./race.ts";
 
-const PORT = 61124;
-const AUTH_WAIT_MS = 1000;
+import { TCP_PORT, AUTH_WAIT_MS } from "./env.ts";
+
+export const openConnections: Set<net.Socket> = new Set();
 
 const authorize = (username: string, password: string) => {
     const player = activePlayers.get(username);
@@ -11,7 +12,9 @@ const authorize = (username: string, password: string) => {
     return password === player.password;
 };
 
-const server = net.createServer((client) => {
+export const server = net.createServer((client) => {
+    openConnections.add(client);
+
     let username = "";
     let authLength = 0;
     const authChunks: Buffer[] = [];
@@ -33,7 +36,9 @@ const server = net.createServer((client) => {
                 const _password = buffer.subarray(32, 64).toString().trim();
                 if (authorize(_username, _password)) {
                     username = _username;
-                    activePlayers.get(username).add(buffer.subarray(64));
+                    const player = activePlayers.get(username);
+                    player.connected = true;
+                    player.add(buffer.subarray(64));
                     authChunks.length = 0;
                     authLength = 0;
                 } else {
@@ -42,21 +47,27 @@ const server = net.createServer((client) => {
             }
         } else {
             const player = activePlayers.get(username);
-            if (player == null) {
+            if (player == null || !player.connected) {
                 client.destroy();
                 return;
             }
             player.add(data);
+
+            if (player.dnf === player.dnf || player.end === player.end) {
+                activePlayers.delete(username);
+                client.destroy();
+            }
         }
     });
 
     client.on("close", () => {
+        openConnections.delete(client);
         const player = activePlayers.get(username);
         if (player != null)
             player.connected = false;
     });
 });
 
-server.listen(PORT, "0.0.0.0", () => {
-    console.log("TCP server running on port", PORT);
+server.listen(TCP_PORT, "0.0.0.0", () => {
+    console.log("TCP server running on port", TCP_PORT);
 });

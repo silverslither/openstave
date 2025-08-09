@@ -44,7 +44,6 @@ export class PlayerCanvas {
         this.canvas.addEventListener("mousedown", () => {
             const players = Object.keys(this.players);
             const index = players.indexOf(this.following);
-            console.log(players, index);
             if (index >= 0) {
                 this.following = players[(index + 1) % players.length];
                 this.render(this.count);
@@ -99,7 +98,7 @@ export class PlayerCanvas {
             gStageNumber,
             gAreaPage,
             gAreaPixel,
-            gScreenPixel
+            gScreenPixel,
         ] = pframe.subarray(32 + 256);
 
         const xOffset = this.xOffset - ((gAreaPage << 8) + gAreaPixel - gScreenPixel);
@@ -136,7 +135,7 @@ export class PlayerCanvas {
                 stageNumber,
                 areaPage,
                 areaPixel,
-                screenPixel
+                screenPixel,
             ] = pframe.subarray(32 + 256);
 
             if (playerState === 0)

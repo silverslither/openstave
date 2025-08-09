@@ -1,7 +1,6 @@
 import type { Frame, PlayerEvent } from "./types.ts";
 import { bufferHandler } from "./buffer.ts";
-
-const BUFFER = 32767;
+import { PLAYER_BUFFER } from "./env.ts";
 
 export default class Player {
     connected: boolean;
@@ -16,7 +15,7 @@ export default class Player {
     buffers: Buffer[];
     buffer_length: number;
 
-    constructor(username: string, password: string, game: string) {
+    constructor(game: string = "", username: string = "", password: string = "") {
         this.connected = false;
         this.username = username;
         this.password = password;
@@ -30,13 +29,28 @@ export default class Player {
         this.buffer_length = 0;
     }
 
+    static from(obj: any) {
+        const player = new Player();
+        player.username = obj.username;
+        player.password = obj.password;
+        player.game = obj.game;
+        player.frames = obj.frames.map((v: any) => ({ data: Buffer.from(v.data, "base64"), count: v.count, ram: Buffer.from(v.ram, "base64")}));
+        player.start = obj.start ?? NaN;
+        player.end = obj.end ?? NaN;
+        player.dnf = obj.dnf ?? NaN;
+        player.splits = obj.splits;
+        player.buffers = obj.buffers.map((v: string) => Buffer.from(v, "base64"));
+        player.buffer_length = obj.buffer_length;
+        return player;
+    }
+
     add(buffer: Buffer) {
         if (this.dnf === this.dnf)
             return;
 
         this.buffers.push(buffer);
         this.buffer_length += buffer.length;
-        if (this.buffer_length > BUFFER) {
+        if (this.buffer_length > PLAYER_BUFFER) {
             const buffer: Buffer = Buffer.concat(this.buffers);
             const { buffer: _buffer, events } = bufferHandler(buffer, this.frames, this.game);
 
@@ -75,8 +89,27 @@ export default class Player {
         }
     }
 
-    // FIXME: for race generation through HTTP endpoint, return lua files one time
-    getScript() {
-        return "";
+    minimize() {
+        if (this.end === this.end || this.dnf === this.dnf) {
+            this.password = "";
+            this.frames = this.frames.slice(this.start, (this.end === this.end ? this.end : this.dnf) + 1);
+            this.end -= this.start;
+            this.dnf -= this.start;
+            this.splits = this.splits.map(v => v -= this.start)
+            this.buffers = [];
+            this.buffer_length = 0;
+            this.start = 0;
+        }
+
+        this.buffers = [Buffer.concat(this.buffers)];
+    }
+
+    getAuthString(address: string, port: number) {
+        let str = `-- BEGIN AUTHENTICATION FOR ${this.username.slice(0, -8)} --\n`;
+        str += `SERVER = { "${address}", ${port} }\n`;
+        str += `USERNAME = "${this.username}"\n`;
+        str += `PASSWORD = "${this.password}"\n`;
+        str += `-- END AUTHENTICATION FOR ${this.username.slice(0, -8)} --`;
+        return str;
     }
 }

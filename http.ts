@@ -2,10 +2,13 @@ import * as http from "node:http";
 import * as zlib from "node:zlib";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { randomBytes } from "node:crypto";
+import { supportedGames } from "./buffer.ts";
 import { activeRaces, Race } from "./race.ts";
-import "./tcp.ts";
+import key from "./key.ts";
 
-const PORT = 61125;
+import { TCP_ADDRESS, TCP_PORT, HTTP_PORT, MAX_ACTIVE_RACES } from "./env.ts";
+
 const MIME_TYPES = {
     ".html": "text/html",
     ".css": "text/css",
@@ -13,19 +16,17 @@ const MIME_TYPES = {
     ".png": "image/png",
 };
 
-// FIXME: proper global error handling middleware
-// FIXME: create races through another HTTP endpoint
-activeRaces.set("debug", new Race(["slither", "slither2"], "smb1_any%"));
-if (!activeRaces.get("debug").ok) {
-    throw "race didnt work";
-}
+let raceKey = key();
+console.log("race key:", raceKey);
 
 const server = http.createServer((request, response) => {
     if (request.method === "GET") {
-        const parts = request.url.split("/").slice(1);
+        const parts = request.url.split("/").filter(v => v !== "");
 
         let file: string;
-        if (parts.length === 1) {
+        if (parts.length === 0) {
+            file = path.join(import.meta.dirname, "root", "index.html");
+        } else if (parts.length === 1) {
             if (!activeRaces.has(parts[0])) {
                 response.writeHead(404).end();
                 return;
@@ -52,16 +53,14 @@ const server = http.createServer((request, response) => {
             response.writeHead(200, {
                 "Content-Length": data.length,
                 "Content-Type": mime,
-            });
-            response.end(data);
+            }).end(data);
         });
 
         return;
     }
 
     if (request.method !== "POST") {
-        response.statusCode = 404;
-        response.end();
+        response.writeHead(404).end();
         return;
     }
 
@@ -74,8 +73,51 @@ const server = http.createServer((request, response) => {
         const requestBody = JSON.parse(Buffer.concat(chunks).toString());
 
         if (requestBody == null) {
-            response.statusCode = 400;
-            response.end();
+            response.writeHead(400).end();
+            return;
+        }
+
+        if (request.url === "/") {
+            const key = requestBody.key;
+            const game = requestBody.game;
+            const players = requestBody.players;
+
+            if (key !== raceKey) {
+                response.writeHead(400).end("The entered key is incorrect.");
+                throw "debug";
+                return;
+            }
+
+            if (!supportedGames.has(game) || !Array.isArray(players) || players.length < 2 || players.length > 8 || players.findIndex(v => typeof v !== "string" || v === "" || v.length > 24) !== -1) {
+                response.writeHead(400).end("You must fill out all form elements.");
+                return;
+            }
+
+            if (new Set(players).size !== players.length) {
+                response.writeHead(400).end("All players must have unique names.");
+                return;
+            }
+
+            if (activeRaces.size >= MAX_ACTIVE_RACES) {
+                response.writeHead(418).end("The server is currently busy. Try again later.");
+                return;
+            }
+
+            const id = randomBytes(24).toString("base64url");
+            const race = new Race(game, players);
+            if (!race.ok) {
+                response.writeHead(400).end();
+                return;
+            }
+
+            activeRaces.set(id, race);
+
+            response.writeHead(200).end(JSON.stringify({
+                link: `/${id}`,
+                script: `lua/${game.split("_")[0]}.lua`,
+                authentication: race.players.map(v => v.getAuthString(TCP_ADDRESS, TCP_PORT)),
+            }));
+
             return;
         }
 
@@ -105,12 +147,11 @@ const server = http.createServer((request, response) => {
                 "Content-Encoding": "gzip",
                 "Content-Length": data.length,
                 "Content-Type": "application/json",
-            });
-            response.end(data);
+            }).end(data);
         });
     });
 });
 
-server.listen(PORT, "0.0.0.0", () => {
-    console.log("HTTP server running on port", PORT);
+server.listen(HTTP_PORT, "0.0.0.0", () => {
+    console.log("HTTP server running on port", HTTP_PORT);
 });

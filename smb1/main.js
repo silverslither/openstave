@@ -146,22 +146,24 @@ async function query(start = 0, length = 0) {
             body: JSON.stringify({
                 start,
                 length,
-            })
+            }),
         })).json();
 
-        for (const player in data.players) {
+        for (let player in data.players) {
+            const playerData = data.players[player];
+            player = player.slice(0, -8);
             players[player] = players[player] ?? {};
 
-            players[player].dnf = parseInt(data.players[player].dnf);
+            players[player].dnf = parseInt(playerData.dnf);
             players[player].frames = (players[player].frames ?? []);
 
-            const frames = data.players[player].frames.map(v => Uint8Array.from(atob(v), c => c.charCodeAt(0)));
+            const frames = playerData.frames.map(v => Uint8Array.from(atob(v), c => c.charCodeAt(0)));
             for (let i = 0; i < frames.length; i++)
                 players[player].frames[start + i] = frames[i];
 
-            players[player].length = parseInt(data.players[player].length);
-            players[player].splits = data.players[player].splits;
-            players[player].time = parseInt(data.players[player].time);
+            players[player].length = parseInt(playerData.length);
+            players[player].splits = playerData.splits;
+            players[player].time = parseInt(playerData.time);
         }
 
         maxLength = Infinity;

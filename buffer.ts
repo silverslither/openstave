@@ -5,7 +5,9 @@ const eventGenerators = {
         const last = frames.at(-1);
         if (last != null) {
             if (current.count !== last.count + 1) {
-                events.push({ code: "DNF", data: frames.length });
+                // FIXME
+                console.log(current.count, last.count);
+                events.push({ code: "DNF", data: frames.length - 1 });
                 return;
             }
 
@@ -34,7 +36,7 @@ const eventGenerators = {
                 events.push({ code: "END", data: frames.length + 1 });
             }
         }
-    }
+    },
 };
 
 export const supportedGames = new Set(Object.keys(eventGenerators));
@@ -46,7 +48,7 @@ export function bufferHandler(buffer: Buffer, frames: Frame[], game: string) {
         const current: Frame = {
             data: buffer.subarray(8, l),
             count: buffer.readUint32LE(4),
-            ram: buffer.subarray(8 + 32 + 256, l)
+            ram: buffer.subarray(8 + 32 + 256, l),
         };
         buffer = buffer.subarray(l);
 

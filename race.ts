@@ -18,7 +18,7 @@ export class Race {
     game: string;
     players: Player[];
 
-    constructor(players: string[], game: string) {
+    constructor(game: string = "", players: string[] = []) {
         this.ok = false;
 
         if (!supportedGames.has(game))
@@ -33,20 +33,26 @@ export class Race {
             let username = "";
             while (username.length === 0 || activePlayers.has(username))
                 username = player + randomBytes(6).toString("base64");
+            const password = randomBytes(24).toString("base64");
 
-            let password = randomBytes(24).toString("base64");
-
-            // FIXME: whatever tf this is
-            username = player;
-            password = "password";
-
-            this.players.push(new Player(username, password, game));
+            this.players.push(new Player(game, username, password));
         }
 
         for (const player of this.players)
             activePlayers.set(player.username, player);
 
         this.ok = true;
+    }
+
+    static from(obj: any) {
+        const race = new Race();
+        race.ok = obj.ok;
+        race.game = obj.game;
+        race.players = obj.players.map((v: any) => Player.from(v));
+        for (const player of race.players)
+            if (player.end !== player.end && player.dnf !== player.dnf)
+                activePlayers.set(player.username, player);
+        return race;
     }
 
     getData(start: number, length: number) {
@@ -64,5 +70,15 @@ export class Race {
             response[player.username] = playerObj;
         }
         return response;
+    }
+
+    serialize() {
+        for (const player of this.players)
+            player.minimize();
+        return JSON.stringify(this, (_, v) => {
+            if (v instanceof Buffer)
+                return v.toString("base64");
+            return v;
+        });
     }
 }

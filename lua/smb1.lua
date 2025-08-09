@@ -1,9 +1,10 @@
-﻿SERVER = { "", 0 }
+﻿-- BEGIN AUTHENTICATION --
+SERVER = { "", 0 }
 USERNAME = ""
 PASSWORD = ""
-CHECKSUM = "ea343f4e445a9050d4b4fbac2c77d0693b1d0922"
+-- END AUTHENTICATION --
 
-if emu.getRomInfo().fileSha1Hash:lower() ~= CHECKSUM then
+if emu.getRomInfo().fileSha1Hash:lower() ~= "ea343f4e445a9050d4b4fbac2c77d0693b1d0922" then
     emu.displayMessage("OpenVLB", "check that you have loaded a rom with sha1sum " .. CHECKSUM .. ".")
     return
 end
@@ -27,20 +28,27 @@ function send(data)
             emu.displayMessage("OpenVLB", "successfully connected to " .. SERVER[1] .. ":" .. SERVER[2] .. ".")
             pclient = client
         end
-        local sent1, _, sent2 = client:send(buffer)
-        if not sent1 then
-            emu.log("socket error: " .. _)
-            client:close()
+
+        if (client:dirty()) then
+            client.close()
             client = nil
-            sent1 = sent2
+        else
+            local sent1, _, sent2 = client:send(buffer)
+            if not sent1 then
+                emu.log("socket error: " .. _)
+                client:close()
+                client = nil
+                sent1 = sent2
+            end
+            buffer = buffer:sub(sent1 + 1)
         end
-        buffer = buffer:sub(sent1 + 1)
     end
     if client == nil then
         if pclient ~= nil then
             emu.displayMessage("OpenVLB", "reconnecting to " .. SERVER[1] .. ":" .. SERVER[2] .. "...")
+            pclient = client
         end
-        pclient = client
+
         client = socket.connect(SERVER[1], SERVER[2])
         if client ~= nil then
             client:send(auth)

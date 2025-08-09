@@ -1,9 +1,11 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { activePlayers, activeRaces, Race } from "./race.ts";
-import "./http.ts";
-import { openConnections, server } from "./tcp.ts";
 
+import { Race, activeRaces } from "./race.ts";
+import { openConnections, server } from "./tcp.ts";
+import "./http.ts";
+
+import { CRASH_TIMEOUT_MS } from "./env.ts";
 const CRASH_PATH = path.join(import.meta.dirname, "crash");
 
 let lock = false;
@@ -14,24 +16,22 @@ process.on("uncaughtException", async (error) => {
 
     try {
         console.error(error);
-        console.error("uncaught exception - gracefully shutting down")
+        console.error("uncaught exception - gracefully shutting down");
 
-        const closed = new Promise((resolve) => {
-            server.close(resolve);
-        });
+        const closed = new Promise(r => server.close(r));
 
         for (const client of openConnections)
             client.resetAndDestroy();
 
-        await Promise.any([closed, new Promise(r => setTimeout(r, 10000))]);
+        await Promise.any([closed, new Promise(r => setTimeout(r, CRASH_TIMEOUT_MS))]);
 
         if (!fs.existsSync(CRASH_PATH))
             fs.mkdirSync(CRASH_PATH);
         for (const [key, value] of activeRaces.entries())
             fs.writeFileSync(path.join(CRASH_PATH, key), value.serialize(), { encoding: "utf8" });
     } catch (e) {
-        console.error(error);
-        console.error("error in exception handler - forcefully shutting down")
+        console.error(e);
+        console.error("error in exception handler - forcefully shutting down");
     }
 
     process.exit(1);

@@ -2,12 +2,13 @@ import * as http from "node:http";
 import * as zlib from "node:zlib";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { randomBytes } from "node:crypto";
+import * as crypto from "node:crypto";
+
 import { supportedGames } from "./buffer.ts";
-import { activeRaces, Race } from "./race.ts";
+import { Race, activeRaces } from "./race.ts";
 import key from "./key.ts";
 
-import { TCP_ADDRESS, TCP_PORT, HTTP_PORT, MAX_ACTIVE_RACES } from "./env.ts";
+import { HTTP_PORT, MAX_ACTIVE_RACES, TCP_ADDRESS, TCP_PORT } from "./env.ts";
 
 const MIME_TYPES = {
     ".html": "text/html",
@@ -16,7 +17,7 @@ const MIME_TYPES = {
     ".png": "image/png",
 };
 
-let raceKey = key();
+const raceKey = key();
 console.log("race key:", raceKey);
 
 const server = http.createServer((request, response) => {
@@ -84,7 +85,6 @@ const server = http.createServer((request, response) => {
 
             if (key !== raceKey) {
                 response.writeHead(400).end("The entered key is incorrect.");
-                throw "debug";
                 return;
             }
 
@@ -103,7 +103,7 @@ const server = http.createServer((request, response) => {
                 return;
             }
 
-            const id = randomBytes(24).toString("base64url");
+            const id = crypto.randomBytes(24).toString("base64url");
             const race = new Race(game, players);
             if (!race.ok) {
                 response.writeHead(400).end();

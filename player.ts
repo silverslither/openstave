@@ -1,5 +1,6 @@
 import type { Frame, PlayerEvent } from "./types.ts";
 import { bufferHandler } from "./buffer.ts";
+
 import { PLAYER_BUFFER } from "./env.ts";
 
 export default class Player {
@@ -34,7 +35,7 @@ export default class Player {
         player.username = obj.username;
         player.password = obj.password;
         player.game = obj.game;
-        player.frames = obj.frames.map((v: any) => ({ data: Buffer.from(v.data, "base64"), count: v.count, ram: Buffer.from(v.ram, "base64")}));
+        player.frames = obj.frames.map((v: any) => ({ data: Buffer.from(v.data, "base64"), count: v.count, ram: Buffer.from(v.ram, "base64") }));
         player.start = obj.start ?? NaN;
         player.end = obj.end ?? NaN;
         player.dnf = obj.dnf ?? NaN;
@@ -77,8 +78,8 @@ export default class Player {
                     this.end = event.data;
                 break;
             case "SPLIT":
-                if (this.start === this.start && this.end !== this.end)
-                    this.splits.push(event.data);
+                if (this.start === this.start && this.end !== this.end && event.data[0] >= 0)
+                    this.splits[event.data[0]] = event.data[1];
                 break;
             case "DNF":
                 if (this.start === this.start && this.end !== this.end) {
@@ -95,7 +96,7 @@ export default class Player {
             this.frames = this.frames.slice(this.start, (this.end === this.end ? this.end : this.dnf) + 1);
             this.end -= this.start;
             this.dnf -= this.start;
-            this.splits = this.splits.map(v => v -= this.start)
+            this.splits = this.splits.map(v => v -= this.start);
             this.buffers = [];
             this.buffer_length = 0;
             this.start = 0;

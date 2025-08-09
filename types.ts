@@ -6,5 +6,5 @@ export interface Frame {
 
 export interface PlayerEvent {
     code: "START" | "END" | "SPLIT" | "DNF";
-    data: number;
+    data: any;
 }

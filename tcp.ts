@@ -1,7 +1,6 @@
 import * as net from "node:net";
 import { activePlayers } from "./race.ts";
-
-import { TCP_PORT, AUTH_WAIT_MS } from "./env.ts";
+import { AUTH_WAIT_MS, TCP_PORT } from "./env.ts";
 
 export const openConnections: Set<net.Socket> = new Set();
 

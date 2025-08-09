@@ -176,6 +176,8 @@ export class PlayerCanvas {
 
     renderHUD() {
         this.drawText(8, 8, this.following);
+        if (remainder !== 0xff)
+            this.drawText(8, 16, remainder.toString());
         if (this.id === 0)
             this.drawText(this.canvas.width - 8, 8, `time ${this.time(FRAME_TIME_MS * this.count)}`, "right");
     }

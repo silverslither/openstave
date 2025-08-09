@@ -39,5 +39,6 @@ export default defineConfig([{
         "object-curly-spacing": ["error", "always"],
         "template-curly-spacing": ["error", "never"],
         "comma-dangle": ["error", "always-multiline"],
+        "sort-imports": ["warn"],
     },
 }]);

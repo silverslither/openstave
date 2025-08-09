@@ -62,7 +62,7 @@ async function create() {
 
         const data = await response.json();
 
-        let html = `DO NOT CLOSE OR RELOAD THIS PAGE UNTIL AUTHENTICATION KEYS HAVE BEEN DISTRIBUTED.\n`;
+        let html = "DO NOT CLOSE OR RELOAD THIS PAGE UNTIL AUTHENTICATION KEYS HAVE BEEN DISTRIBUTED.\n";
         html += `The permanent link to this race will be <a href="${data.link}">${data.link}</a>.\n`;
         html += `The client script can be downloaded at <a href="${data.script}">${data.script}</a>\n`;
         for (const player of data.authentication)

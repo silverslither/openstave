@@ -1,4 +1,5 @@
-import { randomBytes } from "node:crypto";
+import * as crypto from "node:crypto";
+
 import { supportedGames } from "./buffer.ts";
 import Player from "./player.ts";
 
@@ -32,8 +33,8 @@ export class Race {
 
             let username = "";
             while (username.length === 0 || activePlayers.has(username))
-                username = player + randomBytes(6).toString("base64");
-            const password = randomBytes(24).toString("base64");
+                username = player + crypto.randomBytes(6).toString("base64");
+            const password = crypto.randomBytes(24).toString("base64");
 
             this.players.push(new Player(game, username, password));
         }

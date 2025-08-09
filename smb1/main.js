@@ -1,4 +1,4 @@
-import { init, PlayerCanvas } from "./renderer.js";
+import { PlayerCanvas, init } from "./renderer.js";
 
 const FRAME_BUFFER = 60;
 const FRAME_TIME_MS = 655171 / 39375;

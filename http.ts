@@ -136,7 +136,7 @@ const server = http.createServer((request, response) => {
         }
 
         const raceObject = activeRaces.get(race);
-        const responseBody = { game: raceObject.game, players: raceObject.getData(start, length) };
+        const responseBody = raceObject.getData(start, length);
         zlib.gzip(JSON.stringify(responseBody), { level: 1 }, (error, data) => {
             if (error) {
                 console.error(error);

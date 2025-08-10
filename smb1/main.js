@@ -11,6 +11,7 @@ let frame = 0;
 let paused = false;
 let seek = false;
 let maxLength = 0;
+let finished = false;
 
 addEventListener("DOMContentLoaded", setup);
 
@@ -96,7 +97,7 @@ function draw() {
                 frame++;
             seek = false;
 
-            controls.framesLeft.textContent = frame.toString().padStart(7);
+            controls.framesLeft.textContent = Math.min(frame, maxLength - 1).toString().padStart(7);
             controls.framesRight.textContent = (frame >= controls.range.max ? "-0" : frame - controls.range.max).toString().padEnd(7);
             controls.range.value = frame;
 
@@ -105,7 +106,7 @@ function draw() {
 
             lastFrameMs += Math.floor((performance.now() - lastFrameMs) / FRAME_TIME_MS) * FRAME_TIME_MS;
         } else {
-            if (frame <= maxLength - 2 * FRAME_BUFFER) {
+            if (finished || frame <= maxLength - 2 * FRAME_BUFFER) {
                 query(frame, 2 * FRAME_BUFFER);
             } else {
                 query();
@@ -148,6 +149,8 @@ async function query(start = 0, length = 0) {
                 length,
             }),
         })).json();
+
+        finished = data.finished;
 
         for (let player in data.players) {
             const playerData = data.players[player];
@@ -192,8 +195,7 @@ async function query(start = 0, length = 0) {
         for (let i = start; i < j; i++)
             buffered[i] = true;
 
-        // FIXME: if race is completely over, make server send a flag and this will just be set to maxLength instead
-        controls.range.max = Math.max(maxLength - 2 * FRAME_BUFFER, 0);
+        controls.range.max = finished ? maxLength - 1 : Math.max(maxLength - 2 * FRAME_BUFFER, 0);
 
         lock = false;
         return data.game;

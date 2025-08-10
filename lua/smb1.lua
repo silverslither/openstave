@@ -120,7 +120,7 @@ function readmemory()
     }
 end
 
-function u32(n)
+function u32le(n)
     local s = ""
     for _ = 0, 3, 1 do
         s = s .. string.char(n % 256)
@@ -132,12 +132,12 @@ end
 function main()
     readmemory()
     local data = table.concat({
-        u32(frame),
+        u32le(frame),
         string.char(table.unpack(palette)),
         string.char(table.unpack(sprites)),
         string.char(table.unpack(ram))
     })
-    send(u32(#data + 4) .. data)
+    send(u32le(#data + 4) .. data)
 end
 
 emu.addEventCallback(main, emu.eventType.endFrame)

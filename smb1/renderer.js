@@ -1,6 +1,7 @@
-import tiles from "./tiles.js";
-import colours from "./palette.js";
+import TILES from "./tiles.js";
+import COLOURS from "./palette.js";
 
+const COMPONENT_COLOURS = COLOURS.map(v => v.slice(1).match(/../g).map(w => parseInt(w, 16)));
 const FRAME_TIME_MS = 655171 / 39375;
 
 const maps = {};
@@ -34,7 +35,7 @@ export class PlayerCanvas {
         this.canvas = document.createElement("canvas");
         this.canvas.id = `canvas${id}`;
         if (this.id === 0) {
-            window.addEventListener("resize", () => this.resize());
+            window.addEventListener("resize", () => this.resize().render(this.count));
             this.resize();
         } else {
             this.canvas.className = "floating";
@@ -62,6 +63,7 @@ export class PlayerCanvas {
         this.canvas.height = height;
         this.canvas.style.width = `${width * scale}px`;
         this.canvas.style.height = `${height * scale}px`;
+        return this;
     }
 
     render(count) {
@@ -103,7 +105,7 @@ export class PlayerCanvas {
 
         const xOffset = this.xOffset - ((gAreaPage << 8) + gAreaPixel - gScreenPixel);
 
-        this.context.fillStyle = colours[gPalette[0]];
+        this.context.fillStyle = COLOURS[gPalette[0]];
         this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         if (gPlayerState === 0) {
@@ -112,6 +114,7 @@ export class PlayerCanvas {
         }
 
         const above = [];
+        this.toBuffer();
         for (const player in this.players) {
             let frame = this.players[player].frames[count];
             let pframe = this.players[player].frames[count - 1] ?? frame;
@@ -156,19 +159,22 @@ export class PlayerCanvas {
 
                 if (tile !== 0xff && y < 240) {
                     if ((attributes >>> 5) & 1)
-                        this.renderTile(xOffset + x, y, tile, attributes, palette);
+                        this.renderTileToBuffer(xOffset + x, y, tile, attributes, palette);
                     else
                         above.push([xOffset + x, y, tile, attributes, palette]);
                 }
             }
         }
+        this.fromBuffer();
 
         const map = gAreaId.toString(16).padStart(2, "0");
         if (map in maps)
             this.context.drawImage(maps[map], xOffset, 0);
 
+        this.toBuffer();
         for (const sprite of above)
-            this.renderTile(...sprite);
+            this.renderTileToBuffer(...sprite);
+        this.fromBuffer();
 
         this.renderHUD();
         return false;
@@ -176,32 +182,42 @@ export class PlayerCanvas {
 
     renderHUD() {
         this.drawText(8, 8, this.following);
-        if (remainder !== 0xff)
-            this.drawText(8, 16, remainder.toString());
         if (this.id === 0)
             this.drawText(this.canvas.width - 8, 8, `time ${this.time(FRAME_TIME_MS * this.count)}`, "right");
     }
 
-    // FIXME: optimize rendering to use ImageData, this is copied straight from code written years ago
-    renderTile(x, y, tile, attributes, palette) {
+    toBuffer() {
+        this.buffer = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
+    }
+
+    fromBuffer() {
+        this.context.putImageData(this.buffer, 0, 0);
+    }
+
+    renderTileToBuffer(x, y, tile, attributes, palette) {
         const vflip = attributes >>> 7;
         const hflip = (attributes >>> 6) & 1;
         const p = attributes & 3;
-        tile = tiles[tile];
+        tile = TILES[tile];
 
         for (let j = 0; j < 8; j++) {
             for (let i = 0; i < 8; i++) {
                 const o = ((vflip ? 7 - j : j) << 3) + (hflip ? 7 - i : i);
                 if (tile[o] === 0)
                     continue;
-                this.drawPixel(x + i, y + j, colours[palette[0x10 + (p << 2) + tile[o]]]);
+                this.drawPixelToBuffer(x + i, y + j, palette[0x10 + (p << 2) + tile[o]]);
             }
         }
     }
 
-    drawPixel(x, y, c) {
-        this.context.fillStyle = c;
-        this.context.fillRect(x, y, 1, 1);
+    drawPixelToBuffer(x, y, colour_index) {
+        if (x < 0 || x >= this.buffer.width || y < 0 || y >= this.buffer.height)
+            return;
+        const colour = COMPONENT_COLOURS[colour_index];
+        const i = 4 * (y * this.buffer.width + x);
+        this.buffer.data[i + 0] = colour[0];
+        this.buffer.data[i + 1] = colour[1];
+        this.buffer.data[i + 2] = colour[2];
     }
 
     drawText(x, y, str, align = "left") {

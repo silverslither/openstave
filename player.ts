@@ -16,6 +16,10 @@ export default class Player {
     buffers: Buffer[];
     buffer_length: number;
 
+    get finished(): boolean {
+        return this.end === this.end || this.dnf === this.dnf;
+    }
+
     constructor(game: string = "", username: string = "", password: string = "") {
         this.connected = false;
         this.username = username;
@@ -46,7 +50,7 @@ export default class Player {
     }
 
     add(buffer: Buffer) {
-        if (this.dnf === this.dnf)
+        if (this.finished)
             return;
 
         this.buffers.push(buffer);
@@ -65,7 +69,7 @@ export default class Player {
     }
 
     eventHandler(event: PlayerEvent) {
-        if (this.dnf === this.dnf)
+        if (this.finished)
             return;
 
         switch (event.code) {
@@ -91,7 +95,7 @@ export default class Player {
     }
 
     minimize() {
-        if (this.end === this.end || this.dnf === this.dnf) {
+        if (this.finished) {
             this.password = "";
             this.frames = this.frames.slice(this.start, (this.end === this.end ? this.end : this.dnf) + 1);
             this.end -= this.start;

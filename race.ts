@@ -57,6 +57,9 @@ export class Race {
     }
 
     getData(start: number, length: number) {
+        // FIXME: for now, just set a flag and call it a day; what is should do is call minimize() on all players, move itself to inactiveRaces, and soon be moved to disk.
+        const finished = this.players.findIndex(v => !v.finished) === -1;
+
         const response: { [key: string]: PlayerResponseObject } = {};
         for (const player of this.players) {
             if (player.start !== player.start)
@@ -70,7 +73,8 @@ export class Race {
             };
             response[player.username] = playerObj;
         }
-        return response;
+
+        return { game: this.game, finished, players: response };
     }
 
     serialize() {

@@ -52,7 +52,7 @@ export const server = net.createServer((client) => {
             }
             player.add(data);
 
-            if (player.dnf === player.dnf || player.end === player.end) {
+            if (player.finished) {
                 activePlayers.delete(username);
                 client.destroy();
             }

@@ -270,14 +270,15 @@ export class LeaderboardCanvas extends RendererCanvas {
     render(count) {
         this.count = count;
 
-        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        const lines = this.formatLines(this.getLines(count));
+
+        this.context.fillStyle = "#000000";
+        this.context.fillRect(8, 4, lines[0].join(" ").length * 8 + 16, 8 * lines.length + 16);
+
         this.drawText(16, 8, "LEADERBOARD");
 
-        const lines = this.formatLines(this.getLines(count));
-        console.log(lines);
-        for (let i = 0; i < lines.length; i++) {
+        for (let i = 0; i < lines.length; i++)
             this.drawText(16, i * 8 + 16, lines[i].join(" "));
-        }
     }
 
     getLines(count) {
@@ -326,7 +327,9 @@ export class LeaderboardCanvas extends RendererCanvas {
         for (const line of lines) {
             const data = this.players[line[1]]?.frames[count];
             if (data != null && data[32 + 256 + 8] !== 0xff)
-                line.push(`R${data[32 + 256 + 8]}`)
+                line.push(`R${data[32 + 256 + 8].toString().padStart(2, "0")}`);
+            else
+                line.push("R--");
         }
 
         return lines;
@@ -337,7 +340,7 @@ export class LeaderboardCanvas extends RendererCanvas {
             v[0].padEnd(2),
             v[1].padEnd(25),
             (typeof v[2] === "string" ? v[2] : `+${formatTime(FRAME_TIME_MS * v[2])}`).padStart(10),
-            ...v.slice(3).map(w => ` ${w}`),
+            v[3].padStart(4),
         ]);
     }
 }

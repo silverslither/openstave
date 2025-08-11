@@ -11,13 +11,24 @@ body {
     background-color: black;
 }
 
-#player {
+#renderer {
     flex: 1;
     flex-direction: column;
     justify-content: center;
     display: flex;
     position: relative;
     overflow: hidden;
+}
+
+#screen {
+    position: relative;
+}
+
+#leaderboard {
+    pointer-events: none;
+    position: absolute;
+    top: 0px;
+    left: 0px;
 }
 
 #controls {

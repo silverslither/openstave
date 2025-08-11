@@ -1,4 +1,4 @@
-import { PlayerCanvas, init } from "./renderer.js";
+import { LeaderboardCanvas, PlayerCanvas, init } from "./renderer.js";
 
 const FRAME_BUFFER = 60;
 const FRAME_TIME_MS = 655171 / 39375;
@@ -23,6 +23,7 @@ async function setup() {
     controls.start = document.getElementById("start");
     controls.end = document.getElementById("end");
     controls.float = document.getElementById("float");
+    controls.leaderboard = document.getElementById("lb");
     controls.framesLeft = document.getElementById("frames-left");
     controls.framesRight = document.getElementById("frames-right");
     controls.range = document.querySelector("input");
@@ -59,6 +60,7 @@ async function setup() {
     await init();
     canvases[0] = new PlayerCanvas(0, players);
     canvases[1] = new PlayerCanvas(1, players);
+    canvases[2] = new LeaderboardCanvas(players);
     canvases[1].canvas.style.display = "none";
 
     controls.play.addEventListener("click", () => {
@@ -76,6 +78,12 @@ async function setup() {
         else
             canvases[1].canvas.style.display = "none";
     });
+    controls.leaderboard.addEventListener("click", () => {
+        if (canvases[2].canvas.style.display === "none")
+            canvases[2].canvas.style.display = "";
+        else
+            canvases[2].canvas.style.display = "none";
+    });
 
     if (drawCondition)
         draw();
@@ -88,6 +96,7 @@ function draw() {
     if (paused && !seek)
         return;
 
+    // FIXME: refresh rate WILL dip below 60.1! add skip frame functionality (but perhaps limit it to skipping at most like 3? frames)
     if (performance.now() - lastFrameMs > FRAME_TIME_MS) {
         if (buffered[frame]) {
             for (const canvas of canvases)
@@ -152,26 +161,26 @@ async function query(start = 0, length = 0) {
 
         finished = data.finished;
 
-        for (let player in data.players) {
-            const playerData = data.players[player];
-            player = player.slice(0, -8);
-            players[player] = players[player] ?? {};
+        for (let name in data.players) {
+            const playerData = data.players[name];
+            name = name.slice(0, -8);
+            players[name] = players[name] ?? {};
 
-            players[player].dnf = parseInt(playerData.dnf);
-            players[player].frames = (players[player].frames ?? []);
+            players[name].dnf = parseInt(playerData.dnf);
+            players[name].frames = (players[name].frames ?? []);
 
             const frames = playerData.frames.map(v => Uint8Array.from(atob(v), c => c.charCodeAt(0)));
             for (let i = 0; i < frames.length; i++)
-                players[player].frames[start + i] = frames[i];
+                players[name].frames[start + i] = frames[i];
 
-            players[player].length = parseInt(playerData.length);
-            players[player].splits = playerData.splits;
-            players[player].time = parseInt(playerData.time);
+            players[name].length = parseInt(playerData.length);
+            players[name].splits = playerData.splits;
+            players[name].time = parseInt(playerData.time);
         }
 
         maxLength = Infinity;
-        for (const i in players) {
-            const player = players[i];
+        for (const name in players) {
+            const player = players[name];
             if (player.length !== player.length) {
                 maxLength = 0;
                 break;

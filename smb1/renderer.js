@@ -16,7 +16,7 @@ export async function init() {
         maps[i].src = `smb1/maps/${i}.png`;
     }
 
-    for (const i of ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", ".", ";", "[", "]"]) {
+    for (const i of ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "+", "-", ".", ";", "[", "]"]) {
         text[i] = new Image();
         promises.push(new Promise(resolve => text[i].addEventListener("load", () => resolve())));
         text[i].src = `smb1/text/${i}.png`;
@@ -25,15 +25,66 @@ export async function init() {
     await Promise.all(promises);
 }
 
-export class PlayerCanvas {
+class RendererCanvas {
+    toBuffer() {
+        this.buffer = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
+    }
+
+    fromBuffer() {
+        this.context.putImageData(this.buffer, 0, 0);
+    }
+
+    renderTileToBuffer(x, y, tile, attributes, palette) {
+        const vflip = attributes >>> 7;
+        const hflip = (attributes >>> 6) & 1;
+        const p = attributes & 3;
+        tile = TILES[tile];
+
+        for (let j = 0; j < 8; j++) {
+            for (let i = 0; i < 8; i++) {
+                const o = ((vflip ? 7 - j : j) << 3) + (hflip ? 7 - i : i);
+                if (tile[o] === 0)
+                    continue;
+                this.drawPixelToBuffer(x + i, y + j, palette[0x10 + (p << 2) + tile[o]]);
+            }
+        }
+    }
+
+    drawPixelToBuffer(x, y, colour_index) {
+        if (x < 0 || x >= this.buffer.width || y < 0 || y >= this.buffer.height)
+            return;
+        const colour = COMPONENT_COLOURS[colour_index];
+        const i = 4 * (y * this.buffer.width + x);
+        this.buffer.data[i + 0] = colour[0];
+        this.buffer.data[i + 1] = colour[1];
+        this.buffer.data[i + 2] = colour[2];
+    }
+
+    drawText(x, y, str, align = "left") {
+        str = str.toUpperCase().normalize("NFKD").replace(/:/g, ";");
+
+        this.context.save();
+        this.context.translate({ left: 0, right: -8, center: -4 }[align] * str.length, 0);
+
+        for (let i = 0; i < str.length; i++)
+            if (str[i] in text)
+                this.context.drawImage(text[str[i]], x + i * 8, y);
+
+        this.context.restore();
+    }
+}
+
+export class PlayerCanvas extends RendererCanvas {
     constructor(id, players, following = "") {
+        super();
+
         this.id = id;
         this.players = players;
         this.following = following;
         this.count = 0;
 
         this.canvas = document.createElement("canvas");
-        this.canvas.id = `canvas${id}`;
+        this.canvas.id = `player${id}`;
         if (this.id === 0) {
             window.addEventListener("resize", () => this.resize().render(this.count));
             this.resize();
@@ -50,7 +101,7 @@ export class PlayerCanvas {
                 this.render(this.count);
             }
         });
-        document.getElementById("player").append(this.canvas);
+        document.getElementById(id === 0 ? "screen" : "renderer").append(this.canvas);
 
         this.context = this.canvas.getContext("2d");
     }
@@ -68,9 +119,9 @@ export class PlayerCanvas {
 
     render(count) {
         this.count = count;
-        this.xOffset = (this.canvas.width - 256) >>> 1;
+        this.xOffset = Math.floor((this.canvas.width - 256) / 2);
 
-        // FIXME: add follow first place feature, after splits have been implemented
+        // FIXME: add follow first place feature
         this.following = this.following || Object.keys(this.players)[0];
         if (this.players[this.following] == null)
             return true;
@@ -115,13 +166,13 @@ export class PlayerCanvas {
 
         const above = [];
         this.toBuffer();
-        for (const player in this.players) {
-            let frame = this.players[player].frames[count];
-            let pframe = this.players[player].frames[count - 1] ?? frame;
+        for (const name in this.players) {
+            let frame = this.players[name].frames[count];
+            let pframe = this.players[name].frames[count - 1] ?? frame;
 
             if (frame == null) {
-                frame = this.players[player].frames.at(-1);
-                pframe = this.players[player].frames.at(-2) ?? frame;
+                frame = this.players[name].frames.at(-1);
+                pframe = this.players[name].frames.at(-2) ?? frame;
             }
 
             if (frame == null)
@@ -181,66 +232,122 @@ export class PlayerCanvas {
     }
 
     renderHUD() {
-        this.drawText(8, 8, this.following);
+        //this.drawText(8, 8, this.following);
         if (this.id === 0)
-            this.drawText(this.canvas.width - 8, 8, `time ${this.time(FRAME_TIME_MS * this.count)}`, "right");
+            this.drawText(this.canvas.width - 8, 8, formatTime(FRAME_TIME_MS * this.count), "right");
+    }
+}
+
+export class LeaderboardCanvas extends RendererCanvas {
+    constructor(players) {
+        super();
+
+        this.players = players;
+        this.count = 0;
+
+        this.canvas = document.createElement("canvas");
+        this.canvas.id = "leaderboard";
+        window.addEventListener("resize", () => this.resize().render(this.count));
+        this.resize();
+        document.getElementById("screen").append(this.canvas);
+
+        this.context = this.canvas.getContext("2d");
     }
 
-    toBuffer() {
-        this.buffer = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
+    resize() {
+        const scale = Math.max(Math.min(Math.floor(window.innerHeight / 240), Math.round(window.innerWidth / 240)), 1);
+        const width = Math.ceil(window.innerWidth / scale);
+        const height = 240;
+        this.canvas.width = 2 * width;
+        this.canvas.height = height;
+        this.canvas.style.width = `${width * scale}px`;
+        this.canvas.style.height = `${height * scale}px`;
+        return this;
     }
 
-    fromBuffer() {
-        this.context.putImageData(this.buffer, 0, 0);
-    }
+    render(count) {
+        this.count = count;
 
-    renderTileToBuffer(x, y, tile, attributes, palette) {
-        const vflip = attributes >>> 7;
-        const hflip = (attributes >>> 6) & 1;
-        const p = attributes & 3;
-        tile = TILES[tile];
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.drawText(16, 8, "LEADERBOARD");
 
-        for (let j = 0; j < 8; j++) {
-            for (let i = 0; i < 8; i++) {
-                const o = ((vflip ? 7 - j : j) << 3) + (hflip ? 7 - i : i);
-                if (tile[o] === 0)
-                    continue;
-                this.drawPixelToBuffer(x + i, y + j, palette[0x10 + (p << 2) + tile[o]]);
-            }
+        const lines = this.formatLines(this.getLines(count));
+        console.log(lines);
+        for (let i = 0; i < lines.length; i++) {
+            this.drawText(16, i * 8 + 16, lines[i].join(" "));
         }
     }
 
-    drawPixelToBuffer(x, y, colour_index) {
-        if (x < 0 || x >= this.buffer.width || y < 0 || y >= this.buffer.height)
-            return;
-        const colour = COMPONENT_COLOURS[colour_index];
-        const i = 4 * (y * this.buffer.width + x);
-        this.buffer.data[i + 0] = colour[0];
-        this.buffer.data[i + 1] = colour[1];
-        this.buffer.data[i + 2] = colour[2];
+    getLines(count) {
+        const lines = [];
+        const leaderboard = Object.entries(this.players).map(v => {
+            const splits = v[1].splits.slice(0, v[1].splits.findLastIndex(w => w != null && w <= count) + 1);
+            if (v[1].end <= count)
+                splits.push(v[1].end);
+            return [v[0], splits];
+        }).sort((a, b) => b[1].length - a[1].length || a[1].at(-1) - b[1].at(-1));
+
+        const leader = leaderboard.find(v => !(this.players[v[0]].dnf <= count))?.[1];
+        const leaderSplit = leader?.at(-1) ?? 0;
+        const dnf = [];
+        for (const [name, splits] of leaderboard) {
+            if (this.players[name].dnf <= count) {
+                dnf.push([name, this.players[name].dnf]);
+                continue;
+            }
+
+            const line = [];
+            line.push(name);
+            if (splits.length === leader.length)
+                line.push((splits.at(-1) ?? 0) - leaderSplit);
+            else
+                line.push(count - leaderSplit);
+            lines.push(line);
+        }
+        for (const [name] of dnf.sort((a, b) => b[1] - a[1])) {
+            const line = [];
+            line.push(name);
+            line.push("DNF");
+            lines.push(line);
+        }
+
+        // placement
+        let i = 1;
+        lines[0].unshift(i.toString());
+        for (let j = 1; j < lines.length; j++) {
+            if (lines[j - 1].at(-1) !== lines[j].at(-1))
+                i += 1;
+            lines[j].unshift(i.toString());
+        }
+
+        // remainders
+        for (const line of lines) {
+            const data = this.players[line[1]]?.frames[count];
+            if (data != null && data[32 + 256 + 8] !== 0xff)
+                line.push(`R${data[32 + 256 + 8]}`)
+        }
+
+        return lines;
     }
 
-    drawText(x, y, str, align = "left") {
-        str = str.toUpperCase().normalize("NFKD").replace(/:/g, ";").replace(/[^0-9A-Z ;.[\]]/g, "");
-
-        this.context.save();
-        this.context.translate({ left: 0, right: -8, center: -4 }[align] * str.length, 0);
-
-        for (let i = 0; i < str.length; i++)
-            if (str[i] in text)
-                this.context.drawImage(text[str[i]], x + i * 8, y);
-
-        this.context.restore();
-    }
-
-    time(ms) {
-        ms = Math.round(ms);
-        const s = Math.floor(ms / 1000);
-        const m = Math.floor(s / 60);
-        let t = "";
-        t += `${(m % 60).toString().padStart(2, "0")}:`;
-        t += `${(s % 60).toString().padStart(2, "0")}.`;
-        t += (ms % 1000).toString().padStart(3, "0");
-        return t;
+    formatLines(lines) {
+        return lines.map(v => [
+            v[0].padEnd(2),
+            v[1].padEnd(25),
+            (typeof v[2] === "string" ? v[2] : `+${formatTime(FRAME_TIME_MS * v[2])}`).padStart(10),
+            ...v.slice(3).map(w => ` ${w}`),
+        ]);
     }
 }
+
+function formatTime(ms) {
+    ms = Math.round(ms);
+    const s = Math.floor(ms / 1000);
+    const m = Math.floor(s / 60);
+    let t = "";
+    t += `${(m % 60).toString().padStart(2, "0")}:`;
+    t += `${(s % 60).toString().padStart(2, "0")}.`;
+    t += (ms % 1000).toString().padStart(3, "0");
+    return t;
+}
+

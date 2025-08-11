@@ -232,7 +232,9 @@ export class PlayerCanvas extends RendererCanvas {
     }
 
     renderHUD() {
-        //this.drawText(8, 8, this.following);
+        this.context.fillStyle = "#000000";
+        this.context.fillRect(4, this.canvas.height - 20, this.following.length * 8 + 8, 16);
+        this.drawText(8, this.canvas.height - 16, this.following);
         if (this.id === 0)
             this.drawText(this.canvas.width - 8, 8, formatTime(FRAME_TIME_MS * this.count), "right");
     }

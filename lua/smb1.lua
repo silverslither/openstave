@@ -5,7 +5,7 @@ PASSWORD = ""
 -- END AUTHENTICATION --
 
 if emu.getRomInfo().fileSha1Hash:lower() ~= "ea343f4e445a9050d4b4fbac2c77d0693b1d0922" then
-    emu.displayMessage("OpenVLB", "check that you have loaded a rom with sha1sum " .. CHECKSUM .. ".")
+    emu.displayMessage("OpenVLB", "check that you have loaded a rom with sha1sum ea343f4e445a9050d4b4fbac2c77d0693b1d0922.")
     return
 end
 

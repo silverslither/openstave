@@ -1,7 +1,9 @@
 import { LeaderboardCanvas, PlayerCanvas, init } from "./renderer.js";
 
-const FRAME_BUFFER = 60;
+const FRAME_BUFFER = 120;
 const FRAME_TIME_MS = 655171 / 39375;
+const REREQUEST_INTERVAL = FRAME_BUFFER * FRAME_TIME_MS / 2;
+const LIVE_DELAY = 240;
 let lastFrameMs = 0;
 
 const canvases = [];
@@ -29,7 +31,7 @@ async function setup() {
     controls.range = document.querySelector("input");
 
     query().then(() => {
-        frame = Number(controls.range.max);
+        frame = finished ? maxLength - 1 : Math.max(maxLength - 2 * FRAME_BUFFER, 0);
         controls.framesLeft.textContent = frame.toString().padStart(7);
         controls.framesRight.textContent = "-0".padEnd(7);
         controls.range.value = frame;
@@ -110,17 +112,19 @@ function draw() {
             controls.framesRight.textContent = (frame >= controls.range.max ? "-0" : frame - controls.range.max).toString().padEnd(7);
             controls.range.value = frame;
 
-            if (frame + FRAME_BUFFER < maxLength && !buffered[frame + FRAME_BUFFER])
+            if (frame <= maxLength - FRAME_BUFFER && !buffered[frame + FRAME_BUFFER])
                 query(frame + FRAME_BUFFER, FRAME_BUFFER);
 
             lastFrameMs += Math.floor((performance.now() - lastFrameMs) / FRAME_TIME_MS) * FRAME_TIME_MS;
         } else {
             if (finished || frame <= maxLength - 2 * FRAME_BUFFER) {
                 query(frame, 2 * FRAME_BUFFER);
+            } else if (frame <= maxLength - FRAME_BUFFER) {
+                query(frame, FRAME_BUFFER);
             } else {
                 query();
             }
-            lastFrameMs += 1000;
+            lastFrameMs += REREQUEST_INTERVAL;
         }
     }
 }
@@ -204,7 +208,8 @@ async function query(start = 0, length = 0) {
         for (let i = start; i < j; i++)
             buffered[i] = true;
 
-        controls.range.max = finished ? maxLength - 1 : Math.max(maxLength - 2 * FRAME_BUFFER, 0);
+        controls.range.max = finished ? maxLength - 1 : Math.max(maxLength - 2 * FRAME_BUFFER - LIVE_DELAY, 0);
+        controls.framesRight.textContent = (frame >= controls.range.max ? "-0" : frame - controls.range.max).toString().padEnd(7);
 
         lock = false;
         return data.game;

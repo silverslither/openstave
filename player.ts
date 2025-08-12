@@ -78,7 +78,7 @@ export default class Player {
                     this.start = event.data;
                 break;
             case "END":
-                if (this.end !== this.end) {
+                if (this.start === this.start && this.end !== this.end) {
                     this.end = event.data;
                     this.frames.length = this.end + 1;
                 }

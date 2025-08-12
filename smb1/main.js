@@ -189,7 +189,7 @@ async function query(start = 0, length = 0) {
                 maxLength = 0;
                 break;
             }
-            if (player.dnf === player.dnf)
+            if (player.dnf === player.dnf || player.time === player.time)
                 continue;
 
             maxLength = Math.min(maxLength, player.length);

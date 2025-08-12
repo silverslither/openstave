@@ -285,8 +285,8 @@ export class LeaderboardCanvas extends RendererCanvas {
         const lines = [];
         const leaderboard = Object.entries(this.players).map(v => {
             const splits = v[1].splits.slice(0, v[1].splits.findLastIndex(w => w != null && w <= count) + 1);
-            if (v[1].end <= count)
-                splits.push(v[1].end);
+            if (v[1].time <= count)
+                splits.push(v[1].time);
             return [v[0], splits];
         }).sort((a, b) => b[1].length - a[1].length || a[1].at(-1) - b[1].at(-1));
 
@@ -301,16 +301,18 @@ export class LeaderboardCanvas extends RendererCanvas {
 
             const line = [];
             line.push(name);
-            if (splits.length === leader.length)
-                line.push((splits.at(-1) ?? 0) - leaderSplit);
+            if (this.players[name].time <= count)
+                line.push(["", this.players[name].time]);
+            else if (splits.length === leader.length)
+                line.push(["+", (splits.at(-1) ?? 0) - leaderSplit]);
             else
-                line.push(count - leaderSplit);
+                line.push(["+", count - leaderSplit]);
             lines.push(line);
         }
         for (const [name] of dnf.sort((a, b) => b[1] - a[1])) {
             const line = [];
             line.push(name);
-            line.push("DNF");
+            line.push(["", "DNF"]);
             lines.push(line);
         }
 
@@ -339,7 +341,7 @@ export class LeaderboardCanvas extends RendererCanvas {
         return lines.map(v => [
             v[0].padEnd(2),
             v[1].padEnd(25),
-            (typeof v[2] === "string" ? v[2] : `+${formatTime(FRAME_TIME_MS * v[2])}`).padStart(10),
+            (typeof v[2][1] === "string" ? v[2].join("") : `${v[2][0]}${formatTime(FRAME_TIME_MS * v[2][1])}`).padStart(10),
             v[3].padStart(4),
         ]);
     }

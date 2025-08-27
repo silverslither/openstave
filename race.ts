@@ -13,18 +13,30 @@ interface PlayerResponseObject {
 
 export const activePlayers: Map<string, Player> = new Map();
 export const activeRaces: Map<string, Race> = new Map();
+export const inactiveRaces: Map<string, Race> = new Map();
 
 export class Race {
-    ok: boolean;
+    id: string;
     game: string;
+    timeout: number;
     players: Player[];
 
-    constructor(game: string = "", players: string[] = []) {
-        this.ok = false;
+    get finished(): boolean {
+        if (Date.now() > this.timeout) {
+            for (const player of this.players)
+                player.eventHandler({ code: "DNF", data: null })
+            this.timeout = Infinity;
+            return true;
+        }
+        return this.players.findIndex(v => !v.finished) === -1;
+    }
 
+    // FIXME: game-dependent timeout
+    constructor(game: string = "", players: string[] = [], timeout_ms: number = 10 * 60 * 1000) {
         if (!supportedGames.has(game))
             return;
         this.game = game;
+        this.timeout = Date.now() + timeout_ms;
         this.players = [];
 
         for (const player of players) {
@@ -42,13 +54,15 @@ export class Race {
         for (const player of this.players)
             activePlayers.set(player.username, player);
 
-        this.ok = true;
+        this.id = crypto.randomBytes(24).toString("base64url");
+        activeRaces.set(this.id, this);
     }
 
     static from(obj: any) {
         const race = new Race();
-        race.ok = obj.ok;
+        race.id = obj.id;
         race.game = obj.game;
+        race.timeout = obj.timeout ?? Infinity;
         race.players = obj.players.map((v: any) => Player.from(v));
         for (const player of race.players)
             if (player.end !== player.end && player.dnf !== player.dnf)
@@ -57,8 +71,7 @@ export class Race {
     }
 
     getData(start: number, length: number) {
-        // FIXME: for now, just set a flag and call it a day; what is should do is call minimize() on all players, move itself to inactiveRaces, and soon be moved to disk.
-        const finished = this.players.findIndex(v => !v.finished) === -1;
+        const finished = this.finished;
 
         const response: { [key: string]: PlayerResponseObject } = {};
         for (const player of this.players) {

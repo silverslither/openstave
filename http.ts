@@ -2,10 +2,9 @@ import * as http from "node:http";
 import * as zlib from "node:zlib";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import * as crypto from "node:crypto";
 
 import { supportedGames } from "./buffer.ts";
-import { Race, activeRaces } from "./race.ts";
+import { Race, activeRaces, inactiveRaces } from "./race.ts";
 import key from "./key.ts";
 
 import { HTTP_PORT, MAX_ACTIVE_RACES, TCP_ADDRESS, TCP_PORT } from "./env.ts";
@@ -28,11 +27,11 @@ const server = http.createServer((request, response) => {
         if (parts.length === 0) {
             file = path.join(import.meta.dirname, "root", "index.html");
         } else if (parts.length === 1) {
-            if (!activeRaces.has(parts[0])) {
+            if (!activeRaces.has(parts[0]) && inactiveRaces.has(parts[0])) {
                 response.writeHead(404).end();
                 return;
             }
-            file = path.join(import.meta.dirname, activeRaces.get(parts[0]).game.split("_")[0], "index.html");
+            file = path.join(import.meta.dirname, (activeRaces.get(parts[0]) ?? inactiveRaces.get(parts[0])).game.split("_")[0], "index.html");
         } else {
             file = path.join(import.meta.dirname, ...parts);
         }
@@ -103,17 +102,14 @@ const server = http.createServer((request, response) => {
                 return;
             }
 
-            const id = crypto.randomBytes(24).toString("base64url");
             const race = new Race(game, players);
-            if (!race.ok) {
+            if (typeof race.id !== "string") {
                 response.writeHead(400).end();
                 return;
             }
 
-            activeRaces.set(id, race);
-
             response.writeHead(200).end(JSON.stringify({
-                link: `/${id}`,
+                link: `/${race.id}`,
                 script: `lua/${game.split("_")[0]}.lua`,
                 authentication: race.players.map(v => v.getAuthString(TCP_ADDRESS, TCP_PORT)),
             }));
@@ -122,7 +118,7 @@ const server = http.createServer((request, response) => {
         }
 
         const race = request.url.slice(1);
-        if (!activeRaces.has(race)) {
+        if (!activeRaces.has(race) && !inactiveRaces.has(race)) {
             response.writeHead(404).end();
             return;
         }
@@ -135,7 +131,7 @@ const server = http.createServer((request, response) => {
             return;
         }
 
-        const raceObject = activeRaces.get(race);
+        const raceObject = activeRaces.get(race) ?? inactiveRaces.get(race);
         const responseBody = raceObject.getData(start, length);
         zlib.gzip(JSON.stringify(responseBody), { level: 1 }, (error, data) => {
             if (error) {

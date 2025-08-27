@@ -1,11 +1,11 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { Race, activeRaces } from "./race.ts";
+import { Race, activeRaces, inactiveRaces } from "./race.ts";
 import { openConnections, server } from "./tcp.ts";
 import "./http.ts";
 
-import { CRASH_TIMEOUT_MS } from "./env.ts";
+import { CRASH_TIMEOUT_MS, VACCUM_INTERVAL_MS } from "./env.ts";
 const CRASH_PATH = path.join(import.meta.dirname, "crash");
 
 let lock = false;
@@ -29,6 +29,8 @@ process.on("uncaughtException", async (error) => {
             fs.mkdirSync(CRASH_PATH);
         for (const [key, value] of activeRaces.entries())
             fs.writeFileSync(path.join(CRASH_PATH, key), value.serialize(), { encoding: "utf8" });
+        for (const [key, value] of inactiveRaces.entries())
+            fs.writeFileSync(path.join(CRASH_PATH, key), value.serialize(), { encoding: "utf8" });
     } catch (e) {
         console.error(e);
         console.error("error in exception handler - forcefully shutting down");
@@ -44,4 +46,22 @@ if (fs.existsSync(CRASH_PATH)) {
         activeRaces.set(key, Race.from(value));
         fs.rmSync(path.join(CRASH_PATH, key));
     }
+}
+
+while (true) {
+    if (lock)
+        break;
+
+    for (const [id, race] of activeRaces) {
+        if (!race.finished)
+            continue;
+        for (const player of race.players)
+            player.minimize();
+        activeRaces.delete(id);
+        inactiveRaces.set(id, race);
+    }
+
+    // FIXME: write to disk
+
+    await new Promise(r => setTimeout(r, VACCUM_INTERVAL_MS));
 }

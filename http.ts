@@ -27,7 +27,7 @@ const server = http.createServer((request, response) => {
         if (parts.length === 0) {
             file = path.join(import.meta.dirname, "root", "index.html");
         } else if (parts.length === 1) {
-            if (!activeRaces.has(parts[0]) && inactiveRaces.has(parts[0])) {
+            if (!activeRaces.has(parts[0]) && !inactiveRaces.has(parts[0])) {
                 response.writeHead(404).end();
                 return;
             }
@@ -132,18 +132,22 @@ const server = http.createServer((request, response) => {
         }
 
         const raceObject = activeRaces.get(race) ?? inactiveRaces.get(race);
-        const responseBody = raceObject.getData(start, length);
-        zlib.gzip(JSON.stringify(responseBody), { level: 1 }, (error, data) => {
-            if (error) {
-                console.error(error);
-                response.writeHead(500).end();
-                return;
-            }
-            response.writeHead(200, {
-                "Content-Encoding": "gzip",
-                "Content-Length": data.length,
-                "Content-Type": "application/json",
-            }).end(data);
+        raceObject.getData(start, length).then((responseBody) => {
+            zlib.gzip(JSON.stringify(responseBody), { level: 1 }, (error, data) => {
+                if (error) {
+                    console.error(error);
+                    response.writeHead(500).end();
+                    return;
+                }
+                response.writeHead(200, {
+                    "Content-Encoding": "gzip",
+                    "Content-Length": data.length,
+                    "Content-Type": "application/json",
+                }).end(data);
+            });
+        }).catch((error) => {
+            console.error(error);
+            response.writeHead(500).end();
         });
     });
 });

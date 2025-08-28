@@ -1,12 +1,13 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { Race, activeRaces, inactiveRaces } from "./race.ts";
+import { Race, RaceData, activeRaces, inactiveRaces } from "./race.ts";
 import { openConnections, server } from "./tcp.ts";
 import "./http.ts";
 
 import { CRASH_TIMEOUT_MS, VACCUM_INTERVAL_MS } from "./env.ts";
 const CRASH_PATH = path.join(import.meta.dirname, "crash");
+const RACE_PATH = path.join(import.meta.dirname, "races");
 
 let lock = false;
 process.on("uncaughtException", async (error) => {
@@ -27,10 +28,11 @@ process.on("uncaughtException", async (error) => {
 
         if (!fs.existsSync(CRASH_PATH))
             fs.mkdirSync(CRASH_PATH);
-        for (const [key, value] of activeRaces.entries())
+        for (const [key, value] of activeRaces)
             fs.writeFileSync(path.join(CRASH_PATH, key), value.serialize(), { encoding: "utf8" });
-        for (const [key, value] of inactiveRaces.entries())
-            fs.writeFileSync(path.join(CRASH_PATH, key), value.serialize(), { encoding: "utf8" });
+        for (const [key, value] of inactiveRaces)
+            if (value instanceof Race)
+                fs.writeFileSync(path.join(CRASH_PATH, key), value.serialize(), { encoding: "utf8" });
     } catch (e) {
         console.error(e);
         console.error("error in exception handler - forcefully shutting down");
@@ -48,6 +50,14 @@ if (fs.existsSync(CRASH_PATH)) {
     }
 }
 
+if (!fs.existsSync(RACE_PATH)) {
+    fs.mkdirSync(RACE_PATH);
+} else {
+    const keys = fs.readdirSync(RACE_PATH);
+    for (const key of keys)
+        inactiveRaces.set(key, new RaceData(path.join(RACE_PATH, key)));
+}
+
 while (true) {
     if (lock)
         break;
@@ -61,7 +71,14 @@ while (true) {
         inactiveRaces.set(id, race);
     }
 
-    // FIXME: write to disk
+    for (const [key, value] of inactiveRaces) {
+        if (!(value instanceof Race))
+            continue;
+        console.log("vaccuming race", key);
+        const data = new RaceData(path.join(RACE_PATH, key));
+        await data.write(value);
+        inactiveRaces.set(key, data);
+    }
 
     await new Promise(r => setTimeout(r, VACCUM_INTERVAL_MS));
 }

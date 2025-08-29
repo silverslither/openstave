@@ -2,8 +2,8 @@ import { LeaderboardCanvas, PlayerCanvas, init } from "./renderer.js";
 
 const FRAME_BUFFER = 120;
 const FRAME_TIME_MS = 655171 / 39375;
-const REREQUEST_INTERVAL = FRAME_BUFFER * FRAME_TIME_MS / 2;
-const LIVE_DELAY = 240;
+const REREQUEST_INTERVAL_MS = 0.5 * FRAME_BUFFER * FRAME_TIME_MS;
+const LIVE_DELAY = 2 * FRAME_BUFFER;
 let lastFrameMs = 0;
 
 const canvases = [];
@@ -13,6 +13,7 @@ let frame = 0;
 let paused = false;
 let seek = false;
 let maxLength = 0;
+let pingLength = 0;
 let finished = false;
 
 addEventListener("DOMContentLoaded", setup);
@@ -31,7 +32,7 @@ async function setup() {
     controls.range = document.querySelector("input");
 
     query().then(() => {
-        frame = finished ? maxLength - 1 : Math.max(maxLength - 2 * FRAME_BUFFER, 0);
+        frame = finished ? maxLength - 1 : Math.max(pingLength - 2 * FRAME_BUFFER, 0);
         controls.framesLeft.textContent = frame.toString().padStart(7);
         controls.framesRight.textContent = "-0".padEnd(7);
         controls.range.value = frame;
@@ -98,39 +99,40 @@ function draw() {
     if (paused && !seek)
         return;
 
-    // FIXME: refresh rate WILL dip below 60.1! add skip frame functionality (but perhaps limit it to skipping at most like 3? frames)
     if (performance.now() - lastFrameMs > FRAME_TIME_MS) {
         if (buffered[frame]) {
             for (const canvas of canvases)
                 canvas.render(frame);
 
+            const dt = Math.floor((performance.now() - lastFrameMs) / FRAME_TIME_MS);
+
             if (!seek)
-                frame++;
+                frame += Math.min(dt, 3);
             seek = false;
 
             controls.framesLeft.textContent = Math.min(frame, maxLength - 1).toString().padStart(7);
             controls.framesRight.textContent = (frame >= controls.range.max ? "-0" : frame - controls.range.max).toString().padEnd(7);
             controls.range.value = frame;
 
-            if (frame <= maxLength - FRAME_BUFFER && !buffered[frame + FRAME_BUFFER])
+            if (frame <= pingLength - FRAME_BUFFER && !buffered[frame + FRAME_BUFFER])
                 query(frame + FRAME_BUFFER, FRAME_BUFFER);
 
-            lastFrameMs += Math.floor((performance.now() - lastFrameMs) / FRAME_TIME_MS) * FRAME_TIME_MS;
+            lastFrameMs += dt * FRAME_TIME_MS;
         } else {
-            if (finished || frame <= maxLength - 2 * FRAME_BUFFER) {
+            if (finished || frame <= pingLength - 2 * FRAME_BUFFER) {
                 query(frame, 2 * FRAME_BUFFER);
-            } else if (frame <= maxLength - FRAME_BUFFER) {
+            } else if (frame <= pingLength - FRAME_BUFFER) {
                 query(frame, FRAME_BUFFER);
             } else {
                 query();
             }
-            lastFrameMs += REREQUEST_INTERVAL;
+            lastFrameMs += REREQUEST_INTERVAL_MS;
         }
     }
 }
 
 let lock = false;
-async function query(start = 0, length = 0) {
+async function query(start = 0, length = 0, noRecurse = false) {
     if (lock)
         return;
     lock = true;
@@ -155,6 +157,7 @@ async function query(start = 0, length = 0) {
     }
 
     try {
+        const pingStart = performance.now();
         const data = await (await fetch(`${location.href}`, {
             method: "POST",
             body: JSON.stringify({
@@ -162,6 +165,7 @@ async function query(start = 0, length = 0) {
                 length,
             }),
         })).json();
+        const ping = performance.now() - pingStart;
 
         finished = data.finished;
 
@@ -180,6 +184,13 @@ async function query(start = 0, length = 0) {
             players[name].length = parseInt(playerData.length);
             players[name].splits = playerData.splits;
             players[name].time = parseInt(playerData.time);
+
+            const end = players[name].time === players[name].time ? players[name].time : players[name].dnf;
+            if (!noRecurse && end === end) {
+                lock = false;
+                await query(end, 1, true);
+                lock = true;
+            }
         }
 
         maxLength = Infinity;
@@ -200,6 +211,8 @@ async function query(start = 0, length = 0) {
             for (const i in players)
                 maxLength = Math.max(maxLength, players[i].length);
         }
+
+        pingLength = maxLength + Math.floor(ping / FRAME_TIME_MS);
 
         for (let i = buffered.length; i < maxLength; i++)
             buffered.push(false);

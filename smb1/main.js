@@ -165,7 +165,6 @@ async function query(start = 0, length = 0, noRecurse = false) {
                 length,
             }),
         })).json();
-        const ping = performance.now() - pingStart;
 
         finished = data.finished;
 
@@ -186,6 +185,10 @@ async function query(start = 0, length = 0, noRecurse = false) {
             players[name].time = parseInt(playerData.time);
 
             const end = players[name].time === players[name].time ? players[name].time : players[name].dnf;
+
+            if (finished && end !== end)
+                players[name].dnf = -1;
+
             if (!noRecurse && end === end) {
                 lock = false;
                 await query(end, 1, true);
@@ -212,7 +215,7 @@ async function query(start = 0, length = 0, noRecurse = false) {
                 maxLength = Math.max(maxLength, players[i].length);
         }
 
-        pingLength = maxLength + Math.floor(ping / FRAME_TIME_MS);
+        pingLength = maxLength + Math.floor((performance.now() - pingStart) / FRAME_TIME_MS);
 
         for (let i = buffered.length; i < maxLength; i++)
             buffered.push(false);
@@ -221,7 +224,9 @@ async function query(start = 0, length = 0, noRecurse = false) {
         for (let i = start; i < j; i++)
             buffered[i] = true;
 
+        const pvalue = controls.range.value;
         controls.range.max = finished ? maxLength - 1 : Math.max(maxLength - 2 * FRAME_BUFFER - LIVE_DELAY, 0);
+        controls.range.value = pvalue;
         controls.framesRight.textContent = (frame >= controls.range.max ? "-0" : frame - controls.range.max).toString().padEnd(7);
 
         lock = false;

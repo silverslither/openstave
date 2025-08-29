@@ -137,6 +137,11 @@ async function query(start = 0, length = 0, noRecurse = false) {
         return;
     lock = true;
 
+    if (finished && start >= maxLength) {
+        lock = false;
+        return;
+    }
+
     if (length > 0) {
         let l = start;
         for (; l < start + length; l++)
@@ -224,9 +229,8 @@ async function query(start = 0, length = 0, noRecurse = false) {
         for (let i = start; i < j; i++)
             buffered[i] = true;
 
-        const pvalue = controls.range.value;
         controls.range.max = finished ? maxLength - 1 : Math.max(maxLength - 2 * FRAME_BUFFER - LIVE_DELAY, 0);
-        controls.range.value = pvalue;
+        controls.range.value = frame;
         controls.framesRight.textContent = (frame >= controls.range.max ? "-0" : frame - controls.range.max).toString().padEnd(7);
 
         lock = false;

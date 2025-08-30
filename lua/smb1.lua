@@ -97,6 +97,32 @@ function remainder()
     return _r
 end
 
+local _p_page = 0
+local _p_loop = 0
+local _page_threshold = 0
+local _loop_offset = false
+function q_page()
+    local state = emu.read(0xe, emu.memType.nesDebug)
+    local loop = emu.read(0x745, emu.memType.nesDebug)
+    local page = emu.read(0x6d, emu.memType.nesDebug)
+
+    if (_p_page - page >= 3 and loop == 0 and _p_loop ~= 0) then
+        _page_threshold = page + 1
+        _loop_offset = true
+    end
+
+    _p_page = page
+    _p_loop = loop
+
+    -- change area failsafe is 1f late
+    if (state == 7 or page == _page_threshold) then
+        _loop_offset = false
+    end
+
+    if (_loop_offset) then return page + 4 end
+    return page
+end
+
 function readmemory()
     frame = emu.getState().frameCount
 
@@ -113,7 +139,7 @@ function readmemory()
         emu.read(0x770, emu.memType.nesDebug),   -- game state
         emu.read(0x75f, emu.memType.nesDebug),   -- world number
         emu.read(0x760, emu.memType.nesDebug),   -- stage number
-        emu.read(0x6d, emu.memType.nesDebug),    -- area page
+        q_page(),                                -- area (quasi) page
         emu.read(0x86, emu.memType.nesDebug),    -- area pixel
         emu.read(0x3ad, emu.memType.nesDebug),   -- screen pixel
         remainder(),

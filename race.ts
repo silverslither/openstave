@@ -6,6 +6,11 @@ import * as zlib from "node:zlib";
 import { supportedGames } from "./buffer.ts";
 import Player from "./player.ts";
 
+const TIMEOUTS = {
+    "default": 30 * 60 * 1000,
+    "smb1_any%": 10 * 60 * 1000,
+};
+
 const FILE_BUFFER = 240;
 
 interface PlayerResponseObject {
@@ -39,18 +44,18 @@ export class Race implements AbstractRace {
     get finished(): boolean {
         if (Date.now() > this.timeout) {
             for (const player of this.players)
-                player.eventHandler({ code: "DNF", data: null })
+                player.eventHandler({ code: "DNF", data: null });
             this.timeout = Infinity;
             return true;
         }
         return this.players.findIndex(v => !v.finished) === -1;
     }
 
-    // FIXME: game-dependent timeout
-    constructor(game: string = "", players: string[] = [], timeout_ms: number = 10 * 60 * 1000) {
+    constructor(game: string = "", players: string[] = []) {
         if (!supportedGames.has(game))
             return;
         this.game = game;
+        const timeout_ms = TIMEOUTS[game] ?? TIMEOUTS.default;
         this.timeout = Date.now() + timeout_ms;
         this.players = [];
 
@@ -181,8 +186,8 @@ export class RaceData implements AbstractRace {
     }
 
     async getData(start: number, length: number) {
-        const response = JSON.parse(await fs.promises.readFile(path.join(this.path, "static"), { encoding: "utf8" }))
-        
+        const response = JSON.parse(await fs.promises.readFile(path.join(this.path, "static"), { encoding: "utf8" }));
+
         let i = FILE_BUFFER * Math.floor(start / FILE_BUFFER);
         for (; i < start + length; i += FILE_BUFFER) {
             const file = path.join(this.path, i.toString());

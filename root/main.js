@@ -62,11 +62,10 @@ async function create() {
 
         const data = await response.json();
 
-        let html = "DO NOT CLOSE OR RELOAD THIS PAGE UNTIL AUTHENTICATION KEYS HAVE BEEN DISTRIBUTED.\n";
-        html += `The permanent link to this race will be <a href="${data.link}">${data.link}</a>.\n`;
-        html += `The client script can be downloaded at <a href="${data.script}">${data.script}</a>\n`;
+        let html = "DO NOT CLOSE OR RELOAD THIS PAGE UNTIL AUTHENTICATION HAS BEEN DISTRIBUTED.\n";
+        html += `The permanent link to this race will be <a href="${data.link}">${location.href}${data.link}</a>.\n`;
         for (const player of data.authentication)
-            html += `\n${player}\n`;
+            html += `\nScript for ${player[0].slice(0, -8)}: <a href="${player[1]}">${location.href}${player[1]}</a>\n`;
 
         document.body.innerHTML = html.replaceAll("\n", "<br/>");
     } catch (e) {

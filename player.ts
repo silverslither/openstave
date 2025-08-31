@@ -112,11 +112,9 @@ export default class Player {
     }
 
     getAuthString(address: string, port: number) {
-        let str = `-- BEGIN AUTHENTICATION FOR ${this.username.slice(0, -8)} --\n`;
-        str += `SERVER = { "${address}", ${port} }\n`;
+        let str = `SERVER = { "${address}", ${port} }\n`;
         str += `USERNAME = "${this.username}"\n`;
-        str += `PASSWORD = "${this.password}"\n`;
-        str += `-- END AUTHENTICATION FOR ${this.username.slice(0, -8)} --`;
+        str += `PASSWORD = "${this.password}"\n\n`;
         return str;
     }
 }

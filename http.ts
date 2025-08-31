@@ -21,7 +21,8 @@ console.log("race key:", raceKey);
 
 const server = http.createServer((request, response) => {
     if (request.method === "GET") {
-        const parts = request.url.split("/").filter(v => v !== "");
+        const query = request.url.split("?");
+        const parts = query[0].split("/").filter(v => v !== "");
 
         let file: string;
         if (parts.length === 0) {
@@ -41,6 +42,10 @@ const server = http.createServer((request, response) => {
             return;
         }
 
+        let prepend = Buffer.allocUnsafe(0);
+        if (query.length > 1)
+            prepend = Buffer.from(query[1], "base64url");
+
         const ext = path.extname(file).toLowerCase();
         const mime = MIME_TYPES[ext] ?? "";
 
@@ -50,6 +55,7 @@ const server = http.createServer((request, response) => {
                 response.writeHead(500).end();
                 return;
             }
+            data = Buffer.concat([prepend, data]);
             response.writeHead(200, {
                 "Content-Length": data.length,
                 "Content-Type": mime,
@@ -109,9 +115,11 @@ const server = http.createServer((request, response) => {
             }
 
             response.writeHead(200).end(JSON.stringify({
-                link: `/${race.id}`,
-                script: `lua/${game.split("_")[0]}.lua`,
-                authentication: race.players.map(v => v.getAuthString(TCP_ADDRESS, TCP_PORT)),
+                link: race.id,
+                authentication: race.players.map(v => [
+                    v.username,
+                    `lua/${game.split("_")[0]}.lua?${Buffer.from(v.getAuthString(TCP_ADDRESS, TCP_PORT)).toString("base64url")}`,
+                ]),
             }));
 
             return;

@@ -121,7 +121,6 @@ export class PlayerCanvas extends RendererCanvas {
         this.count = count;
         this.xOffset = Math.floor((this.canvas.width - 256) / 2);
 
-        // FIXME: add follow first place feature
         this.following = this.following || Object.keys(this.players)[0];
         if (this.players[this.following] == null)
             return true;

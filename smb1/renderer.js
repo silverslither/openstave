@@ -153,7 +153,8 @@ export class PlayerCanvas extends RendererCanvas {
             gScreenPixel,
         ] = pframe.subarray(32 + 256);
 
-        const xOffset = this.xOffset - ((gAreaPage << 8) + gAreaPixel - gScreenPixel);
+        const q_gAreaPage = gPlayerState ? frame[32 + 256 + 5] : gAreaPage;
+        const xOffset = this.xOffset - ((q_gAreaPage << 8) + gAreaPixel - gScreenPixel);
 
         this.context.fillStyle = COLOURS[gPalette[0]];
         this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -191,6 +192,8 @@ export class PlayerCanvas extends RendererCanvas {
                 screenPixel,
             ] = pframe.subarray(32 + 256);
 
+            const q_areaPage = playerState === 7 ? frame[32 + 256 + 5] : areaPage;
+
             if (playerState === 0)
                 continue;
 
@@ -198,8 +201,8 @@ export class PlayerCanvas extends RendererCanvas {
                 continue;
 
             let xOffset = this.xOffset;
-            xOffset += (areaPage << 8) + areaPixel - screenPixel;
-            xOffset -= (gAreaPage << 8) + gAreaPixel - gScreenPixel;
+            xOffset += (q_areaPage << 8) + areaPixel - screenPixel;
+            xOffset -= (q_gAreaPage << 8) + gAreaPixel - gScreenPixel;
 
             for (let i = 252; i >= 0; i -= 4) {
                 const y = sprites[i];

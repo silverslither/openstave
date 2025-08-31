@@ -109,7 +109,7 @@ function q_page()
     _p_loop = loop
 
     -- change area failsafe is 1f late
-    if (state == 7 or page == _page_threshold) then
+    if (state == 7 or page >= _page_threshold) then
         _loop_offset = false
     end
 

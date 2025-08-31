@@ -153,7 +153,7 @@ export class PlayerCanvas extends RendererCanvas {
             gScreenPixel,
         ] = pframe.subarray(32 + 256);
 
-        const q_gAreaPage = gPlayerState ? frame[32 + 256 + 5] : gAreaPage;
+        const q_gAreaPage = gPlayerState === 7 ? frame[32 + 256 + 5] : gAreaPage;
         const xOffset = this.xOffset - ((q_gAreaPage << 8) + gAreaPixel - gScreenPixel);
 
         this.context.fillStyle = COLOURS[gPalette[0]];

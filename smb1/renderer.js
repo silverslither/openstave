@@ -25,6 +25,42 @@ export async function init() {
     await Promise.all(promises);
 }
 
+class Outline {
+    constructor() {
+        this.selection = new Set();
+        this.outline = new Set();
+    }
+
+    reset() {
+        this.selection.clear();
+        this.outline.clear();
+    }
+
+    add(x, y) {
+        this.selection.add(this.#pair(x, y));
+        this.outline.add(this.#pair(x + 1, y));
+        this.outline.add(this.#pair(x - 1, y));
+        this.outline.add(this.#pair(x, y + 1));
+        this.outline.add(this.#pair(x, y - 1));
+    }
+
+    iterator() {
+        const pixels = [];
+        for (const pair of this.outline) {
+            if (this.selection.has(pair))
+                continue;
+            const x = pair >>> 16;
+            const y = pair & 0xffff;
+            pixels.push([x, y]);
+        }
+        return pixels;
+    }
+
+    #pair(x, y) {
+        return 65536 * x + y;
+    }
+}
+
 class RendererCanvas {
     toBuffer() {
         this.buffer = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
@@ -50,10 +86,20 @@ class RendererCanvas {
         }
     }
 
-    drawPixelToBuffer(x, y, colour_index) {
+    drawOutline(colour_id) {
+        if (this.outline == null)
+            return;
+        for (const [x, y] of this.outline.iterator())
+            this.drawPixelToBuffer(x, y, colour_id);
+    }
+
+    drawPixelToBuffer(x, y, colour_id) {
         if (x < 0 || x >= this.buffer.width || y < 0 || y >= this.buffer.height)
             return;
-        const colour = COMPONENT_COLOURS[colour_index];
+        if (this.outline != null)
+            this.outline.add(x, y)
+
+        const colour = typeof colour_id === "number" ? COMPONENT_COLOURS[colour_id] : colour_id;
         const i = 4 * (y * this.buffer.width + x);
         this.buffer.data[i + 0] = colour[0];
         this.buffer.data[i + 1] = colour[1];
@@ -104,6 +150,7 @@ export class PlayerCanvas extends RendererCanvas {
         document.getElementById(id === 0 ? "screen" : "renderer").append(this.canvas);
 
         this.context = this.canvas.getContext("2d");
+        this.outline = new Outline();
     }
 
     resize() {
@@ -164,9 +211,13 @@ export class PlayerCanvas extends RendererCanvas {
             return false;
         }
 
+        let o = 0;
         const above = [];
         this.toBuffer();
         for (const name in this.players) {
+            const deferred = [];
+            above.push(deferred);
+
             let frame = this.players[name].frames[count];
             let pframe = this.players[name].frames[count - 1] ?? frame;
 
@@ -204,6 +255,7 @@ export class PlayerCanvas extends RendererCanvas {
             xOffset += (q_areaPage << 8) + areaPixel - screenPixel;
             xOffset -= (q_gAreaPage << 8) + gAreaPixel - gScreenPixel;
 
+            this.outline.reset();
             for (let i = 252; i >= 0; i -= 4) {
                 const y = sprites[i];
                 const tile = sprites[i + 1];
@@ -214,9 +266,12 @@ export class PlayerCanvas extends RendererCanvas {
                     if ((attributes >>> 5) & 1)
                         this.renderTileToBuffer(xOffset + x, y, tile, attributes, palette);
                     else
-                        above.push([xOffset + x, y, tile, attributes, palette]);
+                        deferred.push([xOffset + x, y, tile, attributes, palette]);
                 }
             }
+            this.drawOutline();
+
+            o++;
         }
         this.fromBuffer();
 
@@ -225,8 +280,12 @@ export class PlayerCanvas extends RendererCanvas {
             this.context.drawImage(maps[map], xOffset, 0);
 
         this.toBuffer();
-        for (const sprite of above)
-            this.renderTileToBuffer(...sprite);
+        for (const deferred of above) {
+            this.outline.reset();
+            for (const sprite of deferred)
+                this.renderTileToBuffer(...sprite);
+            this.drawOutline([255, 0, 0]);
+        }
         this.fromBuffer();
 
         this.renderHUD();

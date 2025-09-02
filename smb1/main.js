@@ -76,16 +76,20 @@ async function setup() {
         }
     });
     controls.float.addEventListener("click", () => {
-        if (canvases[1].canvas.style.display === "none")
+        if (canvases[1].canvas.style.display === "none") {
             canvases[1].canvas.style.display = "";
-        else
+            canvases[1].render(frame);
+        } else {
             canvases[1].canvas.style.display = "none";
+        }
     });
     controls.leaderboard.addEventListener("click", () => {
-        if (canvases[2].canvas.style.display === "none")
+        if (canvases[2].canvas.style.display === "none") {
             canvases[2].canvas.style.display = "";
-        else
+            canvases[2].render(frame);
+        } else {
             canvases[2].canvas.style.display = "none";
+        }
     });
 
     if (drawCondition)
@@ -102,7 +106,8 @@ function draw() {
     if (performance.now() - lastFrameMs > FRAME_TIME_MS) {
         if (buffered[frame]) {
             for (const canvas of canvases)
-                canvas.render(frame);
+                if (canvas.canvas.style.display !== "none")
+                    canvas.render(frame);
 
             const dt = Math.floor((performance.now() - lastFrameMs) / FRAME_TIME_MS);
 

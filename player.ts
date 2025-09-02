@@ -84,7 +84,7 @@ export default class Player {
                 }
                 break;
             case "SPLIT":
-                if (this.start === this.start && this.end !== this.end && event.data[0] >= 0)
+                if (this.start === this.start && this.end !== this.end && event.data[0] >= 0 && this.splits[event.data[0]] == null)
                     this.splits[event.data[0]] = event.data[1];
                 break;
             case "DNF":

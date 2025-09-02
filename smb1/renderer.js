@@ -4,6 +4,17 @@ import COLOURS from "./palette.js";
 const COMPONENT_COLOURS = COLOURS.map(v => v.slice(1).match(/../g).map(w => parseInt(w, 16)));
 const FRAME_TIME_MS = 655171 / 39375;
 
+const OUTLINE_COLOURS = [
+    "#ff0000",
+    "#00ffff",
+    "#00ff00",
+    "#ff00ff",
+    "#0000ff",
+    "#ffff00",
+    "#ffffff",
+    "#000000",
+].map(v => v.slice(1).match(/../g).map(w => parseInt(w, 16)));
+
 const maps = {};
 const text = {};
 
@@ -70,7 +81,7 @@ class RendererCanvas {
         this.context.putImageData(this.buffer, 0, 0);
     }
 
-    renderTileToBuffer(x, y, tile, attributes, palette) {
+    renderTileToBuffer(x, y, tile, attributes, palette, alpha) {
         const vflip = attributes >>> 7;
         const hflip = (attributes >>> 6) & 1;
         const p = attributes & 3;
@@ -81,29 +92,34 @@ class RendererCanvas {
                 const o = ((vflip ? 7 - j : j) << 3) + (hflip ? 7 - i : i);
                 if (tile[o] === 0)
                     continue;
-                this.drawPixelToBuffer(x + i, y + j, palette[0x10 + (p << 2) + tile[o]]);
+                this.drawPixelToBuffer(x + i, y + j, palette[0x10 + (p << 2) + tile[o]], alpha);
             }
         }
     }
 
-    drawOutline(colour_id) {
+    drawOutline(colour_id, alpha) {
         if (this.outline == null)
             return;
         for (const [x, y] of this.outline.iterator())
-            this.drawPixelToBuffer(x, y, colour_id);
+            this.drawPixelToBuffer(x, y, colour_id, alpha);
     }
 
-    drawPixelToBuffer(x, y, colour_id) {
+    drawPixelToBuffer(x, y, colour_id, alpha) {
         if (x < 0 || x >= this.buffer.width || y < 0 || y >= this.buffer.height)
             return;
         if (this.outline != null)
             this.outline.add(x, y)
 
+        const invAlpha = 1.0 - alpha;
         const colour = typeof colour_id === "number" ? COMPONENT_COLOURS[colour_id] : colour_id;
         const i = 4 * (y * this.buffer.width + x);
-        this.buffer.data[i + 0] = colour[0];
-        this.buffer.data[i + 1] = colour[1];
-        this.buffer.data[i + 2] = colour[2];
+        if (alpha === 1.0) {
+            for (let j = 0; j < 3; j++)
+                this.buffer.data[i + j] = colour[j];
+        } else {
+            for (let j = 0; j < 3; j++)
+                this.buffer.data[i + j] = colour[j] * alpha + this.buffer.data[i + j] * invAlpha + 0.5;
+        }
     }
 
     drawText(x, y, str, align = "left") {
@@ -211,12 +227,15 @@ export class PlayerCanvas extends RendererCanvas {
             return false;
         }
 
-        let o = 0;
-        const above = [];
+        const outlineOrder = Object.keys(this.players);
+        const drawOrder = [...outlineOrder];
+        drawOrder.push(drawOrder.splice(drawOrder.indexOf(this.following), 1)[0]);
+
+        const above = {};
         this.toBuffer();
-        for (const name in this.players) {
+        for (const name of drawOrder) {
             const deferred = [];
-            above.push(deferred);
+            above[name] = deferred;
 
             let frame = this.players[name].frames[count];
             let pframe = this.players[name].frames[count - 1] ?? frame;
@@ -255,6 +274,7 @@ export class PlayerCanvas extends RendererCanvas {
             xOffset += (q_areaPage << 8) + areaPixel - screenPixel;
             xOffset -= (q_gAreaPage << 8) + gAreaPixel - gScreenPixel;
 
+            const alpha = name === this.following ? 1.0 : 0.7;
             this.outline.reset();
             for (let i = 252; i >= 0; i -= 4) {
                 const y = sprites[i];
@@ -264,14 +284,13 @@ export class PlayerCanvas extends RendererCanvas {
 
                 if (tile !== 0xff && y < 240) {
                     if ((attributes >>> 5) & 1)
-                        this.renderTileToBuffer(xOffset + x, y, tile, attributes, palette);
+                        this.renderTileToBuffer(xOffset + x, y, tile, attributes, palette, alpha);
                     else
-                        deferred.push([xOffset + x, y, tile, attributes, palette]);
+                        deferred.push([xOffset + x, y, tile, attributes, palette, alpha]);
                 }
             }
-            this.drawOutline();
-
-            o++;
+            const o = outlineOrder.indexOf(name);
+            this.drawOutline(OUTLINE_COLOURS[o], 1.0);
         }
         this.fromBuffer();
 
@@ -280,11 +299,13 @@ export class PlayerCanvas extends RendererCanvas {
             this.context.drawImage(maps[map], xOffset, 0);
 
         this.toBuffer();
-        for (const deferred of above) {
+        for (const name of drawOrder) {
+            const deferred = above[name];
             this.outline.reset();
             for (const sprite of deferred)
                 this.renderTileToBuffer(...sprite);
-            this.drawOutline([255, 0, 0]);
+            const o = outlineOrder.indexOf(name);
+            this.drawOutline(OUTLINE_COLOURS[o], 1.0);
         }
         this.fromBuffer();
 

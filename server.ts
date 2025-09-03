@@ -63,9 +63,9 @@ while (true) {
         break;
 
     if (fs.existsSync("key"))
-        setKey(fs.readFileSync("key", "utf8").trim());
+        setKey((await fs.promises.readFile("key", "utf8")).trim());
     else
-        fs.writeFileSync("key", getKey(), "utf8");
+        await fs.promises.writeFile("key", getKey(), "utf8");
 
     for (const [id, race] of activeRaces) {
         if (!race.finished)

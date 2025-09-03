@@ -16,6 +16,8 @@ const MIME_TYPES = {
     ".png": "image/png",
 };
 
+const MAX_REQUEST_BUFFER = 240;
+
 let gKey = crypto.randomBytes(24).toString("base64");
 export const getKey = () => gKey;
 export const setKey = (key: string) => gKey = key;
@@ -135,7 +137,7 @@ const server = http.createServer((request, response) => {
         const start = requestBody.start;
         const length = requestBody.length;
 
-        if (typeof start !== "number" || typeof length !== "number" || !Number.isInteger(start) || !Number.isInteger(length)) {
+        if (typeof start !== "number" || typeof length !== "number" || !Number.isInteger(start) || !Number.isInteger(length) || length > MAX_REQUEST_BUFFER) {
             response.writeHead(400).end();
             return;
         }

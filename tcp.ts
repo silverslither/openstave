@@ -20,10 +20,8 @@ export const server = net.createServer((client) => {
 
     client.on("connect", () => {
         setTimeout(() => {
-            if (!client.destroyed && username === "") {
+            if (!client.destroyed && username === "")
                 client.destroy();
-                console.log("client destroyed due to timeout");
-            }
         }, AUTH_WAIT_MS);
     });
 
@@ -44,14 +42,12 @@ export const server = net.createServer((client) => {
                     authLength = 0;
                 } else {
                     client.destroy();
-                    console.log("client destroyed due to wrong auth");
                 }
             }
         } else {
             const player = activePlayers.get(username);
             if (player == null || !player.connected) {
                 client.destroy();
-                console.log("client destroyed due to not being in active players");
                 return;
             }
             player.add(data);
@@ -59,7 +55,6 @@ export const server = net.createServer((client) => {
             if (player.finished) {
                 activePlayers.delete(username);
                 client.destroy();
-                console.log("client destroyed due to finishing");
             }
         }
     });

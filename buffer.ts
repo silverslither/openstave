@@ -15,7 +15,6 @@ const eventGenerators = {
         const last = frames.at(-1);
         if (last != null) {
             if (current.count !== last.count + 1) {
-                console.log(current.count, last.count);
                 events.push({ code: "DNF", data: frames.length - 1 });
                 return;
             }

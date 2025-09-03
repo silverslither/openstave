@@ -1,3 +1,4 @@
+import * as crypto from "node:crypto";
 import * as http from "node:http";
 import * as zlib from "node:zlib";
 import * as fs from "node:fs";
@@ -5,7 +6,6 @@ import * as path from "node:path";
 
 import { supportedGames } from "./buffer.ts";
 import { Race, activeRaces, inactiveRaces } from "./race.ts";
-import key from "./key.ts";
 
 import { HTTP_PORT, MAX_ACTIVE_RACES, TCP_ADDRESS, TCP_PORT } from "./env.ts";
 
@@ -16,8 +16,9 @@ const MIME_TYPES = {
     ".png": "image/png",
 };
 
-const raceKey = key();
-console.log("race key:", raceKey);
+let gKey = crypto.randomBytes(24).toString("base64");
+export const getKey = () => gKey;
+export const setKey = (key: string) => gKey = key;
 
 const server = http.createServer((request, response) => {
     if (request.method === "GET") {
@@ -88,7 +89,7 @@ const server = http.createServer((request, response) => {
             const game = requestBody.game;
             const players = requestBody.players;
 
-            if (key !== raceKey) {
+            if (key !== gKey) {
                 response.writeHead(400).end("The entered key is incorrect.");
                 return;
             }

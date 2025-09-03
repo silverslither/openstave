@@ -3,7 +3,7 @@ import * as path from "node:path";
 
 import { Race, RaceData, activeRaces, inactiveRaces } from "./race.ts";
 import { openConnections, server } from "./tcp.ts";
-import "./http.ts";
+import { getKey, setKey } from "./http.ts";
 
 import { CRASH_TIMEOUT_MS, VACCUM_INTERVAL_MS } from "./env.ts";
 const CRASH_PATH = path.join(import.meta.dirname, "crash");
@@ -61,6 +61,11 @@ if (!fs.existsSync(RACE_PATH)) {
 while (true) {
     if (lock)
         break;
+
+    if (fs.existsSync("key"))
+        setKey(fs.readFileSync("key", "utf8").trim());
+    else
+        fs.writeFileSync("key", getKey(), "utf8");
 
     for (const [id, race] of activeRaces) {
         if (!race.finished)

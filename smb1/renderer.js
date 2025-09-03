@@ -108,7 +108,7 @@ class RendererCanvas {
         if (x < 0 || x >= this.buffer.width || y < 0 || y >= this.buffer.height)
             return;
         if (this.outline != null)
-            this.outline.add(x, y)
+            this.outline.add(x, y);
 
         const invAlpha = 1.0 - alpha;
         const colour = typeof colour_id === "number" ? COMPONENT_COLOURS[colour_id] : colour_id;

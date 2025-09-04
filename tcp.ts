@@ -34,6 +34,7 @@ export const server = net.createServer((client) => {
                 const _username = buffer.subarray(0, 32).toString().trim();
                 const _password = buffer.subarray(32, 64).toString().trim();
                 if (authorize(_username, _password)) {
+                    client.write(new Uint8Array([0]));
                     username = _username;
                     const player = activePlayers.get(username);
                     player.connected = true;
@@ -41,7 +42,8 @@ export const server = net.createServer((client) => {
                     authChunks.length = 0;
                     authLength = 0;
                 } else {
-                    client.destroy();
+                    client.write(new Uint8Array([1]));
+                    client.destroySoon();
                 }
             }
         } else {
@@ -59,6 +61,7 @@ export const server = net.createServer((client) => {
         }
     });
 
+    client.on("error", () => {});
     client.on("close", () => {
         openConnections.delete(client);
         const player = activePlayers.get(username);

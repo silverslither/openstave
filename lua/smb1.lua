@@ -1,8 +1,15 @@
+function teeLog(str)
+    emu.log(str)
+    emu.displayMessage("OpenVLB", str)
+end
+
 if emu.getRomInfo().fileSha1Hash:lower() ~= "ea343f4e445a9050d4b4fbac2c77d0693b1d0922" then
-    emu.displayMessage("OpenVLB", "check that you have loaded a rom with sha1sum ea343f4e445a9050d4b4fbac2c77d0693b1d0922.")
+    teeLog("check that you have loaded a rom with sha1sum ea343f4e445a9050d4b4fbac2c77d0693b1d0922.")
     return
 end
 
+local callback = nil
+local exit = nil
 local auth = table.concat({
     string.format("%-32s", USERNAME),
     string.format("%-32s", PASSWORD)
@@ -11,6 +18,15 @@ local socket = require("socket.core")
 local client = socket.connect(SERVER[1], SERVER[2])
 if client ~= nil then
     client:send(auth)
+    local r = client:receive(1)
+    if r == nil then
+        client.close()
+        client = nil
+    end
+    if r ~= string.char(0) then
+        teeLog("invalid authentication for " .. SERVER[1] .. ":" .. SERVER[2] .. ", exiting")
+        exit = 0
+    end
 end
 local pclient = nil
 
@@ -19,13 +35,12 @@ function send(data)
     buffer = buffer .. data
     if client ~= nil then
         if pclient == nil then
-            emu.displayMessage("OpenVLB", "successfully connected to " .. SERVER[1] .. ":" .. SERVER[2] .. ".")
+            teeLog("successfully connected to " .. SERVER[1] .. ":" .. SERVER[2] .. ".")
             pclient = client
         end
 
         local sent1, _, sent2 = client:send(buffer)
         if not sent1 then
-            emu.log("socket error: " .. _)
             client:close()
             client = nil
             sent1 = sent2
@@ -34,13 +49,24 @@ function send(data)
     end
     if client == nil then
         if pclient ~= nil then
-            emu.displayMessage("OpenVLB", "reconnecting to " .. SERVER[1] .. ":" .. SERVER[2] .. "...")
+            teeLog("reconnecting to " .. SERVER[1] .. ":" .. SERVER[2] .. "...")
             pclient = client
         end
 
         client = socket.connect(SERVER[1], SERVER[2])
         if client ~= nil then
             client:send(auth)
+            local r = client:receive(1)
+            if r == nil then
+                client.close()
+                client = nil
+            end
+            if r ~= string.char(0) then
+                teeLog("invalid authentication for " .. SERVER[1] .. ":" .. SERVER[2] .. ", exiting")
+                if callback ~= nil then
+                    emu.removeEventCallback(callback, emu.eventType.endFrame)
+                end
+            end
         end
     end
 end
@@ -176,4 +202,6 @@ function main()
     send(u32le(#data + 4) .. data)
 end
 
-emu.addEventCallback(main, emu.eventType.endFrame)
+if (exit == nil) then
+    callback = emu.addEventCallback(main, emu.eventType.endFrame)
+end

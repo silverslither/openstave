@@ -3,13 +3,19 @@ function teeLog(str)
     emu.displayMessage("OpenVLB", str)
 end
 
-if emu.getRomInfo().fileSha1Hash:lower() ~= "ea343f4e445a9050d4b4fbac2c77d0693b1d0922" then
-    teeLog("check that you have loaded a rom with sha1sum ea343f4e445a9050d4b4fbac2c77d0693b1d0922.")
+HASHES = {
+    ["ea343f4e445a9050d4b4fbac2c77d0693b1d0922"] = true, -- (W) iNES
+    ["33d23c2f2cfa4c9efec87f7bc1321ce3ce6c89bd"] = true, -- (W) NES 2.0
+    ["383ad8e3890a95de9595f0a6087648f51177da13"] = true, -- (J) FDS
+    ["41cf327605ccc7b65f1891427abe4f64218354a1"] = true, -- (J) FDS
+}
+
+if HASHES[emu.getRomInfo().fileSha1Hash:lower()] == nil then
+    teeLog("bad rom (see HASHES for valid sha1sums), exiting")
     return
 end
 
 local callback = nil
-local exit = nil
 local auth = table.concat({
     string.format("%-32s", USERNAME),
     string.format("%-32s", PASSWORD)
@@ -25,7 +31,7 @@ if client ~= nil then
     end
     if r ~= string.char(0) then
         teeLog("invalid authentication for " .. SERVER[1] .. ":" .. SERVER[2] .. ", exiting")
-        exit = 0
+        return
     end
 end
 local pclient = nil
@@ -167,17 +173,17 @@ function readmemory()
     sprites = {}
     for i = 0, 255 do table.insert(sprites, emu.read(i, emu.memType.nesSpriteRam)) end
 
-    ws = q_level()
+    local area = (emu.read(0x74e, emu.memType.nesDebug) * 32 + emu.read(0x74f, emu.memType.nesDebug)) % 256
+    local ws = q_level()
     ram = {
-        emu.read(0xe, emu.memType.nesDebug),     -- player state
-        emu.read(0x74e, emu.memType.nesDebug) * 32
-        + emu.read(0x74f, emu.memType.nesDebug), -- area id
-        emu.read(0x770, emu.memType.nesDebug),   -- game state
-        ws[1],                                   -- (quasi) world
-        ws[2],                                   -- (quasi) stage
-        q_page(),                                -- area (quasi) page
-        emu.read(0x86, emu.memType.nesDebug),    -- area pixel
-        emu.read(0x3ad, emu.memType.nesDebug),   -- screen pixel
+        emu.read(0xe, emu.memType.nesDebug),   -- player state
+        area,                                  -- area id
+        emu.read(0x770, emu.memType.nesDebug), -- game state
+        ws[1],                                 -- (quasi) world
+        ws[2],                                 -- (quasi) stage
+        q_page(),                              -- area (quasi) page
+        emu.read(0x86, emu.memType.nesDebug),  -- area pixel
+        emu.read(0x3ad, emu.memType.nesDebug), -- screen pixel
         remainder(),
     }
 end
@@ -202,6 +208,4 @@ function main()
     send(u32le(#data + 4) .. data)
 end
 
-if (exit == nil) then
-    callback = emu.addEventCallback(main, emu.eventType.endFrame)
-end
+callback = emu.addEventCallback(main, emu.eventType.endFrame)

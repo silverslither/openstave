@@ -1,6 +1,6 @@
 function teeLog(str)
     emu.log(str)
-    emu.displayMessage("OpenVLB", str)
+    emu.displayMessage("OpenStave", str)
 end
 
 HASHES = {

@@ -32,7 +32,7 @@ export interface AbstractRace {
         game: string,
         finished: boolean,
         players: { [key: string]: PlayerResponseObject },
-    }>;
+    } | null>;
 }
 
 export class Race implements AbstractRace {
@@ -186,6 +186,8 @@ export class RaceData implements AbstractRace {
     }
 
     async getData(start: number, length: number) {
+        if (!fs.existsSync(this.path))
+            return null;
         const response = JSON.parse(await fs.promises.readFile(path.join(this.path, "static"), { encoding: "utf8" }));
 
         let i = FILE_BUFFER * Math.floor(start / FILE_BUFFER);

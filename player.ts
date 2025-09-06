@@ -102,7 +102,7 @@ export default class Player {
             this.frames = this.frames.slice(this.start, (this.end === this.end ? this.end : this.dnf) + 1);
             this.end -= this.start;
             this.dnf -= this.start;
-            this.splits = this.splits.map(v => v -= this.start);
+            this.splits = this.splits.map(v => v - this.start);
             this.buffers = [];
             this.buffer_length = 0;
             this.start = 0;

@@ -128,12 +128,6 @@ const server = http.createServer((request, response) => {
             return;
         }
 
-        const race = request.url.slice(1);
-        if (!activeRaces.has(race) && !inactiveRaces.has(race)) {
-            response.writeHead(404).end();
-            return;
-        }
-
         const start = requestBody.start;
         const length = requestBody.length;
 
@@ -142,8 +136,19 @@ const server = http.createServer((request, response) => {
             return;
         }
 
+        const race = request.url.slice(1);
+        if (!activeRaces.has(race) && !inactiveRaces.has(race)) {
+            response.writeHead(404).end();
+            return;
+        }
+
         const raceObject = activeRaces.get(race) ?? inactiveRaces.get(race);
         raceObject.getData(start, length).then((responseBody) => {
+            if (responseBody == null) {
+                response.writeHead(404).end();
+                return;
+            }
+
             zlib.gzip(JSON.stringify(responseBody), { level: 1 }, (error, data) => {
                 if (error) {
                     console.error(error);

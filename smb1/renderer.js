@@ -377,28 +377,36 @@ export class LeaderboardCanvas extends RendererCanvas {
             const splits = v[1].splits.slice(0, v[1].splits.findLastIndex(w => w != null && w <= count) + 1);
             if (v[1].time <= count)
                 splits.push(v[1].time);
+            splits.unshift(0);
             return [v[0], splits];
         }).sort((a, b) => b[1].length - a[1].length || a[1].at(-1) - b[1].at(-1));
 
-        const leader = leaderboard.find(v => !(this.players[v[0]].dnf <= count))?.[1];
-        const leaderSplit = leader?.at(-1) ?? 0;
-        const dnf = [];
-        for (const [name, splits] of leaderboard) {
-            if (this.players[name].dnf <= count) {
-                dnf.push([name, this.players[name].dnf]);
-                continue;
-            }
-
-            const line = [];
-            line.push(name);
-            if (this.players[name].time <= count)
-                line.push("", this.players[name].time);
-            else if (splits.length === leader.length)
-                line.push("+", (splits.at(-1) ?? 0) - leaderSplit);
+        const nodnf = [], dnf = [];
+        for (const entry of leaderboard) {
+            if (this.players[entry[0]].dnf <= count)
+                dnf.push([entry[0], this.players[entry[0]].dnf]);
             else
-                line.push("+", count - leaderSplit);
+                nodnf.push(entry);
+        }
+
+        const leader = nodnf[0]?.[1];
+        for (const [name, splits] of nodnf) {
+            const line = [name];
+
+            if (this.players[name].time <= count) {
+                line.push("", this.players[name].time);
+            } else if (splits.length === leader.length) {
+                line.push("+", splits.at(-1) - leader.at(-1));
+            } else {
+                const diff = Math.max(
+                    count - leader.at(-1),
+                    splits.at(-1) - leader[splits.length - 1],
+                );
+                line.push("+", diff);
+            }
             lines.push(line);
         }
+
         for (const [name] of dnf.sort((a, b) => b[1] - a[1])) {
             const line = [];
             line.push(name, "", "DNF");
@@ -407,10 +415,12 @@ export class LeaderboardCanvas extends RendererCanvas {
 
         // placement
         let i = 1;
+        let _i = 1;
         lines[0].unshift(i.toString());
         for (let j = 1; j < lines.length; j++) {
+            _i += 1;
             if (lines[j - 1].at(-1) !== lines[j].at(-1))
-                i += 1;
+                i = _i;
             lines[j].unshift(i.toString());
         }
 

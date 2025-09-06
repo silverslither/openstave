@@ -23,8 +23,6 @@ async function setup() {
     let drawCondition = false;
 
     controls.play = document.getElementById("play");
-    controls.start = document.getElementById("start");
-    controls.end = document.getElementById("end");
     controls.float = document.getElementById("float");
     controls.leaderboard = document.getElementById("lb");
     controls.framesLeft = document.getElementById("frames-left");
@@ -52,8 +50,6 @@ async function setup() {
             if (e.button === 0 && controls.play.textContent === "Pause")
                 paused = false;
         });
-        controls.start.addEventListener("click", () => oninput(controls.range.value = 0));
-        controls.end.addEventListener("click", () => oninput(controls.range.value = controls.range.max));
 
         if (drawCondition)
             draw();
@@ -112,7 +108,7 @@ function draw() {
             const dt = Math.floor((performance.now() - lastFrameMs) / FRAME_TIME_MS);
 
             if (!seek)
-                frame += Math.min(dt, 3);
+                frame += Math.min(dt, 5); // skip at most 4 frames
             seek = false;
 
             controls.framesLeft.textContent = Math.min(frame, maxLength - 1).toString().padStart(7);

@@ -1,19 +1,11 @@
 import TILES from "./tiles.js";
-import COLOURS from "./palette.js";
+import NES_COLOURS from "./palette.js";
 
-const COMPONENT_COLOURS = COLOURS.map(v => v.slice(1).match(/../g).map(w => parseInt(w, 16)));
 const FRAME_TIME_MS = 655171 / 39375;
 
-const OUTLINE_COLOURS = [
-    "#ff0000",
-    "#00ffff",
-    "#00ff00",
-    "#ff00ff",
-    "#0000ff",
-    "#ffff00",
-    "#ffffff",
-    "#000000",
-].map(v => v.slice(1).match(/../g).map(w => parseInt(w, 16)));
+const COMPONENT_NES_COLOURS = NES_COLOURS.map(v => v.slice(1).match(/../g).map(w => parseInt(w, 16)));
+const OUTLINE_COLOURS = ["#ff0000", "#00ffff", "#00ff00", "#ff00ff", "#0000ff", "#ffff00", "#ffffff", "#000000"];
+const COMPONENT_OUTLINE_COLOURS = OUTLINE_COLOURS.map(v => v.slice(1).match(/../g).map(w => parseInt(w, 16)));
 
 const maps = {};
 const text = {};
@@ -111,7 +103,7 @@ class RendererCanvas {
             this.outline.add(x, y);
 
         const invAlpha = 1.0 - alpha;
-        const colour = typeof colour_id === "number" ? COMPONENT_COLOURS[colour_id] : colour_id;
+        const colour = typeof colour_id === "number" ? COMPONENT_NES_COLOURS[colour_id] : colour_id;
         const i = 4 * (y * this.buffer.width + x);
         if (alpha === 1.0) {
             for (let j = 0; j < 3; j++)
@@ -219,7 +211,7 @@ export class PlayerCanvas extends RendererCanvas {
         const q_gAreaPage = gPlayerState === 7 ? frame[32 + 256 + 5] : gAreaPage;
         const xOffset = this.xOffset - ((q_gAreaPage << 8) + gAreaPixel - gScreenPixel);
 
-        this.context.fillStyle = COLOURS[gPalette[0]];
+        this.context.fillStyle = NES_COLOURS[gPalette[0]];
         this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         if (gPlayerState === 0) {
@@ -274,7 +266,7 @@ export class PlayerCanvas extends RendererCanvas {
             xOffset += (q_areaPage << 8) + areaPixel - screenPixel;
             xOffset -= (q_gAreaPage << 8) + gAreaPixel - gScreenPixel;
 
-            const alpha = name === this.following ? 1.0 : 0.7;
+            const alpha = name === this.following ? 1.0 : 0.6;
             this.outline.reset();
             for (let i = 252; i >= 0; i -= 4) {
                 const y = sprites[i];
@@ -290,7 +282,7 @@ export class PlayerCanvas extends RendererCanvas {
                 }
             }
             const o = outlineOrder.indexOf(name);
-            this.drawOutline(OUTLINE_COLOURS[o], 1.0);
+            this.drawOutline(COMPONENT_OUTLINE_COLOURS[o], name === this.following ? 1.0 : 0.8);
         }
         this.fromBuffer();
 
@@ -305,7 +297,7 @@ export class PlayerCanvas extends RendererCanvas {
             for (const sprite of deferred)
                 this.renderTileToBuffer(...sprite);
             const o = outlineOrder.indexOf(name);
-            this.drawOutline(OUTLINE_COLOURS[o], 1.0);
+            this.drawOutline(COMPONENT_OUTLINE_COLOURS[o], name === this.following ? 1.0 : 0.8);
         }
         this.fromBuffer();
 
@@ -340,7 +332,7 @@ export class LeaderboardCanvas extends RendererCanvas {
 
     resize() {
         const scale = Math.max(Math.min(Math.floor(window.innerHeight / 240), Math.round(window.innerWidth / 240)), 1);
-        const width = Math.ceil(window.innerWidth / scale);
+        const width = 180;
         const height = 240;
         this.canvas.width = 2 * width;
         this.canvas.height = height;
@@ -352,15 +344,31 @@ export class LeaderboardCanvas extends RendererCanvas {
     render(count) {
         this.count = count;
 
-        const lines = this.formatLines(this.getLines(count));
+        const lines = this.getLines(count);
+        const outlineOrder = Object.keys(this.players);
 
         this.context.fillStyle = "#000000";
-        this.context.fillRect(8, 4, lines[0].join(" ").length * 8 + 16, 8 * lines.length + 16);
+        this.context.fillRect(8, 4, 8 * 44, 16 + 8 * lines.length);
 
         this.drawText(16, 8, "LEADERBOARD");
 
-        for (let i = 0; i < lines.length; i++)
-            this.drawText(16, i * 8 + 16, lines[i].join(" "));
+        for (let i = 0; i < lines.length; i++) {
+            const y = 16 + 8 * i;
+            const line = lines[i];
+            const time = `${line[2]}${typeof line[3] === "string" ? line[3] : formatTime(FRAME_TIME_MS * line[3])}`;
+
+            this.drawText(8 * 2, y, line[0]);
+            this.drawText(8 * 5, y, line[1]);
+            this.drawText(8 * (40 - time.length), y, time);
+            this.drawText(8 * (44 - line[4].length), y, line[4]);
+        }
+
+        for (let i = 0; i < lines.length; i++) {
+            this.context.fillStyle = "#a0a0a0";
+            this.context.fillRect(8 * 4, 16 + 8 * i, 7, 7);
+            this.context.fillStyle = OUTLINE_COLOURS[outlineOrder.indexOf(lines[i][1])];
+            this.context.fillRect(8 * 4 + 2, 17 + 8 * i, 3, 5);
+        }
     }
 
     getLines(count) {
@@ -384,17 +392,16 @@ export class LeaderboardCanvas extends RendererCanvas {
             const line = [];
             line.push(name);
             if (this.players[name].time <= count)
-                line.push(["", this.players[name].time]);
+                line.push("", this.players[name].time);
             else if (splits.length === leader.length)
-                line.push(["+", (splits.at(-1) ?? 0) - leaderSplit]);
+                line.push("+", (splits.at(-1) ?? 0) - leaderSplit);
             else
-                line.push(["+", count - leaderSplit]);
+                line.push("+", count - leaderSplit);
             lines.push(line);
         }
         for (const [name] of dnf.sort((a, b) => b[1] - a[1])) {
             const line = [];
-            line.push(name);
-            line.push(["", "DNF"]);
+            line.push(name, "", "DNF");
             lines.push(line);
         }
 
@@ -417,15 +424,6 @@ export class LeaderboardCanvas extends RendererCanvas {
         }
 
         return lines;
-    }
-
-    formatLines(lines) {
-        return lines.map(v => [
-            v[0].padEnd(2),
-            v[1].padEnd(25),
-            (typeof v[2][1] === "string" ? v[2].join("") : `${v[2][0]}${formatTime(FRAME_TIME_MS * v[2][1])}`).padStart(10),
-            v[3].padStart(4),
-        ]);
     }
 }
 

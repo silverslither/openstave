@@ -8,7 +8,7 @@ import Player from "./player.ts";
 
 const TIMEOUTS = {
     "default": 30 * 60 * 1000,
-    "smb1_any%": 10 * 60 * 1000,
+    "smb1_any%": 15 * 60 * 1000,
 };
 
 const FILE_BUFFER = 240;

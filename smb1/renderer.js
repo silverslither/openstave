@@ -147,28 +147,30 @@ export class PlayerCanvas extends RendererCanvas {
             this.canvas.width = 384;
             this.canvas.height = 240;
         }
-        this.canvas.addEventListener("mousedown", () => {
-            const players = Object.keys(this.players);
-            const index = players.indexOf(this.following);
-            if (index >= 0) {
-                this.following = players[(index + 1) % players.length];
-                this.render(this.count);
-            }
-        });
+        this.canvas.addEventListener("mousedown", () => this.onclick());
         document.getElementById(id === 0 ? "screen" : "renderer").append(this.canvas);
 
         this.context = this.canvas.getContext("2d");
         this.outline = new Outline();
     }
 
+    onclick() {
+        const players = Object.keys(this.players);
+        const index = players.indexOf(this.following);
+        if (index >= 0) {
+            this.following = players[(index + 1) % players.length];
+            this.render(this.count);
+        }
+    }
+
     resize() {
-        const scale = Math.max(Math.min(Math.floor(window.innerHeight / 240), Math.round(window.innerWidth / 240)), 1);
-        const width = Math.ceil(window.innerWidth / scale);
+        this.scale = Math.max(Math.min(Math.floor(window.innerHeight / 240), Math.round(window.innerWidth / 240)), 1);
+        const width = Math.ceil(window.innerWidth / this.scale);
         const height = 240;
         this.canvas.width = width;
         this.canvas.height = height;
-        this.canvas.style.width = `${width * scale}px`;
-        this.canvas.style.height = `${height * scale}px`;
+        this.canvas.style.width = `${width * this.scale}px`;
+        this.canvas.style.height = `${height * this.scale}px`;
         return this;
     }
 
@@ -315,29 +317,41 @@ export class PlayerCanvas extends RendererCanvas {
 }
 
 export class LeaderboardCanvas extends RendererCanvas {
-    constructor(players) {
+    constructor(players, playerCanvas) {
         super();
 
         this.players = players;
+        this.playerCanvas = playerCanvas;
         this.count = 0;
 
         this.canvas = document.createElement("canvas");
         this.canvas.id = "leaderboard";
         window.addEventListener("resize", () => this.resize().render(this.count));
         this.resize();
-        document.getElementById("screen").append(this.canvas);
 
+        this.canvas.addEventListener("mousedown", (event) => {
+            const y = (event.clientY - this.canvas.getBoundingClientRect().top) / this.scale - 16;
+            const lines = this.getLines(this.count);
+            if (event.clientX >= 8 && y >= 0 && y < 8 * lines.length) {
+                this.playerCanvas.following = lines[Math.floor(y / 8)][1];
+                this.playerCanvas.render(this.playerCanvas.count);
+            } else {
+                this.playerCanvas.onclick();
+            }
+        }, true);
+
+        document.getElementById("screen").append(this.canvas);
         this.context = this.canvas.getContext("2d");
     }
 
     resize() {
-        const scale = Math.max(Math.min(Math.floor(window.innerHeight / 240), Math.round(window.innerWidth / 240)), 1);
+        this.scale = Math.max(Math.min(Math.floor(window.innerHeight / 240), Math.round(window.innerWidth / 240)), 1);
         const width = 180;
         const height = 240;
         this.canvas.width = 2 * width;
         this.canvas.height = height;
-        this.canvas.style.width = `${width * scale}px`;
-        this.canvas.style.height = `${height * scale}px`;
+        this.canvas.style.width = `${width * this.scale}px`;
+        this.canvas.style.height = `${height * this.scale}px`;
         return this;
     }
 
@@ -447,4 +461,3 @@ function formatTime(ms) {
     t += (ms % 1000).toString().padStart(3, "0");
     return t;
 }
-

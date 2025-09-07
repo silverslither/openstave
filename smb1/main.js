@@ -59,7 +59,7 @@ async function setup() {
     await init();
     canvases[0] = new PlayerCanvas(0, players);
     canvases[1] = new PlayerCanvas(1, players);
-    canvases[2] = new LeaderboardCanvas(players);
+    canvases[2] = new LeaderboardCanvas(players, canvases[0]);
     canvases[1].canvas.style.display = "none";
 
     controls.play.addEventListener("click", () => {

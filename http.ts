@@ -14,6 +14,7 @@ const MIME_TYPES = {
     ".css": "text/css",
     ".js": "text/javascript",
     ".png": "image/png",
+    ".lua": "text/x-lua",
 };
 
 const MAX_REQUEST_BUFFER = 240;

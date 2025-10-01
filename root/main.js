@@ -1,9 +1,10 @@
-let key, game, players, names, submit, error;
+let key, id, game, players, names, submit, error;
 
 document.addEventListener("DOMContentLoaded", main);
 
 function main() {
     key = document.getElementById("key");
+    id = document.getElementById("id");
     game = document.getElementById("game");
     players = document.getElementById("players");
     names = document.getElementById("names");
@@ -42,6 +43,7 @@ async function create() {
         const response = await fetch("/", {
             method: "POST",
             body: JSON.stringify({
+                id: id.value,
                 key: key.value,
                 game: game.value,
                 players: [...names.getElementsByTagName("input")].map(v => v.value),

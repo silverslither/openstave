@@ -14,7 +14,7 @@ const MIME_TYPES = {
     ".css": "text/css",
     ".js": "text/javascript",
     ".png": "image/png",
-    ".lua": "text/x-lua",
+    ".lua": "application/octet-stream",
 };
 
 const MAX_REQUEST_BUFFER = 240;
@@ -89,6 +89,7 @@ const server = http.createServer((request, response) => {
 
         if (request.url === "/") {
             const key = requestBody.key;
+            const id = requestBody.id;
             const game = requestBody.game;
             const players = requestBody.players;
 
@@ -112,9 +113,9 @@ const server = http.createServer((request, response) => {
                 return;
             }
 
-            const race = new Race(game, players);
+            const race = new Race(id, game, players);
             if (typeof race.id !== "string") {
-                response.writeHead(400).end();
+                response.writeHead(400).end("Check that all inputs are valid and contain only basic characters.");
                 return;
             }
 

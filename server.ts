@@ -10,14 +10,13 @@ const CRASH_PATH = path.join(import.meta.dirname, "crash");
 const RACE_PATH = path.join(import.meta.dirname, "races");
 
 let lock = false;
-process.on("uncaughtException", async (error) => {
+async function cleanup() {
     if (lock)
         return;
     lock = true;
 
     try {
-        console.error(error);
-        console.error("uncaught exception - gracefully shutting down");
+        console.error("gracefully shutting down");
 
         const closed = new Promise(r => server.close(r));
 
@@ -35,9 +34,21 @@ process.on("uncaughtException", async (error) => {
                 fs.writeFileSync(path.join(CRASH_PATH, key), value.serialize(), { encoding: "utf8" });
     } catch (e) {
         console.error(e);
-        console.error("error in exception handler - forcefully shutting down");
+        console.error("error in cleanup handler - forcefully shutting down");
     }
+}
 
+process.on("SIGINT", async () => {
+    await cleanup();
+    process.exit(0);
+});
+process.on("SIGTERM", async () => {
+    await cleanup();
+    process.exit(0);
+});
+process.on("uncaughtException", async (error) => {
+    console.error(error);
+    await cleanup();
     process.exit(1);
 });
 

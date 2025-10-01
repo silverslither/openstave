@@ -12,9 +12,12 @@
 <body>
     <label for="key">Key (ask the server administrator)</label><br/>
     <input id="key" type="text"><br/><br/>
+    <label for="id">Race ID (Race URL will be /{id}{8 base64 characters})</label><br/>
+    <input id="id" type="text" maxlength="56"><br/><br/>
     <label for="game">Category</label><br/>
     <select id="game">
         <option value="smb1_any%">Super Mario Bros. Any%</option>
+        <option value="smb1_warpless">Super Mario Bros. Warpless</option>
     </select><br/><br/>
     <label for="players">Players (between 2 - 8)</label><br/>
     <input id="players" type="number" min="2" max="8"><br/><br/>

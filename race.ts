@@ -9,6 +9,7 @@ import Player from "./player.ts";
 const TIMEOUTS = {
     "default": 30 * 60 * 1000,
     "smb1_any%": 15 * 60 * 1000,
+    "smb1_warpless": 45 * 60 * 1000,
 };
 
 const FILE_BUFFER = 240;
@@ -51,7 +52,10 @@ export class Race implements AbstractRace {
         return this.players.findIndex(v => !v.finished) === -1;
     }
 
-    constructor(game: string = "", players: string[] = []) {
+    constructor(id: string = "", game: string = "", players: string[] = []) {
+        id = id.replace(/[^0-9A-Za-z_-]/g, "");
+        if (id.length > 56)
+            return;
         if (!supportedGames.has(game))
             return;
         this.game = game;
@@ -59,7 +63,8 @@ export class Race implements AbstractRace {
         this.timeout = Date.now() + timeout_ms;
         this.players = [];
 
-        for (const player of players) {
+        for (let player of players) {
+            player = player.replace(/[^0-9A-Za-z_-]/g, "");
             if (player.length > 24)
                 return;
 
@@ -75,10 +80,11 @@ export class Race implements AbstractRace {
             activePlayers.set(player.username, player);
 
         do {
-            this.id = crypto.randomBytes(24).toString("base64url");
+            this.id = id + crypto.randomBytes(6).toString("base64url");
         } while (activeRaces.has(this.id) || inactiveRaces.has(this.id));
 
         activeRaces.set(this.id, this);
+        console.log(activeRaces);
     }
 
     static from(obj: any) {

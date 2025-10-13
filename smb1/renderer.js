@@ -14,15 +14,25 @@ export async function init() {
     const promises = [];
 
     for (const i of ["00", "01", "02", "09", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "2a", "2b", "2c", "2d", "2e", "2f", "30", "31", "32", "33", "34", "35", "40", "41", "42", "44", "60", "61", "62", "63", "64", "65"]) {
-        maps[i] = new Image();
-        promises.push(new Promise(resolve => maps[i].addEventListener("load", () => resolve())));
-        maps[i].src = `smb1/maps/${i}.png`;
+        promises.push(new Promise((resolve) => {
+            const image = new Image();
+            image.addEventListener("load", async () => {
+                maps[i] = await window.createImageBitmap(image);
+                resolve();
+            });
+            image.src = `smb1/maps/${i}.png`;
+        }));
     }
 
     for (const i of ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "+", "-", ".", ";", "[", "]"]) {
-        text[i] = new Image();
-        promises.push(new Promise(resolve => text[i].addEventListener("load", () => resolve())));
-        text[i].src = `smb1/text/${i}.png`;
+        promises.push(new Promise((resolve) => {
+            const image = new Image();
+            image.addEventListener("load", async () => {
+                text[i] = await window.createImageBitmap(image);
+                resolve();
+            });
+            image.src = `smb1/text/${i}.png`;
+        }));
     }
 
     await Promise.all(promises);

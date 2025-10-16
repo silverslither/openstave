@@ -77,6 +77,12 @@ class Outline {
 class RendererCanvas {
     createBuffer(colour_components) {
         const c = new Uint32Array(new Uint8Array([...colour_components, 255]).buffer);
+
+        if (this.buffer?.width === this.canvas.width && this.buffer?.height === this.canvas.height) {
+            new Uint32Array(this.buffer.data.buffer).fill(c);
+            return;
+        }
+
         this.buffer = new ImageData(
             new Uint8ClampedArray(new Uint32Array(this.canvas.width * this.canvas.height).fill(c).buffer),
             this.canvas.width,
@@ -169,7 +175,7 @@ export class PlayerCanvas extends RendererCanvas {
         this.canvas.addEventListener("mousedown", () => this.onclick());
         document.getElementById(id === 0 ? "screen" : "renderer").append(this.canvas);
 
-        this.context = this.canvas.getContext("2d", { alpha: false });
+        this.context = this.canvas.getContext("2d", { alpha: false, willReadFrequently: true });
         this.outline = new Outline();
     }
 

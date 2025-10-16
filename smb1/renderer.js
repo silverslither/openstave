@@ -75,6 +75,15 @@ class Outline {
 }
 
 class RendererCanvas {
+    createBuffer(colour_components) {
+        const c = new Uint32Array(new Uint8Array([...colour_components, 255]).buffer);
+        this.buffer = new ImageData(
+            new Uint8ClampedArray(new Uint32Array(this.canvas.width * this.canvas.height).fill(c).buffer),
+            this.canvas.width,
+            this.canvas.height,
+        );
+    }
+
     toBuffer() {
         this.buffer = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
     }
@@ -160,7 +169,7 @@ export class PlayerCanvas extends RendererCanvas {
         this.canvas.addEventListener("mousedown", () => this.onclick());
         document.getElementById(id === 0 ? "screen" : "renderer").append(this.canvas);
 
-        this.context = this.canvas.getContext("2d");
+        this.context = this.canvas.getContext("2d", { alpha: false });
         this.outline = new Outline();
     }
 
@@ -223,10 +232,9 @@ export class PlayerCanvas extends RendererCanvas {
         const q_gAreaPage = gPlayerState === 7 ? frame[32 + 256 + 5] : gAreaPage;
         const xOffset = this.xOffset - ((q_gAreaPage << 8) + gAreaPixel - gScreenPixel);
 
-        this.context.fillStyle = NES_COLOURS[gPalette[0]];
-        this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
         if (gPlayerState === 0) {
+            this.context.fillStyle = NES_COLOURS[gPalette[0]];
+            this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
             this.renderHUD();
             return false;
         }
@@ -236,7 +244,7 @@ export class PlayerCanvas extends RendererCanvas {
         drawOrder.push(drawOrder.splice(drawOrder.indexOf(this.following), 1)[0]);
 
         const above = {};
-        this.toBuffer();
+        this.createBuffer(COMPONENT_NES_COLOURS[gPalette[0]]);
         for (const name of drawOrder) {
             const deferred = [];
             above[name] = deferred;

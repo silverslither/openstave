@@ -84,7 +84,6 @@ export class Race implements AbstractRace {
         } while (activeRaces.has(this.id) || inactiveRaces.has(this.id));
 
         activeRaces.set(this.id, this);
-        console.log(activeRaces);
     }
 
     static from(obj: any) {

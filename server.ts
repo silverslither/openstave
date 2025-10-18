@@ -73,27 +73,32 @@ while (true) {
     if (lock)
         break;
 
-    if (fs.existsSync("key"))
-        setKey((await fs.promises.readFile("key", "utf8")).trim());
-    else
-        await fs.promises.writeFile("key", getKey(), "utf8");
+    try {
+        if (fs.existsSync("key"))
+            setKey((await fs.promises.readFile("key", "utf8")).trim());
+        else
+            await fs.promises.writeFile("key", getKey(), "utf8");
 
-    for (const [id, race] of activeRaces) {
-        if (!race.finished)
-            continue;
-        for (const player of race.players)
-            player.minimize();
-        activeRaces.delete(id);
-        inactiveRaces.set(id, race);
-    }
+        for (const [id, race] of activeRaces) {
+            if (!race.finished)
+                continue;
+            for (const player of race.players)
+                player.minimize();
+            activeRaces.delete(id);
+            inactiveRaces.set(id, race);
+        }
 
-    for (const [key, value] of inactiveRaces) {
-        if (!(value instanceof Race))
-            continue;
-        console.log("vaccuming race", key);
-        const data = new RaceData(path.join(RACE_PATH, key));
-        await data.write(value);
-        inactiveRaces.set(key, data);
+        for (const [key, value] of inactiveRaces) {
+            if (!(value instanceof Race))
+                continue;
+            console.log("vaccuming race", key);
+            const data = new RaceData(path.join(RACE_PATH, key));
+            await data.write(value);
+            inactiveRaces.set(key, data);
+        }
+    } catch (e) {
+        console.error(e);
+        console.error("i/o loop error - resuming execution");
     }
 
     await new Promise(r => setTimeout(r, VACCUM_INTERVAL_MS));

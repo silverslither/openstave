@@ -427,21 +427,22 @@ export class LeaderboardCanvas extends RendererCanvas {
                 nodnf.push(entry);
         }
 
-        const leader = nodnf[0]?.[1];
+        let comparison = nodnf[0]?.[1];
+        let cumulative = 0;
         for (const [name, splits] of nodnf) {
             const line = [name];
 
             if (this.players[name].time <= count) {
                 line.push("", this.players[name].time);
-            } else if (splits.length === leader.length) {
-                line.push("+", splits.at(-1) - leader.at(-1));
+            } else if (splits.length === comparison.length) {
+                cumulative += splits.at(-1) - comparison.at(-1);
+                line.push("+", cumulative);
             } else {
-                const diff = Math.max(
-                    count - leader.at(-1),
-                    splits.at(-1) - leader[splits.length - 1],
-                );
-                line.push("+", diff);
+                cumulative += splits.at(-1) - comparison[splits.length - 1];
+                line.push("+", diff, Math.max(count - comparison.at(-1), cumulative));
             }
+
+            comparison = splits;
             lines.push(line);
         }
 

@@ -93,22 +93,25 @@ async function setup() {
     drawCondition = true;
 }
 
-function draw() {
+function draw(timeMs) {
     requestAnimationFrame(draw);
 
-    if (paused && !seek)
+    if (paused && !seek) {
+        lastFrameMs = timeMs;
         return;
+    }
 
-    if (performance.now() - lastFrameMs > FRAME_TIME_MS) {
+    const dt = timeMs - lastFrameMs;
+    if (dt > 0.5 * FRAME_TIME_MS) {
         if (buffered[frame]) {
             for (const canvas of canvases)
                 if (canvas.canvas.style.display !== "none")
                     canvas.render(frame);
 
-            const dt = Math.floor((performance.now() - lastFrameMs) / FRAME_TIME_MS);
+            const df = dt > FRAME_TIME_MS ? Math.floor(dt / FRAME_TIME_MS) : Math.round(dt / FRAME_TIME_MS);
 
             if (!seek)
-                frame += Math.min(dt, 5); // skip at most 4 frames
+                frame += Math.min(df, 5); // skip at most 4 frames
             seek = false;
 
             controls.framesLeft.textContent = Math.min(frame, maxLength - 1).toString().padStart(7);
@@ -118,7 +121,7 @@ function draw() {
             if (frame <= pingLength - FRAME_BUFFER && !buffered[frame + FRAME_BUFFER])
                 query(frame + FRAME_BUFFER, FRAME_BUFFER);
 
-            lastFrameMs += dt * FRAME_TIME_MS;
+            lastFrameMs += df * FRAME_TIME_MS;
         } else {
             if (finished || frame <= pingLength - 2 * FRAME_BUFFER) {
                 query(frame, 2 * FRAME_BUFFER);

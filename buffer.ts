@@ -31,7 +31,7 @@ const eventGenerators = {
                 });
             }
 
-            if (current.ram[0] === 0x07 &&
+            if (current.ram[0] === 0x07 && last.ram[0] === 0x00 &&
                 current.ram[1] === 0x25 &&
                 current.ram[2] === 0x01 && last.ram[2] === 0x01 &&
                 current.ram[3] === 0x00 &&
@@ -69,7 +69,7 @@ const eventGenerators = {
                 });
             }
 
-            if (current.ram[0] === 0x07 &&
+            if (current.ram[0] === 0x07 && last.ram[0] === 0x00 &&
                 current.ram[1] === 0x25 &&
                 current.ram[2] === 0x01 && last.ram[2] === 0x01 &&
                 current.ram[3] === 0x00 &&

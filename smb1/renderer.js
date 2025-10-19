@@ -438,7 +438,7 @@ export class LeaderboardCanvas extends RendererCanvas {
                 cumulative += splits.at(-1) - comparison.at(-1);
                 line.push("+", cumulative);
             } else {
-                cumulative += splits.at(-1) - comparison[splits.length - 1];
+                cumulative += Math.max(splits.at(-1) - comparison[splits.length - 1], 0);
                 line.push("+", Math.max(count - comparison.at(-1), cumulative));
             }
 

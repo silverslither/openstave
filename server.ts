@@ -65,8 +65,14 @@ if (!fs.existsSync(RACE_PATH)) {
     fs.mkdirSync(RACE_PATH);
 } else {
     const keys = fs.readdirSync(RACE_PATH);
-    for (const key of keys)
-        inactiveRaces.set(key, new RaceData(path.join(RACE_PATH, key)));
+    for (const key of keys) {
+        const race = new RaceData(path.join(RACE_PATH, key));
+        if (race.dirty) {
+            console.log("cleaning race", key);
+            await race.clean();
+        }
+        inactiveRaces.set(key, race);
+    }
 }
 
 while (true) {
@@ -82,8 +88,7 @@ while (true) {
         for (const [id, race] of activeRaces) {
             if (!race.finished)
                 continue;
-            for (const player of race.players)
-                player.minimize();
+            race.minimize();
             activeRaces.delete(id);
             inactiveRaces.set(id, race);
         }

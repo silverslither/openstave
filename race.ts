@@ -117,9 +117,13 @@ export class Race implements AbstractRace {
         return { game: this.game, finished: this.finished, players: response };
     }
 
-    serialize() {
+    minimize() {
         for (const player of this.players)
             player.minimize();
+    }
+
+    serialize() {
+        this.minimize();
         return JSON.stringify(this, (_, v) => {
             if (v instanceof Buffer)
                 return v.toString("base64");
@@ -131,22 +135,38 @@ export class Race implements AbstractRace {
 export class RaceData implements AbstractRace {
     path: string;
     game: string;
+    dirty: boolean;
 
     constructor(racePath: string) {
+        this.dirty = false;
         this.path = racePath;
         if (fs.existsSync(this.path)) {
-            fs.readFile(path.join(this.path, "static"), { encoding: "utf8" }, (error, data) => {
-                if (error) {
-                    console.error(error);
-                    return;
-                }
+            const data = fs.readFileSync(path.join(this.path, "static"), { encoding: "utf8" });
+            const staticData = JSON.parse(data);
+            this.game = staticData.game;
 
-                this.game = JSON.parse(data).game;
-            });
+            if (Object.values(staticData.players).some(v => v?.["start"] != null))
+                this.dirty = true;
         }
     }
 
-    // assumes all players have been minimized()
+    async clean() {
+        const obj = await this.getData(0, Infinity);
+        obj.players = Object.entries(obj.players).map((v: [string, object]) => {
+            const r = { username: v[0], ...v[1], end: v[1]["time"] };
+            r["start"] ??= 0;
+            return r;
+        });
+
+        const race = Race.from(obj);
+        race.minimize();
+
+        await this.write(race);
+
+        this.dirty = false;
+    }
+
+    // assumes race has been minimized
     async write(race: Race) {
         this.game = race.game;
 
@@ -195,8 +215,7 @@ export class RaceData implements AbstractRace {
             return null;
         const response = JSON.parse(await fs.promises.readFile(path.join(this.path, "static"), { encoding: "utf8" }));
 
-        let i = FILE_BUFFER * Math.floor(start / FILE_BUFFER);
-        for (; i < start + length; i += FILE_BUFFER) {
+        for (let i = FILE_BUFFER * Math.floor(start / FILE_BUFFER); i < start + length; i += FILE_BUFFER) {
             const file = path.join(this.path, i.toString());
             if (!fs.existsSync(file))
                 break;

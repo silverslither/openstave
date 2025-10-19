@@ -39,12 +39,15 @@ export default class Player {
         player.username = obj.username;
         player.password = obj.password;
         player.game = obj.game;
-        player.frames = obj.frames.map((v: any) => ({ data: Buffer.from(v.data, "base64"), count: v.count, ram: Buffer.from(v.ram, "base64") }));
+        if (typeof obj.frames[0] === "string")
+            player.frames = obj.frames.map((v: any) => ({ data: Buffer.from(v, "base64") }));
+        else
+            player.frames = obj.frames.map((v: any) => ({ data: Buffer.from(v.data, "base64"), count: v.count, ram: Buffer.from(v.ram, "base64") }));
         player.start = obj.start ?? NaN;
         player.end = obj.end ?? NaN;
         player.dnf = obj.dnf ?? NaN;
         player.splits = obj.splits;
-        player.buffers = obj.buffers.map((v: string) => Buffer.from(v, "base64"));
+        player.buffers = obj?.buffers?.map((v: string) => Buffer.from(v, "base64"));
         player.buffer_length = obj.buffer_length;
         return player;
     }

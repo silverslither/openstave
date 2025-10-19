@@ -101,14 +101,14 @@ function draw(timeMs) {
         return;
     }
 
-    const dt = timeMs - lastFrameMs;
-    if (dt > 0.5 * FRAME_TIME_MS) {
+    const dt = (timeMs - lastFrameMs) / FRAME_TIME_MS;
+    if (dt > 0.5) {
         if (buffered[frame]) {
             for (const canvas of canvases)
                 if (canvas.canvas.style.display !== "none")
                     canvas.render(frame);
 
-            const df = dt > FRAME_TIME_MS ? Math.floor(dt / FRAME_TIME_MS) : Math.round(dt / FRAME_TIME_MS);
+            const df = Math.max(Math.floor(dt / FRAME_TIME_MS), 1);
 
             if (!seek)
                 frame += Math.min(df, 5); // skip at most 4 frames

@@ -108,7 +108,7 @@ function draw(timeMs) {
                 if (canvas.canvas.style.display !== "none")
                     canvas.render(frame);
 
-            const df = Math.max(Math.floor(dt / FRAME_TIME_MS), 1);
+            const df = Math.max(Math.floor(dt), 1);
 
             if (!seek)
                 frame += Math.min(df, 5); // skip at most 4 frames

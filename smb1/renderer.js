@@ -389,6 +389,8 @@ export class LeaderboardCanvas extends RendererCanvas {
     }
 
     render(count) {
+        this.count = count;
+
         const lines = this.getLines(count);
         const outlineOrder = Object.keys(this.players);
 

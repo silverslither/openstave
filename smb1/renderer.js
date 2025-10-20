@@ -160,7 +160,7 @@ export class PlayerCanvas extends RendererCanvas {
         this.id = id;
         this.players = players;
         this.following = following;
-        this.count = 0;
+        this.count = -1;
 
         this.canvas = document.createElement("canvas");
         this.canvas.id = `player${id}`;
@@ -199,8 +199,19 @@ export class PlayerCanvas extends RendererCanvas {
         return this;
     }
 
+    clear() {
+        this.context.fillStyle = "#000000";
+        this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.renderHUD();
+    }
+
     render(count) {
         this.count = count;
+        if (count < 0) {
+            this.clear();
+            return true;
+        }
+
         this.xOffset = Math.floor((this.canvas.width - 256) / 2);
 
         this.following = this.following || Object.keys(this.players)[0];
@@ -216,9 +227,7 @@ export class PlayerCanvas extends RendererCanvas {
         }
 
         if (frame == null) {
-            this.context.fillStyle = "#000000";
-            this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
-            this.renderHUD();
+            this.clear();
             return true;
         }
 
@@ -336,7 +345,7 @@ export class PlayerCanvas extends RendererCanvas {
         this.context.fillRect(4, this.canvas.height - 20, this.following.length * 8 + 8, 16);
         this.drawText(8, this.canvas.height - 16, this.following);
         if (this.id === 0)
-            this.drawText(this.canvas.width - 8, 8, formatTime(FRAME_TIME_MS * this.count), "right");
+            this.drawText(this.canvas.width - 8, 8, formatTime(FRAME_TIME_MS * Math.max(this.count, 0)), "right");
     }
 }
 
@@ -380,15 +389,17 @@ export class LeaderboardCanvas extends RendererCanvas {
     }
 
     render(count) {
-        this.count = count;
-
         const lines = this.getLines(count);
         const outlineOrder = Object.keys(this.players);
 
         this.context.fillStyle = "#000000";
         this.context.fillRect(8, 4, 8 * 44, 16 + 8 * lines.length);
 
-        this.drawText(16, 8, "LEADERBOARD");
+        let title = window.location.pathname.slice(1, -8);
+        if (title[title.length - 1] === "-" || title[title.length - 1] === "_")
+            title = title.slice(0, -1);
+        title = title.slice(0, 42);
+        this.drawText(16, 8, title);
 
         for (let i = 0; i < lines.length; i++) {
             const y = 16 + 8 * i;

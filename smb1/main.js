@@ -31,6 +31,7 @@ async function setup() {
 
     query().then(() => {
         frame = finished ? maxLength - 1 : Math.max(pingLength - 2 * FRAME_BUFFER, 0);
+
         controls.framesLeft.textContent = frame.toString().padStart(7);
         controls.framesRight.textContent = "-0".padEnd(7);
         controls.range.value = frame;
@@ -52,7 +53,7 @@ async function setup() {
         });
 
         if (drawCondition)
-            draw();
+            start();
         drawCondition = true;
     });
 
@@ -89,8 +90,17 @@ async function setup() {
     });
 
     if (drawCondition)
-        draw();
+        start();
     drawCondition = true;
+}
+
+function start() {
+    if (frame === 0) {
+        canvases[0].render(-1);
+        canvases[2].render(0);
+    }
+
+    draw();
 }
 
 function draw(timeMs) {

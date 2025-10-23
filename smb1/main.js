@@ -1,4 +1,4 @@
-import { LeaderboardCanvas, PlayerCanvas, init } from "./renderer.js";
+import { LeaderboardCanvas, PlayerCanvas, init, screenshot } from "./renderer.js";
 
 const FRAME_BUFFER = 120;
 const FRAME_TIME_MS = 655171 / 39375;
@@ -25,6 +25,7 @@ async function setup() {
     controls.play = document.getElementById("play");
     controls.float = document.getElementById("float");
     controls.leaderboard = document.getElementById("lb");
+    controls.screenshot = document.getElementById("ss");
     controls.framesLeft = document.getElementById("frames-left");
     controls.framesRight = document.getElementById("frames-right");
     controls.range = document.querySelector("input");
@@ -87,6 +88,17 @@ async function setup() {
         } else {
             canvases[2].canvas.style.display = "none";
         }
+    });
+    controls.screenshot.addEventListener("click", async () => {
+        if (canvases[0].count < 0)
+            return;
+
+        const ss = screenshot(canvases[0], canvases[2]);
+        const canvas = new OffscreenCanvas(ss.width, ss.height);
+        const context = canvas.getContext("2d");
+        context.putImageData(ss, 0, 0);
+        const blob = await canvas.convertToBlob();
+        window.navigator.clipboard.write([ new ClipboardItem({ [blob.type]: blob }) ]);
     });
 
     if (drawCondition)

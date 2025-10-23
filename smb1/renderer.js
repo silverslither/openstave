@@ -154,7 +154,7 @@ class RendererCanvas {
 }
 
 export class PlayerCanvas extends RendererCanvas {
-    constructor(id, players, following = "") {
+    constructor(id, players, following = 0) {
         super();
 
         this.id = id;
@@ -172,20 +172,29 @@ export class PlayerCanvas extends RendererCanvas {
             this.canvas.width = 384;
             this.canvas.height = 240;
         }
-        this.canvas.addEventListener("mousedown", () => this.onclick());
+
+        this.canvas.addEventListener("mousedown", (event) => this.onclick(event));
+        this.canvas.addEventListener("contextmenu", (event) => event.preventDefault(), false);
+
         document.getElementById(id === 0 ? "screen" : "renderer").append(this.canvas);
 
         this.context = this.canvas.getContext("2d", { alpha: false, willReadFrequently: true });
         this.outline = new Outline();
     }
 
-    onclick() {
-        const players = Object.keys(this.players);
-        const index = players.indexOf(this.following);
-        if (index >= 0) {
-            this.following = players[(index + 1) % players.length];
-            this.render(this.count);
+    onclick(event) {
+        if (event.button === 2) {
+            this.following = (typeof this.following === "string") ? 0 : this.following + 1;
+            this.following %= Object.keys(this.players).length;
+        } else {
+            const players = Object.keys(this.players);
+            const index = players.indexOf(this.following);
+            if (index >= 0)
+                this.following = players[(index + 1) % players.length];
+            else
+                this.following = players[0];
         }
+        this.render(this.count);
     }
 
     resize() {
@@ -199,35 +208,38 @@ export class PlayerCanvas extends RendererCanvas {
         return this;
     }
 
-    clear() {
-        this.context.fillStyle = "#000000";
+    clear(following) {
         this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        this.renderHUD();
+        this.renderHUD(following);
     }
 
     render(count) {
         this.count = count;
+        this.context.fillStyle = "#000000";
+
         if (count < 0) {
-            this.clear();
+            this.clear(following);
             return true;
         }
 
-        this.xOffset = Math.floor((this.canvas.width - 256) / 2);
+        this.xOffset = Math.floor((this.canvas.width - 240) / 2);
 
-        this.following = this.following || Object.keys(this.players)[0];
-        if (this.players[this.following] == null)
+        const following = typeof this.following === "string" ?
+            this.following :
+            getPlacements(this.players, Math.max(this.count, 0)).flat()[this.following][0];
+        if (this.players[following] == null)
             return true;
 
-        let frame = this.players[this.following].frames[count];
-        let pframe = this.players[this.following].frames[count - 1] ?? frame;
+        let frame = this.players[following].frames[count];
+        let pframe = this.players[following].frames[count - 1] ?? frame;
 
         if (frame == null) {
-            frame = this.players[this.following].frames.at(-1);
-            pframe = this.players[this.following].frames.at(-2) ?? frame;
+            frame = this.players[following].frames.at(-1);
+            pframe = this.players[following].frames.at(-2) ?? frame;
         }
 
         if (frame == null) {
-            this.clear();
+            this.clear(following);
             return true;
         }
 
@@ -249,14 +261,13 @@ export class PlayerCanvas extends RendererCanvas {
 
         if (gPlayerState === 0) {
             this.context.fillStyle = NES_COLOURS[gPalette[0]];
-            this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
-            this.renderHUD();
+            this.clear(following);
             return false;
         }
 
         const outlineOrder = Object.keys(this.players);
         const drawOrder = [...outlineOrder];
-        drawOrder.push(drawOrder.splice(drawOrder.indexOf(this.following), 1)[0]);
+        drawOrder.push(drawOrder.splice(drawOrder.indexOf(following), 1)[0]);
 
         const above = {};
         this.createBuffer(COMPONENT_NES_COLOURS[gPalette[0]]);
@@ -301,7 +312,7 @@ export class PlayerCanvas extends RendererCanvas {
             xOffset += (q_areaPage << 8) + areaPixel - screenPixel;
             xOffset -= (q_gAreaPage << 8) + gAreaPixel - gScreenPixel;
 
-            const alpha = name === this.following ? 1.0 : 0.6;
+            const alpha = name === following ? 1.0 : 0.6;
             this.outline.reset();
             for (let i = 252; i >= 0; i -= 4) {
                 const y = sprites[i];
@@ -317,7 +328,7 @@ export class PlayerCanvas extends RendererCanvas {
                 }
             }
             const o = outlineOrder.indexOf(name);
-            this.drawOutline(COMPONENT_OUTLINE_COLOURS[o], name === this.following ? 1.0 : 0.8);
+            this.drawOutline(COMPONENT_OUTLINE_COLOURS[o], name === following ? 1.0 : 0.8);
         }
         this.fromBuffer();
 
@@ -332,21 +343,34 @@ export class PlayerCanvas extends RendererCanvas {
             for (const sprite of deferred)
                 this.renderTileToBuffer(...sprite);
             const o = outlineOrder.indexOf(name);
-            this.drawOutline(COMPONENT_OUTLINE_COLOURS[o], name === this.following ? 1.0 : 0.8);
+            this.drawOutline(COMPONENT_OUTLINE_COLOURS[o], name === following ? 1.0 : 0.8);
         }
         this.fromBuffer();
 
-        this.renderHUD();
+        this.renderHUD(following);
         return false;
     }
 
-    renderHUD() {
+    renderHUD(following) {
+        if (typeof this.following === "number")
+            following = `[${this.following + 1}] ${following}`;
         this.context.fillStyle = "#000000";
-        this.context.fillRect(4, this.canvas.height - 20, this.following.length * 8 + 8, 16);
-        this.drawText(8, this.canvas.height - 16, this.following);
+        this.context.fillRect(4, this.canvas.height - 20, following.length * 8 + 8, 16);
+        this.drawText(8, this.canvas.height - 16, following);
         if (this.id === 0)
             this.drawText(this.canvas.width - 8, 8, formatTime(FRAME_TIME_MS * Math.max(this.count, 0)), "right");
     }
+}
+
+function formatTime(ms) {
+    ms = Math.round(ms);
+    const s = Math.floor(ms / 1000);
+    const m = Math.floor(s / 60);
+    let t = "";
+    t += `${(m % 60).toString().padStart(2, "0")}:`;
+    t += `${(s % 60).toString().padStart(2, "0")}.`;
+    t += (ms % 1000).toString().padStart(3, "0");
+    return t;
 }
 
 export class LeaderboardCanvas extends RendererCanvas {
@@ -362,19 +386,28 @@ export class LeaderboardCanvas extends RendererCanvas {
         window.addEventListener("resize", () => this.resize().render(this.count));
         this.resize();
 
-        this.canvas.addEventListener("mousedown", (event) => {
-            const y = (event.clientY - this.canvas.getBoundingClientRect().top) / this.scale - 16;
-            const lines = this.getLines(this.count);
-            if (event.clientX >= 8 && y >= 0 && y < 8 * lines.length) {
-                this.playerCanvas.following = lines[Math.floor(y / 8)][1];
-                this.playerCanvas.render(this.playerCanvas.count);
-            } else {
-                this.playerCanvas.onclick();
-            }
-        }, true);
+        this.canvas.addEventListener("mousedown", (event) => this.onclick(event), true);
+        this.canvas.addEventListener("contextmenu", (event) => event.preventDefault(), false);
 
         document.getElementById("screen").append(this.canvas);
         this.context = this.canvas.getContext("2d");
+    }
+
+    onclick(event) {
+        const y = (event.clientY - this.canvas.getBoundingClientRect().top) / this.scale - 16;
+        if (event.clientX < 8 || y < 0 || y >= 8 * Object.keys(this.players).length) {
+            this.playerCanvas.onclick(event);
+            return;
+        }
+
+        if (event.button === 2) {
+            this.playerCanvas.following = Math.floor(y / 8);
+        } else {
+            const placements = getPlacements(this.players, this.count).flat();
+            this.playerCanvas.following = placements[Math.floor(y / 8)][0];
+        }
+
+        this.playerCanvas.render(this.playerCanvas.count);
     }
 
     resize() {
@@ -391,7 +424,7 @@ export class LeaderboardCanvas extends RendererCanvas {
     render(count) {
         this.count = count;
 
-        const lines = this.getLines(count);
+        const lines = this.getLines(this.count);
         const outlineOrder = Object.keys(this.players);
 
         this.context.fillStyle = "#000000";
@@ -424,21 +457,7 @@ export class LeaderboardCanvas extends RendererCanvas {
 
     getLines(count) {
         const lines = [];
-        const leaderboard = Object.entries(this.players).map(v => {
-            const splits = v[1].splits.slice(0, v[1].splits.findLastIndex(w => w != null && w <= count) + 1);
-            if (v[1].time <= count)
-                splits.push(v[1].time);
-            splits.unshift(0);
-            return [v[0], splits];
-        }).sort((a, b) => b[1].length - a[1].length || a[1].at(-1) - b[1].at(-1));
-
-        const nodnf = [], dnf = [];
-        for (const entry of leaderboard) {
-            if (this.players[entry[0]].dnf <= count)
-                dnf.push([entry[0], this.players[entry[0]].dnf]);
-            else
-                nodnf.push(entry);
-        }
+        const [nodnf, dnf] = getPlacements(this.players, count);
 
         let comparison = nodnf[0]?.[1];
         let cumulative = 0;
@@ -465,7 +484,6 @@ export class LeaderboardCanvas extends RendererCanvas {
             lines.push(line);
         }
 
-        // placement
         let i = 1;
         let _i = 1;
         lines[0].unshift(i.toString());
@@ -476,7 +494,6 @@ export class LeaderboardCanvas extends RendererCanvas {
             lines[j].unshift(i.toString());
         }
 
-        // remainders
         for (const line of lines) {
             const data = this.players[line[1]]?.frames[count];
             if (data != null && data[32 + 256 + 8] !== 0xff)
@@ -489,13 +506,53 @@ export class LeaderboardCanvas extends RendererCanvas {
     }
 }
 
-function formatTime(ms) {
-    ms = Math.round(ms);
-    const s = Math.floor(ms / 1000);
-    const m = Math.floor(s / 60);
-    let t = "";
-    t += `${(m % 60).toString().padStart(2, "0")}:`;
-    t += `${(s % 60).toString().padStart(2, "0")}.`;
-    t += (ms % 1000).toString().padStart(3, "0");
-    return t;
+function getPlacements(players, count) {
+    const leaderboard = Object.entries(players).map(v => {
+        const splits = v[1].splits.slice(0, v[1].splits.findLastIndex(w => w != null && w <= count) + 1);
+        if (v[1].time <= count)
+            splits.push(v[1].time);
+        splits.unshift(0);
+        return [v[0], splits];
+    }).sort((a, b) => b[1].length - a[1].length || a[1].at(-1) - b[1].at(-1));
+
+    const nodnf = [], dnf = [];
+    for (const entry of leaderboard) {
+        if (players[entry[0]].dnf <= count)
+            dnf.push([entry[0], players[entry[0]].dnf]);
+        else
+            nodnf.push(entry);
+    }
+
+    return [nodnf, dnf];
+}
+
+export function screenshot(pCanvas, lCanvas) {
+    const pBuffer = pCanvas.context.getImageData(0, 0, pCanvas.canvas.width, pCanvas.canvas.height).data;
+    const lBuffer = lCanvas.context.getImageData(0, 0, lCanvas.canvas.width, lCanvas.canvas.height).data;
+    const oBuffer = new Uint8ClampedArray(4 * pBuffer.length);
+
+    let oPixel = 0;
+    for (let y = 0; y < 2 * pCanvas.canvas.height; y++) {
+        const _y = 4 * (y >> 1);
+        const pOffset = _y * pCanvas.canvas.width;
+        const lOffset = _y * lCanvas.canvas.width;
+
+        for (let x = 0; x < 2 * pCanvas.canvas.width; x++, oPixel += 4) {
+            const pPixel = pOffset + 4 * (x >> 1);
+            const lPixel = lOffset + 4 * x;
+
+            if (x < lCanvas.canvas.width && lBuffer[lPixel + 3] !== 0) {
+                oBuffer[oPixel + 0] = lBuffer[lPixel + 0];
+                oBuffer[oPixel + 1] = lBuffer[lPixel + 1];
+                oBuffer[oPixel + 2] = lBuffer[lPixel + 2];
+            } else {
+                oBuffer[oPixel + 0] = pBuffer[pPixel + 0];
+                oBuffer[oPixel + 1] = pBuffer[pPixel + 1];
+                oBuffer[oPixel + 2] = pBuffer[pPixel + 2];
+            }
+            oBuffer[oPixel + 3] = 255;
+        }
+    }
+
+    return new ImageData(oBuffer, 2 * pCanvas.canvas.width, 2 * pCanvas.canvas.height);
 }

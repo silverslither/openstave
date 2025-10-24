@@ -34,10 +34,8 @@ body {
     display: flex;
     flex-direction: row;
     align-items: center;
-    justify-content: center;
     width: 100%;
     height: 30px;
-    overflow: hidden;
 }
 
 button {
@@ -53,6 +51,21 @@ button {
     font-family: inherit;
     font-size: 18px;
     cursor: pointer;
+}
+
+button:active {
+    color: lightgray;
+}
+
+#popup {
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    padding-top: 4px;
+    position: absolute;
+    right: 0px;
+    bottom: 30px;
+    background-color: black;
 }
 
 span {

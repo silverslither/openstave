@@ -23,12 +23,15 @@ async function setup() {
     let drawCondition = false;
 
     controls.play = document.getElementById("play");
+    controls.framesLeft = document.getElementById("frames-left");
+    controls.range = document.querySelector("input");
+    controls.framesRight = document.getElementById("frames-right");
+    controls.menu = document.getElementById("menu");
+
+    controls.popup = document.getElementById("popup");
     controls.float = document.getElementById("float");
     controls.leaderboard = document.getElementById("lb");
     controls.screenshot = document.getElementById("ss");
-    controls.framesLeft = document.getElementById("frames-left");
-    controls.framesRight = document.getElementById("frames-right");
-    controls.range = document.querySelector("input");
 
     query().then(() => {
         frame = finished ? maxLength - 1 : Math.max(pingLength - 2 * FRAME_BUFFER, 0);
@@ -73,6 +76,9 @@ async function setup() {
             paused = false;
         }
     });
+    controls.menu.addEventListener("click", () => {
+        controls.popup.style.display = controls.popup.style.display === "flex" ? "none" : "flex";
+    });
     controls.float.addEventListener("click", () => {
         if (canvases[1].canvas.style.display === "none") {
             canvases[1].canvas.style.display = "";
@@ -89,16 +95,27 @@ async function setup() {
             canvases[2].canvas.style.display = "none";
         }
     });
+    const ssLock = false;
     controls.screenshot.addEventListener("click", async () => {
-        if (canvases[0].count < 0)
+        if (ssLock)
             return;
+        ssLock = true;
 
-        const ss = screenshot(canvases[0], canvases[2]);
-        const canvas = new OffscreenCanvas(ss.width, ss.height);
-        const context = canvas.getContext("2d");
-        context.putImageData(ss, 0, 0);
-        const blob = await canvas.convertToBlob();
-        window.navigator.clipboard.write([ new ClipboardItem({ [blob.type]: blob }) ]);
+        try {
+            if (canvases[0].count < 0)
+                return;
+
+            const ss = screenshot(canvases[0], canvases[2]);
+            const canvas = new OffscreenCanvas(ss.width, ss.height);
+            const context = canvas.getContext("2d");
+            context.putImageData(ss, 0, 0);
+            const blob = await canvas.convertToBlob();
+            window.navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+            ssLock = false;
+        } catch (e) {
+            console.error(e);
+            ssLock = false;
+        }
     });
 
     if (drawCondition)

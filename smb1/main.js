@@ -15,6 +15,7 @@ let seek = false;
 let maxLength = 0;
 let pingLength = 0;
 let finished = false;
+let game = "";
 
 addEventListener("DOMContentLoaded", setup);
 
@@ -29,8 +30,9 @@ async function setup() {
     controls.menu = document.getElementById("menu");
 
     controls.popup = document.getElementById("popup");
-    controls.float = document.getElementById("float");
     controls.leaderboard = document.getElementById("lb");
+    controls.category = document.getElementById("category");
+    controls.float = document.getElementById("float");
     controls.copyScreenshot = document.getElementById("copy-ss");
     controls.saveScreenshot = document.getElementById("save-ss");
 
@@ -80,20 +82,24 @@ async function setup() {
     controls.menu.addEventListener("click", () => {
         controls.popup.style.display = controls.popup.style.display === "flex" ? "none" : "flex";
     });
-    controls.float.addEventListener("click", () => {
-        if (canvases[1].canvas.style.display === "none") {
-            canvases[1].canvas.style.display = "";
-            canvases[1].render(frame);
-        } else {
-            canvases[1].canvas.style.display = "none";
-        }
-    });
     controls.leaderboard.addEventListener("click", () => {
         if (canvases[2].canvas.style.display === "none") {
             canvases[2].canvas.style.display = "";
             canvases[2].render(frame);
         } else {
             canvases[2].canvas.style.display = "none";
+        }
+    });
+    controls.category.addEventListener("click", () => {
+        canvases[0].alt = canvases[0].alt === "" ? game.slice(5) : "";
+        canvases[0].render(canvases[0].count);
+    });
+    controls.float.addEventListener("click", () => {
+        if (canvases[1].canvas.style.display === "none") {
+            canvases[1].canvas.style.display = "";
+            canvases[1].render(frame);
+        } else {
+            canvases[1].canvas.style.display = "none";
         }
     });
 
@@ -155,6 +161,8 @@ async function setup() {
 }
 
 function start() {
+    canvases[0].alt = game.slice(5);
+
     if (frame === 0) {
         canvases[0].render(-1);
         canvases[2].render(0);
@@ -237,7 +245,7 @@ async function query(start = 0, length = 0, noRecurse = false) {
 
     try {
         const pingStart = performance.now();
-        const data = await (await fetch(`${location.href}`, {
+        const data = await (await fetch(window.location.href, {
             method: "POST",
             body: JSON.stringify({
                 start,
@@ -246,6 +254,7 @@ async function query(start = 0, length = 0, noRecurse = false) {
         })).json();
 
         finished = data.finished;
+        game = data.game;
 
         for (let name in data.players) {
             const playerData = data.players[name];
@@ -308,7 +317,6 @@ async function query(start = 0, length = 0, noRecurse = false) {
         controls.framesRight.textContent = (frame >= controls.range.max ? "-0" : frame - controls.range.max).toString().padEnd(7);
 
         lock = false;
-        return data.game;
     } catch (e) {
         console.error(e);
         lock = false;

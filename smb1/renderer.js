@@ -24,7 +24,7 @@ export async function init() {
         }));
     }
 
-    for (const i of ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "-", "_", "+", ".", ";", "[", "]"]) {
+    for (const i of ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "-", "_", "+", ".", ";", "[", "]", "%"]) {
         promises.push(new Promise((resolve) => {
             const image = new Image();
             image.addEventListener("load", async () => {
@@ -157,6 +157,7 @@ export class PlayerCanvas extends RendererCanvas {
     constructor(id, players, following = 0) {
         super();
 
+        this.alt = "";
         this.id = id;
         this.players = players;
         this.following = following;
@@ -217,6 +218,10 @@ export class PlayerCanvas extends RendererCanvas {
         this.count = count;
         this.context.fillStyle = "#000000";
 
+        const following = typeof this.following === "string" ?
+            this.following :
+            getPlacements(this.players, Math.max(this.count, 0)).flat()[this.following][0];
+
         if (count < 0) {
             this.clear(following);
             return true;
@@ -224,9 +229,6 @@ export class PlayerCanvas extends RendererCanvas {
 
         this.xOffset = Math.floor((this.canvas.width - 240) / 2);
 
-        const following = typeof this.following === "string" ?
-            this.following :
-            getPlacements(this.players, Math.max(this.count, 0)).flat()[this.following][0];
         if (this.players[following] == null)
             return true;
 
@@ -357,8 +359,14 @@ export class PlayerCanvas extends RendererCanvas {
         this.context.fillStyle = "#000000";
         this.context.fillRect(4, this.canvas.height - 20, following.length * 8 + 8, 16);
         this.drawText(8, this.canvas.height - 16, following);
-        if (this.id === 0)
+        if (this.id === 0) {
             this.drawText(this.canvas.width - 8, 8, formatTime(FRAME_TIME_MS * Math.max(this.count, 0)), "right");
+            if (this.alt === "")
+                return;
+            this.context.fillRect(this.canvas.width - this.alt.length * 8 - 12, this.canvas.height - 20, this.alt.length * 8 + 8, 16);
+            this.drawText(this.canvas.width - 8, this.canvas.height - 16, this.alt, "right");
+            console.log(this.alt);
+        }
     }
 }
 

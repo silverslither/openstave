@@ -31,7 +31,8 @@ async function setup() {
     controls.popup = document.getElementById("popup");
     controls.float = document.getElementById("float");
     controls.leaderboard = document.getElementById("lb");
-    controls.screenshot = document.getElementById("ss");
+    controls.copyScreenshot = document.getElementById("copy-ss");
+    controls.saveScreenshot = document.getElementById("save-ss");
 
     query().then(() => {
         frame = finished ? maxLength - 1 : Math.max(pingLength - 2 * FRAME_BUFFER, 0);
@@ -95,8 +96,9 @@ async function setup() {
             canvases[2].canvas.style.display = "none";
         }
     });
-    const ssLock = false;
-    controls.screenshot.addEventListener("click", async () => {
+
+    let ssLock = false;
+    controls.copyScreenshot.addEventListener("click", async () => {
         if (ssLock)
             return;
         ssLock = true;
@@ -110,7 +112,36 @@ async function setup() {
             const context = canvas.getContext("2d");
             context.putImageData(ss, 0, 0);
             const blob = await canvas.convertToBlob();
+
             window.navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+
+            ssLock = false;
+        } catch (e) {
+            console.error(e);
+            ssLock = false;
+        }
+    });
+    controls.saveScreenshot.addEventListener("click", async () => {
+        if (ssLock)
+            return;
+        ssLock = true;
+
+        try {
+            if (canvases[0].count < 0)
+                return;
+
+            const ss = screenshot(canvases[0], canvases[2]);
+            const canvas = new OffscreenCanvas(ss.width, ss.height);
+            const context = canvas.getContext("2d");
+            context.putImageData(ss, 0, 0);
+            const blob = await canvas.convertToBlob();
+
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `${finished ? Math.min(frame, maxLength - 1) : frame}.png`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+
             ssLock = false;
         } catch (e) {
             console.error(e);

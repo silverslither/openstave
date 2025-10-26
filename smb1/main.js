@@ -22,6 +22,8 @@ const controls = {};
 async function setup() {
     let drawCondition = false;
 
+    controls.root = document.getElementById("controls");
+
     controls.play = document.getElementById("play");
     controls.framesLeft = document.getElementById("frames-left");
     controls.range = document.querySelector("input");
@@ -29,6 +31,7 @@ async function setup() {
     controls.menu = document.getElementById("menu");
 
     controls.popup = document.getElementById("popup");
+    controls.ahc = document.getElementById("ahc");
     controls.leaderboard = document.getElementById("lb");
     controls.category = document.getElementById("category");
     controls.float = document.getElementById("float");
@@ -80,6 +83,12 @@ async function setup() {
     });
     controls.menu.addEventListener("click", () => {
         controls.popup.style.display = controls.popup.style.display === "flex" ? "none" : "flex";
+    });
+    controls.ahc.addEventListener("click", () => {
+        if (controls.root.classList.contains("hide"))
+            controls.root.classList.remove("hide")
+        else
+            controls.root.classList.add("hide");
     });
     controls.leaderboard.addEventListener("click", () => {
         if (canvases[2].canvas.style.display === "none") {

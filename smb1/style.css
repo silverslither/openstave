@@ -31,6 +31,9 @@ body {
 }
 
 #controls {
+    position: absolute;
+    bottom: 0px;
+    background-color: black;
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -99,4 +102,12 @@ canvas {
     height: 240px;
     border: 2px solid white;
     border-radius: 4px;
+}
+
+.hide {
+    opacity: 0;
+}
+
+.hide:hover {
+    opacity: 1;
 }

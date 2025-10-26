@@ -184,7 +184,9 @@ export class PlayerCanvas extends RendererCanvas {
     }
 
     onclick(event) {
-        if (event.button === 2) {
+        if (event.button === 1) {
+            this.following = 0;
+        } else if (event.button === 2) {
             this.following = (typeof this.following === "string") ? 0 : this.following + 1;
             this.following %= Object.keys(this.players).length;
         } else {
@@ -402,7 +404,7 @@ export class LeaderboardCanvas extends RendererCanvas {
 
     onclick(event) {
         const y = (event.clientY - this.canvas.getBoundingClientRect().top) / this.scale - 16;
-        if (event.clientX < 8 || y < 0 || y >= 8 * Object.keys(this.players).length) {
+        if (event.button === 1 || event.clientX < 8 || y < 0 || y >= 8 * Object.keys(this.players).length) {
             this.playerCanvas.onclick(event);
             return;
         }

@@ -3,7 +3,6 @@ import { LeaderboardCanvas, PlayerCanvas, init, screenshot } from "./renderer.js
 const FRAME_BUFFER = 120;
 const FRAME_TIME_MS = 655171 / 39375;
 const REREQUEST_INTERVAL_MS = 0.5 * FRAME_BUFFER * FRAME_TIME_MS;
-const LIVE_DELAY = 2 * FRAME_BUFFER;
 let lastFrameMs = 0;
 
 const canvases = [];
@@ -201,13 +200,10 @@ function draw(timeMs) {
 
             lastFrameMs += df * FRAME_TIME_MS;
         } else {
-            if (finished || frame <= pingLength - 2 * FRAME_BUFFER) {
+            if (finished || frame <= pingLength - 2 * FRAME_BUFFER)
                 query(frame, 2 * FRAME_BUFFER);
-            } else if (frame <= pingLength - FRAME_BUFFER) {
-                query(frame, FRAME_BUFFER);
-            } else {
+            else
                 query();
-            }
             lastFrameMs += REREQUEST_INTERVAL_MS;
         }
     }
@@ -312,7 +308,7 @@ async function query(start = 0, length = 0, noRecurse = false) {
         for (let i = start; i < j; i++)
             buffered[i] = true;
 
-        controls.range.max = finished ? maxLength - 1 : Math.max(maxLength - 2 * FRAME_BUFFER - LIVE_DELAY, 0);
+        controls.range.max = finished ? maxLength - 1 : Math.max(maxLength - 4 * FRAME_BUFFER, 0);
         controls.range.value = frame;
         controls.framesRight.textContent = (frame >= controls.range.max ? "-0" : frame - controls.range.max).toString().padEnd(7);
 

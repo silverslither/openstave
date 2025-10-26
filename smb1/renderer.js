@@ -365,7 +365,6 @@ export class PlayerCanvas extends RendererCanvas {
                 return;
             this.context.fillRect(this.canvas.width - this.alt.length * 8 - 12, this.canvas.height - 20, this.alt.length * 8 + 8, 16);
             this.drawText(this.canvas.width - 8, this.canvas.height - 16, this.alt, "right");
-            console.log(this.alt);
         }
     }
 }
@@ -486,7 +485,7 @@ export class LeaderboardCanvas extends RendererCanvas {
             lines.push(line);
         }
 
-        for (const [name] of dnf.sort((a, b) => b[1] - a[1])) {
+        for (const [name] of dnf) {
             const line = [];
             line.push(name, "", "DNF");
             lines.push(line);
@@ -531,7 +530,7 @@ function getPlacements(players, count) {
             nodnf.push(entry);
     }
 
-    return [nodnf, dnf];
+    return [nodnf, dnf.sort((a, b) => b[1] - a[1])];
 }
 
 export function screenshot(pCanvas, lCanvas) {

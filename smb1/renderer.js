@@ -20,7 +20,7 @@ export async function init() {
                 maps[i] = await window.createImageBitmap(image);
                 resolve();
             });
-            image.src = `smb1/maps/${i}.png`;
+            image.src = encodeURI(`smb1/maps/${i}.png`);
         }));
     }
 
@@ -31,7 +31,7 @@ export async function init() {
                 text[i] = await window.createImageBitmap(image);
                 resolve();
             });
-            image.src = `smb1/text/${i}.png`;
+            image.src = encodeURI(`smb1/text/${i}.png`);
         }));
     }
 

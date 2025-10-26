@@ -25,8 +25,16 @@ export const setKey = (key: string) => gKey = key;
 
 const server = http.createServer((request, response) => {
     try {
+        let url: string;
+        try {
+            url = decodeURI(request.url);
+        } catch (e) {
+            response.writeHead(400).end();
+            return;
+        }
+
         if (request.method === "GET") {
-            const query = request.url.split("?");
+            const query = url.split("?");
             const parts = query[0].split("/").filter(v => v !== "");
 
             let file: string;
@@ -94,7 +102,7 @@ const server = http.createServer((request, response) => {
                 return;
             }
 
-            if (request.url === "/") {
+            if (url === "/") {
                 const key = requestBody.key;
                 const id = requestBody.id;
                 const game = requestBody.game;
@@ -145,7 +153,7 @@ const server = http.createServer((request, response) => {
                 return;
             }
 
-            const race = request.url.slice(1);
+            const race = url.slice(1);
             if (!activeRaces.has(race) && !inactiveRaces.has(race)) {
                 response.writeHead(404).end();
                 return;

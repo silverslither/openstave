@@ -542,12 +542,12 @@ export function screenshot(pCanvas, lCanvas) {
 
     let oPixel = 0;
     for (let y = 0; y < 2 * pCanvas.canvas.height; y++) {
-        const _y = 4 * (y >> 1);
+        const _y = 4 * (y >>> 1);
         const pOffset = _y * pCanvas.canvas.width;
         const lOffset = _y * lCanvas.canvas.width;
 
         for (let x = 0; x < 2 * pCanvas.canvas.width; x++, oPixel += 4) {
-            const pPixel = pOffset + 4 * (x >> 1);
+            const pPixel = pOffset + 4 * (x >>> 1);
             const lPixel = lOffset + 4 * x;
 
             if (x < lCanvas.canvas.width && lBuffer[lPixel + 3] !== 0) {

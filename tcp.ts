@@ -35,10 +35,8 @@ export const server = net.createServer((client) => {
                 }
                 player.add(data);
 
-                if (player.finished) {
-                    activePlayers.delete(username);
+                if (player.finished)
                     client.destroy();
-                }
 
                 return;
             }
@@ -74,8 +72,11 @@ export const server = net.createServer((client) => {
     client.on("close", () => {
         openConnections.delete(client);
         const player = activePlayers.get(username);
-        if (player != null)
+        if (player != null) {
+            if (player.finished)
+                activePlayers.delete(username);
             player.connected = false;
+        }
     });
 });
 

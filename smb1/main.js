@@ -86,7 +86,7 @@ async function setup() {
     });
     controls.ahc.addEventListener("click", () => {
         if (controls.root.classList.contains("hide"))
-            controls.root.classList.remove("hide")
+            controls.root.classList.remove("hide");
         else
             controls.root.classList.add("hide");
     });

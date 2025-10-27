@@ -105,6 +105,7 @@ export class Race implements AbstractRace {
             if (player.start !== player.start)
                 response[player.username] = null;
             const playerObj = {
+                connected: player.connected,
                 splits: player.splits.map(v => v - player.start),
                 dnf: player.dnf - player.start,
                 time: player.end - player.start,

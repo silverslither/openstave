@@ -31,12 +31,17 @@ async function setup() {
     controls.menu = document.getElementById("menu");
 
     controls.popup = document.getElementById("popup");
+    controls.help = document.getElementById("help");
     controls.ahc = document.getElementById("ahc");
     controls.leaderboard = document.getElementById("lb");
     controls.category = document.getElementById("category");
     controls.float = document.getElementById("float");
     controls.copyScreenshot = document.getElementById("copy-ss");
     controls.saveScreenshot = document.getElementById("save-ss");
+
+    controls.help.addEventListener("click", () => {
+        window.open('https://github.com/silverslither/openstave?tab=readme-ov-file#renderer-controls', '_blank').focus();
+    });
 
     query().then(() => {
         frame = finished ? maxLength - 1 : Math.max(pingLength - 2 * FRAME_BUFFER, 0);

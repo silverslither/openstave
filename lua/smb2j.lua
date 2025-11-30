@@ -172,6 +172,14 @@ function readmemory()
     sprites = {}
     for i = 0, 255 do table.insert(sprites, emu.read(i, emu.memType.nesSpriteRam)) end
 
+    if (emu.read(0xbc0, emu.memType.nesPpuDebug) == 0) then
+        for i = 1, 253, 4 do
+            if (sprites[i + 1] < 0x80 or sprites[i + 1] >= 0xc0) then goto continue end
+            sprites[i + 2] = (sprites[i + 2] + 8) % 256 -- encode 2 * 0x40 offset hidden inside unused bits
+            ::continue::
+        end
+    end
+
     local area =
         emu.read(0x7fb, emu.memType.nesDebug) * 128
         + (emu.read(0x74e, emu.memType.nesDebug) * 32 + emu.read(0x74f, emu.memType.nesDebug)) % 128

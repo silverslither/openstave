@@ -18,7 +18,6 @@ export async function init(game) {
     const promises = [];
 
     TILES = (await import(`/${game}/tiles.js`)).default;
-    console.log(TILES);
 
     for (const i of (game === "smb1" ? SMB1_MAPS : SMB2J_MAPS)) {
         promises.push(new Promise((resolve) => {
@@ -108,8 +107,10 @@ class RendererCanvas {
     renderTileToBuffer(x, y, tile, attributes, palette, alpha) {
         const vflip = attributes >>> 7;
         const hflip = (attributes >>> 6) & 1;
+        const u = (attributes >>> 2) & 7;
         const p = attributes & 3;
-        tile = TILES[tile];
+        console.log(u)
+        tile = TILES[tile + u * 0x40];
 
         for (let j = 0; j < 8; j++) {
             for (let i = 0; i < 8; i++) {

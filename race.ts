@@ -90,7 +90,7 @@ export class Race implements AbstractRace {
         const race = new Race();
         race.id = obj.id;
         race.game = obj.game;
-        race.timeout = obj.timeout ?? Infinity;
+        race.timeout = obj.timeout ?? -Infinity;
         race.players = obj.players.map((v: any) => Player.from(v));
         for (const player of race.players)
             if (player.end !== player.end && player.dnf !== player.dnf)

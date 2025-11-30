@@ -4,10 +4,9 @@ function teeLog(str)
 end
 
 HASHES = {
-    ["ea343f4e445a9050d4b4fbac2c77d0693b1d0922"] = true, -- (W) iNES
-    ["33d23c2f2cfa4c9efec87f7bc1321ce3ce6c89bd"] = true, -- (W) NES 2.0
-    ["383ad8e3890a95de9595f0a6087648f51177da13"] = true, -- (J) FDS
-    ["41cf327605ccc7b65f1891427abe4f64218354a1"] = true, -- (J) FDS
+    ["3b8c8998b4887d6dd676965943d69a320738ab9c"] = true,
+    ["08927227b6ff67f42e759505d176cd924931bd14"] = true,
+    ["20e50128742162ee47561db9e82b2836399c880c"] = true,
 }
 
 if HASHES[emu.getRomInfo().fileSha1Hash:lower()] == nil then
@@ -173,7 +172,9 @@ function readmemory()
     sprites = {}
     for i = 0, 255 do table.insert(sprites, emu.read(i, emu.memType.nesSpriteRam)) end
 
-    local area = (emu.read(0x74e, emu.memType.nesDebug) * 32 + emu.read(0x74f, emu.memType.nesDebug)) % 128
+    local area =
+        emu.read(0x7fb, emu.memType.nesDebug) * 128
+        + (emu.read(0x74e, emu.memType.nesDebug) * 32 + emu.read(0x74f, emu.memType.nesDebug)) % 128
     local ws = q_level()
     ram = {
         emu.read(0xe, emu.memType.nesDebug),   -- player state

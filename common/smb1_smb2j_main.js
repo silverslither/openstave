@@ -1,4 +1,4 @@
-import { LeaderboardCanvas, PlayerCanvas, init, screenshot } from "./renderer.js";
+import { LeaderboardCanvas, PlayerCanvas, init, screenshot } from "./smb1_smb2j_renderer.js";
 
 const FRAME_BUFFER = 120;
 const FRAME_TIME_MS = 655171 / 39375;
@@ -14,7 +14,7 @@ let seek = false;
 let maxLength = 0;
 let pingLength = 0;
 let finished = false;
-let game = "";
+let category = "";
 
 addEventListener("DOMContentLoaded", setup);
 
@@ -40,7 +40,7 @@ async function setup() {
     controls.saveScreenshot = document.getElementById("save-ss");
 
     controls.help.addEventListener("click", () => {
-        window.open('https://github.com/silverslither/openstave?tab=readme-ov-file#renderer-controls', '_blank').focus();
+        window.open("https://github.com/silverslither/openstave?tab=readme-ov-file#renderer-controls", "_blank").focus();
     });
 
     query().then(() => {
@@ -71,7 +71,7 @@ async function setup() {
         drawCondition = true;
     });
 
-    await init();
+    await init(window.__game);
     canvases[0] = new PlayerCanvas(0, players);
     canvases[1] = new PlayerCanvas(1, players);
     canvases[2] = new LeaderboardCanvas(players, canvases[0]);
@@ -104,7 +104,7 @@ async function setup() {
         }
     });
     controls.category.addEventListener("click", () => {
-        canvases[0].alt = canvases[0].alt === "" ? game.slice(5) : "";
+        canvases[0].alt = canvases[0].alt === "" ? category : "";
         canvases[0].render(canvases[0].count);
     });
     controls.float.addEventListener("click", () => {
@@ -174,7 +174,7 @@ async function setup() {
 }
 
 function start() {
-    canvases[0].alt = game.slice(5);
+    canvases[0].alt = category;
 
     if (frame === 0) {
         canvases[0].render(-1);
@@ -264,7 +264,7 @@ async function query(start = 0, length = 0, noRecurse = false) {
         })).json();
 
         finished = data.finished;
-        game = data.game;
+        category = data.game.split("_")[1];
 
         for (let name in data.players) {
             const playerData = data.players[name];

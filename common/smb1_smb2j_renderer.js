@@ -1,5 +1,5 @@
-import TILES from "./tiles.js";
 import NES_COLOURS from "./palette.js";
+let TILES;
 
 const FRAME_TIME_MS = 655171 / 39375;
 
@@ -7,31 +7,38 @@ const COMPONENT_NES_COLOURS = NES_COLOURS.map(v => v.slice(1).match(/../g).map(w
 const OUTLINE_COLOURS = ["#ff0000", "#00ffff", "#00ff00", "#ff00ff", "#0000ff", "#ffff00", "#ffffff", "#000000"];
 const COMPONENT_OUTLINE_COLOURS = OUTLINE_COLOURS.map(v => v.slice(1).match(/../g).map(w => parseInt(w, 16)));
 
+const CHARACTERS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "-", "_", "+", ".", ";", "[", "]", "%"];
+const SMB1_MAPS = ["00", "01", "02", "09", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "2a", "2b", "2c", "2d", "2e", "2f", "30", "31", "32", "33", "34", "35", "40", "41", "42", "44", "60", "61", "62", "63", "64", "65"];
+const SMB2J_MAPS = ["00", "01", "02", "03", "04", "05", "06", "07", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "2a", "2b", "2c", "2d", "2e", "2f", "30", "31", "32", "33", "34", "35", "36", "38", "3b", "3c", "40", "41", "42", "43", "44", "60", "61", "62", "63", "64", "65", "66", "67", "68", "69", "80", "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9", "aa", "ab", "c0", "c1", "e0", "e1", "e2", "e3"];
+
 const maps = {};
 const text = {};
 
-export async function init() {
+export async function init(game) {
     const promises = [];
 
-    for (const i of ["00", "01", "02", "09", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "2a", "2b", "2c", "2d", "2e", "2f", "30", "31", "32", "33", "34", "35", "40", "41", "42", "44", "60", "61", "62", "63", "64", "65"]) {
+    TILES = (await import(`/${game}/tiles.js`)).default;
+    console.log(TILES);
+
+    for (const i of (game === "smb1" ? SMB1_MAPS : SMB2J_MAPS)) {
         promises.push(new Promise((resolve) => {
             const image = new Image();
             image.addEventListener("load", async () => {
                 maps[i] = await window.createImageBitmap(image);
                 resolve();
             });
-            image.src = encodeURI(`smb1/maps/${i}.png`);
+            image.src = encodeURI(`${game}/maps/${i}.png`);
         }));
     }
 
-    for (const i of ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "-", "_", "+", ".", ";", "[", "]", "%"]) {
+    for (const i of CHARACTERS) {
         promises.push(new Promise((resolve) => {
             const image = new Image();
             image.addEventListener("load", async () => {
                 text[i] = await window.createImageBitmap(image);
                 resolve();
             });
-            image.src = encodeURI(`smb1/text/${i}.png`);
+            image.src = encodeURI(`common/text/${i}.png`);
         }));
     }
 

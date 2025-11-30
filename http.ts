@@ -29,6 +29,7 @@ const server = http.createServer((request, response) => {
         try {
             url = decodeURI(request.url);
         } catch (e) {
+            void e;
             response.writeHead(400).end();
             return;
         }
@@ -93,6 +94,7 @@ const server = http.createServer((request, response) => {
             try {
                 requestBody = JSON.parse(Buffer.concat(chunks).toString());
             } catch (e) {
+                void e;
                 response.writeHead(400).end();
                 return;
             }

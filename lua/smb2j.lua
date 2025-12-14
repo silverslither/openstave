@@ -104,7 +104,7 @@ function remainder()
             end
         end
 
-        if (_r == 0xff and emu.read(0x7a1, emu.memType.nesDebug) == 6) then
+        if (emu.read(0x7ee, emu.memType.nesDebug) == 0 and _r == 0xff and emu.read(0x7a1, emu.memType.nesDebug) == 6) then
             _r = emu.read(0x77f, emu.memType.nesDebug)
             _r_timer = 0x7a1 - 0x795
         end

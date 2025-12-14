@@ -149,19 +149,22 @@ function q_page()
     return page
 end
 
+local _p_area = 0
 local _p_world = 0
 local _p_stage = 0
 function q_level()
     local state = emu.read(0xe, emu.memType.nesDebug)
+    local area = (emu.read(0x74e, emu.memType.nesDebug) * 32 + emu.read(0x74f, emu.memType.nesDebug)) % 128
     local world = emu.read(0x75f, emu.memType.nesDebug)
     local stage = emu.read(0x75c, emu.memType.nesDebug)
 
-    if (state ~= 3) then
+    if (state ~= 3 and state ~= 8) then
+        _p_area = area
         _p_world = world
         _p_stage = stage
     end
 
-    return { _p_world, _p_stage }
+    return { _p_area, _p_world, _p_stage }
 end
 
 function readmemory()
@@ -173,14 +176,13 @@ function readmemory()
     sprites = {}
     for i = 0, 255 do table.insert(sprites, emu.read(i, emu.memType.nesSpriteRam)) end
 
-    local area = (emu.read(0x74e, emu.memType.nesDebug) * 32 + emu.read(0x74f, emu.memType.nesDebug)) % 128
-    local ws = q_level()
+    local aws = q_level()
     ram = {
         emu.read(0xe, emu.memType.nesDebug),   -- player state
-        area,                                  -- area id
+        aws[1],                                -- (quasi) area id
         emu.read(0x770, emu.memType.nesDebug), -- game state
-        ws[1],                                 -- (quasi) world
-        ws[2],                                 -- (quasi) stage
+        aws[2],                                -- (quasi) world
+        aws[3],                                -- (quasi) stage
         q_page(),                              -- area (quasi) page
         emu.read(0x86, emu.memType.nesDebug),  -- area pixel
         emu.read(0x3ad, emu.memType.nesDebug), -- screen pixel

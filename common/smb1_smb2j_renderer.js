@@ -109,7 +109,6 @@ class RendererCanvas {
         const hflip = (attributes >>> 6) & 1;
         const u = (attributes >>> 2) & 7;
         const p = attributes & 3;
-        console.log(u)
         tile = TILES[tile + u * 0x40];
 
         for (let j = 0; j < 8; j++) {
@@ -117,7 +116,7 @@ class RendererCanvas {
                 const o = ((vflip ? 7 - j : j) << 3) + (hflip ? 7 - i : i);
                 if (tile[o] === 0)
                     continue;
-                this.drawPixelToBuffer(x + i, y + j, palette[0x10 + (p << 2) + tile[o]], alpha);
+                this.drawPixelToBuffer(x + i, y + j + 1, palette[0x10 + (p << 2) + tile[o]], alpha);
             }
         }
     }

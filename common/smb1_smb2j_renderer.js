@@ -267,7 +267,7 @@ export class PlayerCanvas extends RendererCanvas {
             gScreenPixel,
         ] = pframe.subarray(32 + 256);
 
-        const q_gAreaPage = gPlayerState === 7 ? frame[32 + 256 + 5] : gAreaPage;
+        const q_gAreaPage = (gPlayerState === 7 ? frame[32 + 256 + 5] : gAreaPage) + (gScreenPixel === 255);
         const xOffset = this.xOffset - ((q_gAreaPage << 8) + gAreaPixel - gScreenPixel);
 
         if (gPlayerState === 0) {
@@ -311,7 +311,7 @@ export class PlayerCanvas extends RendererCanvas {
                 screenPixel,
             ] = pframe.subarray(32 + 256);
 
-            const q_areaPage = playerState === 7 ? frame[32 + 256 + 5] : areaPage;
+            const q_areaPage = (playerState === 7 ? frame[32 + 256 + 5] : areaPage) + (screenPixel === 255);
 
             if (playerState === 0)
                 continue;

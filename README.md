@@ -7,6 +7,9 @@ Extensible monolithic server for STA races.
 * Super Mario Bros. 
     * any%
     * warpless
+* Super Mario Bros. 2 (Japan)
+    * any%
+    * warpless
 
 ## Hosting
 

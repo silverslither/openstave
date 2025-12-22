@@ -1,5 +1,7 @@
 import type { Frame, PlayerEvent } from "./types.ts";
 
+const SMB1_SMB2J_WARPLESS_SPLITS = [...Array(31).keys()];
+
 const SMB1_ANY_SPLITS = [
     0 * 4 + 0, // 1-1
     3 * 4 + 0 + 128, // 1-2 WZ
@@ -9,8 +11,6 @@ const SMB1_ANY_SPLITS = [
     7 * 4 + 1, // 8-2
     7 * 4 + 2, // 8-3
 ];
-
-const SMB1_WARPLESS_SPLITS = [...Array(31).keys()];
 
 const SMB2J_ANY_SPLITS = [
     0 * 4 + 0, // 1-1
@@ -29,8 +29,9 @@ const SMB2J_ANY_SPLITS = [
 const SMB1_SMB2J_GENERATOR = (game: string, current: Frame, frames: Frame[], events: PlayerEvent[]) => {
     const SPLITS = {
         "smb1_any%": SMB1_ANY_SPLITS,
-        "smb1_warpless": SMB1_WARPLESS_SPLITS,
+        "smb1_warpless": SMB1_SMB2J_WARPLESS_SPLITS,
         "smb2j_any%": SMB2J_ANY_SPLITS,
+        "smb2j_warpless": SMB1_SMB2J_WARPLESS_SPLITS,
     }[game];
 
     const START_AREA = game.split("_")[0] === "smb1" ? 0x25 : 0x20;
@@ -78,6 +79,7 @@ const eventGenerators = {
     "smb1_any%": (current: Frame, frames: Frame[], events: PlayerEvent[]) => SMB1_SMB2J_GENERATOR("smb1_any%", current, frames, events),
     "smb1_warpless": (current: Frame, frames: Frame[], events: PlayerEvent[]) => SMB1_SMB2J_GENERATOR("smb1_warpless", current, frames, events),
     "smb2j_any%": (current: Frame, frames: Frame[], events: PlayerEvent[]) => SMB1_SMB2J_GENERATOR("smb2j_any%", current, frames, events),
+    "smb2j_warpless": (current: Frame, frames: Frame[], events: PlayerEvent[]) => SMB1_SMB2J_GENERATOR("smb2j_warpless", current, frames, events),
 };
 
 export const supportedGames = new Set(Object.keys(eventGenerators));

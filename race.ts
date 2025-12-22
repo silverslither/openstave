@@ -6,10 +6,13 @@ import * as zlib from "node:zlib";
 import { supportedGames } from "./buffer.ts";
 import Player from "./player.ts";
 
+const MINUTE = 60 * 1000;
 const TIMEOUTS = {
-    "default": 30 * 60 * 1000,
-    "smb1_any%": 15 * 60 * 1000,
-    "smb1_warpless": 45 * 60 * 1000,
+    "default": 30 * MINUTE,
+    "smb1_any%": 15 * MINUTE,
+    "smb1_warpless": 45 * MINUTE,
+    "smb2j_any%": 20 * MINUTE,
+    "smb2j_warpless": 50 * MINUTE,
 };
 
 const FILE_BUFFER = 240;

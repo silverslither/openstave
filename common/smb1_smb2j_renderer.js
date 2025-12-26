@@ -17,7 +17,17 @@ const text = {};
 export async function init(game) {
     const promises = [];
 
-    TILES = (await import(`/${game}/tiles.js`)).default;
+    TILES = (await import(`/${game}/tiles.js`)).default.split(" ");
+
+    for (let i = 0; i < TILES.length; i++) {
+        let c = BigInt(`0x${TILES[i]}`);
+        const a = [];
+        for (let j = 0; j < 64; j++) {
+            a.push(Number(c & 3n))
+            c >>= 2n;
+        }
+        TILES[i] = a;
+    }
 
     for (const i of (game === "smb1" ? SMB1_MAPS : SMB2J_MAPS)) {
         promises.push(new Promise((resolve) => {

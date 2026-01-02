@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="">
+
+<head>
+    <meta charset="utf-8">
+    <title>OpenStave SMB3 Renderer</title>
+    <link rel="stylesheet" href="/common/style.css">
+    <script type="module" src="/smb3/main.js"></script>
+</head>
+
+<body>
+    <div id="renderer">
+        <div id="screen"></div>
+    </div>
+    <div id="controls">
+        <button id="play">Pause</button>
+        <span id="frames-left">-------</span>
+        <input type="range" min="0" max="0">
+        <span id="frames-right">-------</span>
+        <button id="menu">Menu</button>
+        <div id="popup">
+            <button id="help">Mouse Controls Help</button>
+            <button id="ahc">Auto-Hide Controls</button>
+            <button id="lb">Show/Hide Leaderboard</button>
+            <button id="category">Show/Hide Category</button>
+            <button id="float">Show/Hide Float</button>
+            <button id="copy-ss">Copy Screenshot</button>
+            <button id="save-ss">Save Screenshot</button>
+        </div>
+    </div>
+</body>
+
+</html>

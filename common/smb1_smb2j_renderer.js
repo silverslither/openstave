@@ -23,7 +23,7 @@ export async function init(game) {
         let c = BigInt(`0x${TILES[i]}`);
         const a = [];
         for (let j = 0; j < 64; j++) {
-            a.push(Number(c & 3n))
+            a.push(Number(c & 3n));
             c >>= 2n;
         }
         TILES[i] = a;

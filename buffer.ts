@@ -35,7 +35,7 @@ const SMB1_SMB2J_GENERATOR = (game: string, current: Frame, frames: Frame[], eve
     }[game];
 
     const START_AREA = game.split("_")[0] === "smb1" ? 0x25 : 0x20;
-    const END_AREA = game.split("_")[0] === "smb1" ? 0x65 : 0x67; 
+    const END_AREA = game.split("_")[0] === "smb1" ? 0x65 : 0x67;
 
     const last = frames.at(-1);
     if (last != null) {
@@ -75,14 +75,33 @@ const SMB1_SMB2J_GENERATOR = (game: string, current: Frame, frames: Frame[], eve
     }
 };
 
+const SMB3_GENERATOR = (game: string, current: Frame, frames: Frame[], events: PlayerEvent[]) => {
+    const last = frames.at(-1);
+    if (last != null) {
+        if (current.count !== last.count + 1) {
+            events.push({ code: "DNF", data: frames.length - 1 });
+            return;
+        }
+
+        events.push({ code: "START", data: frames.length });
+    }
+};
+
 const eventGenerators = {
     "smb1_any%": (current: Frame, frames: Frame[], events: PlayerEvent[]) => SMB1_SMB2J_GENERATOR("smb1_any%", current, frames, events),
     "smb1_warpless": (current: Frame, frames: Frame[], events: PlayerEvent[]) => SMB1_SMB2J_GENERATOR("smb1_warpless", current, frames, events),
     "smb2j_any%": (current: Frame, frames: Frame[], events: PlayerEvent[]) => SMB1_SMB2J_GENERATOR("smb2j_any%", current, frames, events),
     "smb2j_warpless": (current: Frame, frames: Frame[], events: PlayerEvent[]) => SMB1_SMB2J_GENERATOR("smb2j_warpless", current, frames, events),
+    "smb3_test": (current: Frame, frames: Frame[], events: PlayerEvent[]) => SMB3_GENERATOR("smb3_test", current, frames, events),
 };
 
 export const supportedGames = new Set(Object.keys(eventGenerators));
+
+const RAM_OFFSET = {
+    "smb1": 8 + 32 + 256,
+    "smb2j": 8 + 32 + 256,
+    "smb3": 8 + 32 + 6 + 256,
+};
 
 export function bufferHandler(buffer: Buffer, frames: Frame[], game: string) {
     const events: PlayerEvent[] = [];
@@ -91,7 +110,7 @@ export function bufferHandler(buffer: Buffer, frames: Frame[], game: string) {
         const current: Frame = {
             data: buffer.subarray(8, l),
             count: buffer.readUint32LE(4),
-            ram: buffer.subarray(8 + 32 + 256, l),
+            ram: buffer.subarray(RAM_OFFSET[game.split("_")[0]], l),
         };
         buffer = buffer.subarray(l);
 

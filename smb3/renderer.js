@@ -286,7 +286,7 @@ export class PlayerCanvas extends RendererCanvas {
             gLeftEdgePixel,
         ] = pframe.subarray(38 + 256);
 
-        const gTransitionFlag = frame[38 + 256 + 8] | pframe[38 + 256 + 8] | ppframe[38 + 256 + 8];
+        const gTransitionFlag = (frame[38 + 256 + 8] | pframe[38 + 256 + 8] | ppframe[38 + 256 + 8]) & 1;
         const gTransitionEffectTimer = (ppframe[38 + 256 + 9] + 1) & 0xff;
 
         const gAreaPointer = gAreaPointerLow + (gAreaPointerHigh << 8);
@@ -295,6 +295,12 @@ export class PlayerCanvas extends RendererCanvas {
 
         const xOffset = this.xOffset - gLeftEdge;
         const yMapOffset = (gAreaPointer === 0) ? -12 : Math.max(gTopEdge + 1, 0);
+
+        if (count < 72) {
+            this.context.fillStyle = "#000000";
+            this.clear(following);
+            return false;
+        }
 
         if (gTransitionFlag) {
             this.context.fillStyle = NES_COLOURS[gPalette[0]];
@@ -340,7 +346,7 @@ export class PlayerCanvas extends RendererCanvas {
                 leftEdgePixel,
             ] = pframe.subarray(38 + 256);
 
-            const transitionFlag = frame[38 + 256 + 8] | pframe[38 + 256 + 8] | ppframe[38 + 256 + 8];
+            const transitionFlag = (frame[38 + 256 + 8] | pframe[38 + 256 + 8] | ppframe[38 + 256 + 8]) & 1;
             if (transitionFlag)
                 continue;
 
@@ -362,8 +368,7 @@ export class PlayerCanvas extends RendererCanvas {
                 const attributes = sprites[i + 2];
                 const x = sprites[i + 3];
 
-                // hide some unintended wraparound
-                if (y >= 193 || x === 0 || x === 255)
+                if (y >= 192 || x === 0 || x === 255)
                     continue;
 
                 // send world map side tiles and w8 dark room tiles to background
@@ -624,10 +629,10 @@ export function screenshot(pCanvas, lCanvas) {
             const lPixel = lOffset + 4 * x;
 
             if (x < lCanvas.canvas.width && lBuffer[lPixel + 3] !== 0) {
-                // this doesn't work in general but it works for black = translucent, anything else = opaque
-                oBuffer[oPixel + 0] = lBuffer[lPixel + 0] + (1.0 - 0.00392156862745098 * lBuffer[lPixel + 3]) * pBuffer[pPixel + 0];
-                oBuffer[oPixel + 1] = lBuffer[lPixel + 1] + (1.0 - 0.00392156862745098 * lBuffer[lPixel + 3]) * pBuffer[pPixel + 1];
-                oBuffer[oPixel + 2] = lBuffer[lPixel + 2] + (1.0 - 0.00392156862745098 * lBuffer[lPixel + 3]) * pBuffer[pPixel + 2];
+                const alpha = 0.00392156862745098 * lBuffer[lPixel + 3];
+                oBuffer[oPixel + 0] = alpha * lBuffer[lPixel + 0] + (1.0 - alpha) * pBuffer[pPixel + 0];
+                oBuffer[oPixel + 1] = alpha * lBuffer[lPixel + 1] + (1.0 - alpha) * pBuffer[pPixel + 1];
+                oBuffer[oPixel + 2] = alpha * lBuffer[lPixel + 2] + (1.0 - alpha) * pBuffer[pPixel + 2];
             } else {
                 oBuffer[oPixel + 0] = pBuffer[pPixel + 0];
                 oBuffer[oPixel + 1] = pBuffer[pPixel + 1];

@@ -93,11 +93,11 @@ local _load_flag = false
 local _wz_flag = false
 local _p_area = 0
 local _p_world = 0
-function in_screen_transition()
-    area = emu.read(0x61, emu.memType.nesDebug) * 256 + emu.read(0x62, emu.memType.nesDebug)
-    world = emu.read(0x727, emu.memType.nesDebug)
-    fade_timer = emu.read(0x41c, emu.memType.nesDebug)
-    fade_step = emu.read(0x41d, emu.memType.nesDebug)
+function flag_in_screen_transition()
+    local area = emu.read(0x61, emu.memType.nesDebug) * 256 + emu.read(0x62, emu.memType.nesDebug)
+    local world = emu.read(0x727, emu.memType.nesDebug)
+    local fade_timer = emu.read(0x41c, emu.memType.nesDebug)
+    local fade_step = emu.read(0x41d, emu.memType.nesDebug)
 
     if fade_step == 4 and fade_timer == 4 then
         _load_flag = false
@@ -118,6 +118,18 @@ function in_screen_transition()
     return (fade_step ~= 0 or _load_flag or _wz_flag) and 1 or 0
 end
 
+local _p_start = 0
+function flag_start()
+    local start = emu.read(0x1f4, emu.memType.nesDebug)
+    local flag = (start == 0xff and _p_start == 0) and 1 or 0
+    _p_start = start
+    return flag
+end
+
+function flag_bowser_door()
+    return emu.read(0x78d, emu.memType.nesDebug) ~= 0 and 1 or 0
+end
+
 function readmemory()
     frame = emu.getState().frameCount
 
@@ -127,6 +139,10 @@ function readmemory()
     sprites = {}
     for i = 0, 255 do table.insert(sprites, emu.read(i, emu.memType.nesSpriteRam)) end
 
+    local flags =
+        flag_in_screen_transition()
+        + flag_start() * 2
+        + flag_bowser_door() * 4
     ram = {
         emu.read(0x70a, emu.memType.nesDebug), -- tileset
         emu.read(0x727, emu.memType.nesDebug), -- world
@@ -136,8 +152,11 @@ function readmemory()
         emu.read(0x543, emu.memType.nesDebug), -- area top edge pixel
         emu.read(0x12, emu.memType.nesDebug), -- left edge page
         emu.read(0xfd, emu.memType.nesDebug), -- left edge pixel
-        in_screen_transition(),
-        emu.read(0x450, emu.memType.nesDebug),
+        flags,
+        emu.read(0x450, emu.memType.nesDebug), -- transition timer
+        emu.read(0x7976, emu.memType.nesDebug), -- map ypos
+        emu.read(0x7978, emu.memType.nesDebug), -- map xpos high byte
+        emu.read(0x797a, emu.memType.nesDebug), -- map xpos low byte
     }
 end
 

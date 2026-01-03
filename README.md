@@ -38,3 +38,7 @@ On the homepage, fill out all form elements and click Submit to start a new race
 Note: with these settings enabled, be careful to not run any scripts from unknown or untrustworthy sources. It is best to inspect all scripts for suspicious looking code.
 
 Then, to run a script, simply `File > Open` the script you wish to run (if necessary, click the triangle icon to run the script - the default settings automatically execute loaded scripts). If it is an OpenStave user script, you should see `[OpenStave] successfully connected` printed to the Mesen2 screen as well as the console in the script window. If an error message is printed, follow the instructions in the error message.
+
+## Special Thanks
+
+* 100th_Coin, for generating all SMB3 level maps and helping me work with the SMB3 codebase

@@ -75,7 +75,7 @@ const SMB1_SMB2J_GENERATOR = (game: string, current: Frame, frames: Frame[], eve
     }
 };
 
-const SMB3_GENERATOR = (game: string, current: Frame, frames: Frame[], events: PlayerEvent[]) => {
+const SMB3_ANYNWW_GENERATOR = (current: Frame, frames: Frame[], events: PlayerEvent[]) => {
     const last = frames.at(-1);
     if (last != null) {
         if (current.count !== last.count + 1) {
@@ -83,7 +83,25 @@ const SMB3_GENERATOR = (game: string, current: Frame, frames: Frame[], events: P
             return;
         }
 
-        events.push({ code: "START", data: frames.length });
+        const flags = current.ram[8];
+        if (current.ram[0] === 0x00 &&
+            current.ram[1] === 0x00 &&
+            current.ram[2] === 0x00 &&
+            current.ram[3] === 0x00 &&
+            flags & 0b10) {
+
+            events.push({ code: "START", data: frames.length });
+        }
+
+        if (current.ram[0] === 0x02 &&
+            current.ram[1] === 0x07 &&
+            current.ram[10] === 0x70 &&
+            current.ram[11] === 0x03 &&
+            current.ram[12] === 0xc0 &&
+            flags & 0b100) {
+
+            events.push({ code: "END", data: frames.length });
+        }
     }
 };
 
@@ -92,7 +110,7 @@ const eventGenerators = {
     "smb1_warpless": (current: Frame, frames: Frame[], events: PlayerEvent[]) => SMB1_SMB2J_GENERATOR("smb1_warpless", current, frames, events),
     "smb2j_any%": (current: Frame, frames: Frame[], events: PlayerEvent[]) => SMB1_SMB2J_GENERATOR("smb2j_any%", current, frames, events),
     "smb2j_warpless": (current: Frame, frames: Frame[], events: PlayerEvent[]) => SMB1_SMB2J_GENERATOR("smb2j_warpless", current, frames, events),
-    "smb3_test": (current: Frame, frames: Frame[], events: PlayerEvent[]) => SMB3_GENERATOR("smb3_test", current, frames, events),
+    "smb3_any%nww": SMB3_ANYNWW_GENERATOR,
 };
 
 export const supportedGames = new Set(Object.keys(eventGenerators));

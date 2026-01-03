@@ -1,4 +1,4 @@
-import { LeaderboardCanvas, PlayerCanvas, init, screenshot } from "./renderer.js";
+let LeaderboardCanvas, PlayerCanvas, init, screenshot;
 
 const FRAME_BUFFER = 120;
 const FRAME_TIME_MS = 655171 / 39375;
@@ -20,6 +20,9 @@ addEventListener("DOMContentLoaded", setup);
 
 const controls = {};
 async function setup() {
+    const path = window.__game === "smb3" ? "/smb3/renderer.js" : "/common/smb1_smb2j_renderer.js";
+    ({ LeaderboardCanvas, PlayerCanvas, init, screenshot } = await import(path));
+
     let drawCondition = false;
 
     controls.root = document.getElementById("controls");
@@ -289,7 +292,7 @@ async function query(start = 0, length = 0, noRecurse = false) {
 
             if (!noRecurse && end === end) {
                 lock = false;
-                await query(end, 1, true);
+                await query(end - 2, 3, true);
                 lock = true;
             }
         }

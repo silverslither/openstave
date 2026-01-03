@@ -1,4 +1,4 @@
-import NES_COLOURS from "../common/palette.js";
+import NES_COLOURS from "/common/palette.js";
 let TILES;
 
 const FRAME_TIME_MS = 655171 / 39375;
@@ -284,6 +284,12 @@ export class PlayerCanvas extends RendererCanvas {
             gTopEdgePixel,
             gLeftEdgePage,
             gLeftEdgePixel,
+            ,
+            ,   
+            gMapY,
+            gMapXHigh,
+            gMapXLow,
+            gLevelType,
         ] = pframe.subarray(38 + 256);
 
         const gTransitionFlag = (frame[38 + 256 + 8] | pframe[38 + 256 + 8] | ppframe[38 + 256 + 8]) & 1;
@@ -302,7 +308,7 @@ export class PlayerCanvas extends RendererCanvas {
             return false;
         }
 
-        if (gTransitionFlag) {
+        if (gTransitionFlag && (frame[38 + 256 + 8] & 4) === 0) {
             this.context.fillStyle = NES_COLOURS[gPalette[0]];
             this.clear(following);
             return false;
@@ -344,6 +350,11 @@ export class PlayerCanvas extends RendererCanvas {
                 topEdgePixel,
                 leftEdgePage,
                 leftEdgePixel,
+                ,
+                ,   
+                mapY,
+                mapXHigh,
+                mapXLow,
             ] = pframe.subarray(38 + 256);
 
             const transitionFlag = (frame[38 + 256 + 8] | pframe[38 + 256 + 8] | ppframe[38 + 256 + 8]) & 1;
@@ -351,7 +362,7 @@ export class PlayerCanvas extends RendererCanvas {
                 continue;
 
             const areaPointer = areaPointerLow + (areaPointerHigh << 8);
-            if (tileset !== gTileset || worldNumber !== gWorldNumber || areaPointer !== gAreaPointer)
+            if (tileset !== gTileset || worldNumber !== gWorldNumber || areaPointer !== gAreaPointer || (areaPointer !== 0 && (mapY !== gMapY || mapXHigh !== gMapXHigh || mapXLow !== gMapXLow)))
                 continue;
 
             const topEdge = (topEdgePage << 8) + topEdgePixel;
@@ -404,6 +415,11 @@ export class PlayerCanvas extends RendererCanvas {
             this.drawOutline(COMPONENT_OUTLINE_COLOURS[o], name === following ? 1.0 : 0.8);
         }
         this.fromBuffer();
+
+        if (gLevelType === 0xa0 && map in maps) {
+            const image = maps[map];
+            this.context.drawImage(image, 0, 400, image.width, 32, xOffset, this.canvas.height - 32, image.width, 32);
+        }
 
         if (gTransitionEffectTimer > 1)
             this.renderTransition(gTransitionEffectTimer);

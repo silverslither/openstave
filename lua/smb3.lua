@@ -157,6 +157,7 @@ function readmemory()
         emu.read(0x7976, emu.memType.nesDebug), -- map ypos
         emu.read(0x7978, emu.memType.nesDebug), -- map xpos high byte
         emu.read(0x797a, emu.memType.nesDebug), -- map xpos low byte
+        emu.read(0x100, emu.memType.nesDebug), -- level type
     }
 end
 

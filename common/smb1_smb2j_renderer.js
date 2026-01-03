@@ -1,4 +1,4 @@
-import NES_COLOURS from "./palette.js";
+import NES_COLOURS from "/common/palette.js";
 let TILES;
 
 const FRAME_TIME_MS = 655171 / 39375;

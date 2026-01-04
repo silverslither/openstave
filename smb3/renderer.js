@@ -190,14 +190,10 @@ export class PlayerCanvas extends RendererCanvas {
 
         this.canvas = document.createElement("canvas");
         this.canvas.id = `player${id}`;
-        if (this.id === 0) {
+
+        if (this.id === 0)
             window.addEventListener("resize", () => this.resize().render(this.count));
-            this.resize();
-        } else {
-            this.canvas.className = "floating";
-            this.canvas.width = 384;
-            this.canvas.height = 192;
-        }
+        this.resize(192);
 
         this.canvas.addEventListener("mousedown", (event) => this.onclick(event));
         this.canvas.addEventListener("contextmenu", (event) => event.preventDefault(), false);
@@ -225,14 +221,19 @@ export class PlayerCanvas extends RendererCanvas {
         this.render(this.count);
     }
 
-    resize() {
-        this.scale = Math.max(Math.min(Math.floor(window.innerHeight / 192), Math.round(window.innerWidth / 240)), 1);
-        const width = Math.ceil(window.innerWidth / this.scale);
-        const height = 192;
-        this.canvas.width = width;
-        this.canvas.height = height;
-        this.canvas.style.width = `${width * this.scale}px`;
-        this.canvas.style.height = `${height * this.scale}px`;
+    resize(height) {
+        if (this.id !== 0) {
+            this.canvas.className = "floating";
+            this.canvas.width = 384;
+            this.canvas.height = height ?? this.canvas.height;
+            return this;
+        }
+
+        this.canvas.height = height ?? this.canvas.height;
+        this.scale = Math.max(Math.min(Math.floor(window.innerHeight / this.canvas.height), Math.round(window.innerWidth / 240)), 1);
+        this.canvas.width = Math.ceil(window.innerWidth / this.scale);
+        this.canvas.style.width = `${this.canvas.width * this.scale}px`;
+        this.canvas.style.height = `${this.canvas.height * this.scale}px`;
         return this;
     }
 
@@ -255,6 +256,7 @@ export class PlayerCanvas extends RendererCanvas {
         }
 
         this.xOffset = Math.floor((this.canvas.width - 256) / 2);
+        this.yOffset = this.canvas.height - 193;
 
         if (this.players[following] == null)
             return true;
@@ -272,6 +274,12 @@ export class PlayerCanvas extends RendererCanvas {
         if (frame == null) {
             this.clear(following);
             return true;
+        }
+
+        if (count < 72) {
+            this.context.fillStyle = "#000000";
+            this.clear(following);
+            return false;
         }
 
         const gPalette = frame.subarray(0, 32);
@@ -293,26 +301,21 @@ export class PlayerCanvas extends RendererCanvas {
         ] = pframe.subarray(38 + 256);
 
         const gTransitionFlag = (frame[38 + 256 + 8] | pframe[38 + 256 + 8] | ppframe[38 + 256 + 8]) & 1;
-        const gTransitionEffectTimer = (ppframe[38 + 256 + 9] + 1) & 0xff;
-
-        const gAreaPointer = gAreaPointerLow + (gAreaPointerHigh << 8);
-        const gTopEdge = (gTopEdgePage << 8) + gTopEdgePixel;
-        const gLeftEdge = (gLeftEdgePage << 8) + gLeftEdgePixel;
-
-        const xOffset = this.xOffset - gLeftEdge;
-        const yMapOffset = (gAreaPointer === 0) ? -12 : Math.max(gTopEdge + 1, 0);
-
-        if (count < 72) {
-            this.context.fillStyle = "#000000";
-            this.clear(following);
-            return false;
-        }
 
         if (gTransitionFlag && (frame[38 + 256 + 8] & 4) === 0) {
             this.context.fillStyle = NES_COLOURS[gPalette[0]];
             this.clear(following);
             return false;
         }
+
+        const gTransitionEffectTimer = (ppframe[38 + 256 + 9] + 1) & 0xff;
+
+        const gAreaPointer = gAreaPointerLow + (gAreaPointerHigh << 8);
+        const gTopEdge = (gTopEdgePage << 8) + gTopEdgePixel;
+        const gLeftEdge = (gLeftEdgePage << 8) + gLeftEdgePixel;
+
+        const gXOffset = this.xOffset - gLeftEdge;
+        const gYOffset = (gAreaPointer === 0) ? this.yOffset + 13 : Math.min(this.yOffset - gTopEdge, 0);
 
         const outlineOrder = Object.keys(this.players);
         const drawOrder = [...outlineOrder];
@@ -358,18 +361,16 @@ export class PlayerCanvas extends RendererCanvas {
             ] = pframe.subarray(38 + 256);
 
             const transitionFlag = (frame[38 + 256 + 8] | pframe[38 + 256 + 8] | ppframe[38 + 256 + 8]) & 1;
-            if (transitionFlag)
-                continue;
-
             const areaPointer = areaPointerLow + (areaPointerHigh << 8);
-            if (tileset !== gTileset || worldNumber !== gWorldNumber || areaPointer !== gAreaPointer || (areaPointer !== 0 && (mapY !== gMapY || mapXHigh !== gMapXHigh || mapXLow !== gMapXLow)))
+
+            if (transitionFlag || tileset !== gTileset || worldNumber !== gWorldNumber || areaPointer !== gAreaPointer || (areaPointer !== 0 && (mapY !== gMapY || mapXHigh !== gMapXHigh || mapXLow !== gMapXLow)))
                 continue;
 
             const topEdge = (topEdgePage << 8) + topEdgePixel;
             const leftEdge = (leftEdgePage << 8) + leftEdgePixel;
 
-            const xOffset = this.xOffset + leftEdge - gLeftEdge;
-            const yOffset = (areaPointer === 0) ? -13 : topEdge - yMapOffset;
+            const xOffset = gXOffset + leftEdge;
+            const yOffset = (areaPointer === 0) ? gYOffset - 25 : gYOffset + topEdge;
 
             const alpha = name === following ? 1.0 : 0.6;
             this.outline.reset();
@@ -399,7 +400,7 @@ export class PlayerCanvas extends RendererCanvas {
             `W${gWorldNumber}` :
             `A${A000_PRG_BANK_LOOKUP[gTileset]}${gAreaPointer.toString(16).padStart(4, "0")}`;
         if (map in maps)
-            this.context.drawImage(maps[map], xOffset, -yMapOffset);
+            this.context.drawImage(maps[map], gXOffset, gYOffset);
 
         this.toBuffer();
         for (const name of drawOrder) {
@@ -418,7 +419,10 @@ export class PlayerCanvas extends RendererCanvas {
 
         if (gLevelType === 0xa0 && map in maps) {
             const image = maps[map];
-            this.context.drawImage(image, 0, 400, image.width, 32, xOffset, this.canvas.height - 32, image.width, 32);
+            const yOffset = Math.max(this.yOffset - gTopEdge, 0);
+            this.context.drawImage(image, 0, 400, image.width, 32, gXOffset, this.canvas.height - 32 - yOffset, image.width, 32);
+            this.context.drawImage(image, 0, 416, image.width, 16, gXOffset, this.canvas.height - yOffset, image.width, 32);
+            this.context.drawImage(image, 0, 416, image.width, 16, gXOffset, this.canvas.height + 16 - yOffset, image.width, 32);
         }
 
         if (gTransitionEffectTimer > 1)
@@ -438,13 +442,15 @@ export class PlayerCanvas extends RendererCanvas {
         }
 
         let [y1, y2, x2, x1] = params;
-        x1 = -x1;
-        y1 = -y1;
+        x1 = this.xOffset - x1;
+        x2 += this.xOffset;
+        y1 = this.yOffset - y1;
+        y2 += this.yOffset;
         this.context.fillStyle = "#000000";
         this.context.fillRect(0, 0, this.canvas.width, y1);
         this.context.fillRect(0, y2, this.canvas.width, this.canvas.height);
-        this.context.fillRect(0, y1, this.xOffset + x1, y2);
-        this.context.fillRect(this.xOffset + x2, y1, this.canvas.width, y2);
+        this.context.fillRect(0, y1, x1, y2);
+        this.context.fillRect(x2, y1, this.canvas.width, y2);
     }
 
     renderHUD(following) {
@@ -492,8 +498,10 @@ export class LeaderboardCanvas extends RendererCanvas {
 
         this.canvas = document.createElement("canvas");
         this.canvas.id = "leaderboard";
+
+        this.canvas.width = 328;
         window.addEventListener("resize", () => this.resize().render(this.count));
-        this.resize();
+        this.resize(192);
 
         this.canvas.addEventListener("mousedown", (event) => this.onclick(event), true);
         this.canvas.addEventListener("contextmenu", (event) => event.preventDefault(), false);
@@ -519,14 +527,11 @@ export class LeaderboardCanvas extends RendererCanvas {
         this.playerCanvas.render(this.playerCanvas.count);
     }
 
-    resize() {
-        this.scale = Math.max(Math.min(Math.floor(window.innerHeight / 192), Math.round(window.innerWidth / 240)), 1);
-        const width = 180;
-        const height = 192;
-        this.canvas.width = 2 * width;
-        this.canvas.height = height;
-        this.canvas.style.width = `${width * this.scale}px`;
-        this.canvas.style.height = `${height * this.scale}px`;
+    resize(height) {
+        this.canvas.height = height ?? this.canvas.height;
+        this.scale = Math.max(Math.min(Math.floor(window.innerHeight / this.canvas.height), Math.round(window.innerWidth / 240)), 1);
+        this.canvas.style.width = `${0.5 * this.canvas.width * this.scale}px`;
+        this.canvas.style.height = `${this.canvas.height * this.scale}px`;
         return this;
     }
 

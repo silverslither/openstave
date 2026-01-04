@@ -66,11 +66,11 @@ class Outline {
     }
 
     add(x, y) {
-        this.selection.add(this.#pair(x, y));
-        this.outline.add(this.#pair(x + 1, y));
-        this.outline.add(this.#pair(x - 1, y));
-        this.outline.add(this.#pair(x, y + 1));
-        this.outline.add(this.#pair(x, y - 1));
+        this.selection.add(this.pair(x, y));
+        this.outline.add(this.pair(x + 1, y));
+        this.outline.add(this.pair(x - 1, y));
+        this.outline.add(this.pair(x, y + 1));
+        this.outline.add(this.pair(x, y - 1));
     }
 
     iterator() {
@@ -85,8 +85,8 @@ class Outline {
         return pixels;
     }
 
-    #pair(x, y) {
-        return 65536 * x + y;
+    pair(x, y) {
+        return (x << 16) + y;
     }
 }
 
@@ -141,8 +141,7 @@ class RendererCanvas {
     drawPixelToBuffer(x, y, colour_id, alpha) {
         if (x < 0 || x >= this.buffer.width || y < 0 || y >= this.buffer.height)
             return;
-        if (this.outline != null)
-            this.outline.add(x, y);
+        this.outline?.add(x, y);
 
         const invAlpha = 1.0 - alpha;
         const colour = typeof colour_id === "number" ? COMPONENT_NES_COLOURS[colour_id] : colour_id;
@@ -182,14 +181,9 @@ export class PlayerCanvas extends RendererCanvas {
 
         this.canvas = document.createElement("canvas");
         this.canvas.id = `player${id}`;
-        if (this.id === 0) {
+        if (this.id === 0)
             window.addEventListener("resize", () => this.resize().render(this.count));
-            this.resize();
-        } else {
-            this.canvas.className = "floating";
-            this.canvas.width = 384;
-            this.canvas.height = 240;
-        }
+        this.resize();
 
         this.canvas.addEventListener("mousedown", (event) => this.onclick(event));
         this.canvas.addEventListener("contextmenu", (event) => event.preventDefault(), false);
@@ -218,13 +212,18 @@ export class PlayerCanvas extends RendererCanvas {
     }
 
     resize() {
-        this.scale = Math.max(Math.min(Math.floor(window.innerHeight / 240), Math.round(window.innerWidth / 240)), 1);
-        const width = Math.ceil(window.innerWidth / this.scale);
-        const height = 240;
-        this.canvas.width = width;
-        this.canvas.height = height;
-        this.canvas.style.width = `${width * this.scale}px`;
-        this.canvas.style.height = `${height * this.scale}px`;
+        if (this.id !== 0) {
+            this.canvas.className = "floating";
+            this.canvas.width = 384;
+            this.canvas.height = 240;
+            return this;
+        }
+
+        this.canvas.height = 240;
+        this.scale = Math.max(Math.min(Math.floor(window.innerHeight / this.canvas.height), Math.round(window.innerWidth / 240)), 1);
+        this.canvas.width = Math.ceil(window.innerWidth / this.scale);
+        this.canvas.style.width = `${this.canvas.width * this.scale}px`;
+        this.canvas.style.height = `${this.canvas.height * this.scale}px`;
         return this;
     }
 
@@ -277,14 +276,15 @@ export class PlayerCanvas extends RendererCanvas {
             gScreenPixel,
         ] = pframe.subarray(32 + 256);
 
-        const q_gAreaPage = (gPlayerState === 7 ? frame[32 + 256 + 5] : gAreaPage) + (gScreenPixel === 255);
-        const xOffset = this.xOffset - ((q_gAreaPage << 8) + gAreaPixel - gScreenPixel);
-
         if (gPlayerState === 0) {
             this.context.fillStyle = NES_COLOURS[gPalette[0]];
             this.clear(following);
             return false;
         }
+
+        const q_gAreaPage = (gPlayerState === 7 ? frame[32 + 256 + 5] : gAreaPage) + (gScreenPixel === 255);
+        const gLeftEdge = (q_gAreaPage << 8) + gAreaPixel - gScreenPixel;
+        const gXOffset = this.xOffset - gLeftEdge;
 
         const outlineOrder = Object.keys(this.players);
         const drawOrder = [...outlineOrder];
@@ -293,8 +293,7 @@ export class PlayerCanvas extends RendererCanvas {
         const above = {};
         this.createBuffer(COMPONENT_NES_COLOURS[gPalette[0]]);
         for (const name of drawOrder) {
-            const deferred = [];
-            above[name] = deferred;
+            above[name] = [];
 
             let frame = this.players[name].frames[count];
             let pframe = this.players[name].frames[count - 1] ?? frame;
@@ -321,17 +320,12 @@ export class PlayerCanvas extends RendererCanvas {
                 screenPixel,
             ] = pframe.subarray(32 + 256);
 
+            if (playerState === 0 || areaId !== gAreaId || worldNumber !== gWorldNumber || stageNumber !== gStageNumber)
+                continue;
+
             const q_areaPage = (playerState === 7 ? frame[32 + 256 + 5] : areaPage) + (screenPixel === 255);
-
-            if (playerState === 0)
-                continue;
-
-            if (areaId !== gAreaId || worldNumber !== gWorldNumber || stageNumber !== gStageNumber)
-                continue;
-
-            let xOffset = this.xOffset;
-            xOffset += (q_areaPage << 8) + areaPixel - screenPixel;
-            xOffset -= (q_gAreaPage << 8) + gAreaPixel - gScreenPixel;
+            const leftEdge = (q_areaPage << 8) + areaPixel - screenPixel;
+            const xOffset = gXOffset + leftEdge;
 
             const alpha = name === following ? 1.0 : 0.6;
             this.outline.reset();
@@ -345,7 +339,7 @@ export class PlayerCanvas extends RendererCanvas {
                     if ((attributes >>> 5) & 1)
                         this.renderTileToBuffer(xOffset + x, y, tile, attributes, palette, alpha);
                     else
-                        deferred.push([xOffset + x, y, tile, attributes, palette, alpha]);
+                        above[name].push([xOffset + x, y, tile, attributes, palette, alpha]);
                 }
             }
             const o = outlineOrder.indexOf(name);
@@ -355,13 +349,12 @@ export class PlayerCanvas extends RendererCanvas {
 
         const map = gAreaId.toString(16).padStart(2, "0");
         if (map in maps)
-            this.context.drawImage(maps[map], xOffset, 0);
+            this.context.drawImage(maps[map], gXOffset, 0);
 
         this.toBuffer();
         for (const name of drawOrder) {
-            const deferred = above[name];
             this.outline.reset();
-            for (const sprite of deferred)
+            for (const sprite of above[name])
                 this.renderTileToBuffer(...sprite);
             const o = outlineOrder.indexOf(name);
             this.drawOutline(COMPONENT_OUTLINE_COLOURS[o], name === following ? 1.0 : 0.8);
@@ -375,14 +368,22 @@ export class PlayerCanvas extends RendererCanvas {
     renderHUD(following) {
         if (typeof this.following === "number")
             following = `[${this.following + 1}] ${following}`;
+
         this.context.fillStyle = "#000000";
+        this.context.globalAlpha = 0.7;
         this.context.fillRect(4, this.canvas.height - 20, following.length * 8 + 8, 16);
+        this.context.globalAlpha = 1.0;
+
         this.drawText(8, this.canvas.height - 16, following);
         if (this.id === 0) {
             this.drawText(this.canvas.width - 8, 8, formatTime(FRAME_TIME_MS * Math.max(this.count, 0)), "right");
             if (this.alt === "")
                 return;
+
+            this.context.globalAlpha = 0.7;
             this.context.fillRect(this.canvas.width - this.alt.length * 8 - 12, this.canvas.height - 20, this.alt.length * 8 + 8, 16);
+            this.context.globalAlpha = 1.0;
+
             this.drawText(this.canvas.width - 8, this.canvas.height - 16, this.alt, "right");
         }
     }
@@ -409,6 +410,8 @@ export class LeaderboardCanvas extends RendererCanvas {
 
         this.canvas = document.createElement("canvas");
         this.canvas.id = "leaderboard";
+
+        this.canvas.width = 360;
         window.addEventListener("resize", () => this.resize().render(this.count));
         this.resize();
 
@@ -437,13 +440,10 @@ export class LeaderboardCanvas extends RendererCanvas {
     }
 
     resize() {
-        this.scale = Math.max(Math.min(Math.floor(window.innerHeight / 240), Math.round(window.innerWidth / 240)), 1);
-        const width = 180;
-        const height = 240;
-        this.canvas.width = 2 * width;
-        this.canvas.height = height;
-        this.canvas.style.width = `${width * this.scale}px`;
-        this.canvas.style.height = `${height * this.scale}px`;
+        this.canvas.height = 240;
+        this.scale = Math.max(Math.min(Math.floor(window.innerHeight / this.canvas.height), Math.round(window.innerWidth / 240)), 1);
+        this.canvas.style.width = `${0.5 * this.canvas.width * this.scale}px`;
+        this.canvas.style.height = `${this.canvas.height * this.scale}px`;
         return this;
     }
 
@@ -453,8 +453,11 @@ export class LeaderboardCanvas extends RendererCanvas {
         const lines = this.getLines(this.count);
         const outlineOrder = Object.keys(this.players);
 
+        this.context.globalAlpha = 0.7;
         this.context.fillStyle = "#000000";
+        this.context.clearRect(8, 4, 8 * 44, 16 + 8 * lines.length);
         this.context.fillRect(8, 4, 8 * 44, 16 + 8 * lines.length);
+        this.context.globalAlpha = 1.0;
 
         let title = window.location.pathname.slice(1, -8);
         if (title[title.length - 1] === "-" || title[title.length - 1] === "_")
@@ -568,9 +571,10 @@ export function screenshot(pCanvas, lCanvas) {
             const lPixel = lOffset + 4 * x;
 
             if (x < lCanvas.canvas.width && lBuffer[lPixel + 3] !== 0) {
-                oBuffer[oPixel + 0] = lBuffer[lPixel + 0];
-                oBuffer[oPixel + 1] = lBuffer[lPixel + 1];
-                oBuffer[oPixel + 2] = lBuffer[lPixel + 2];
+                const alpha = 0.00392156862745098 * lBuffer[lPixel + 3];
+                oBuffer[oPixel + 0] = alpha * lBuffer[lPixel + 0] + (1.0 - alpha) * pBuffer[pPixel + 0];
+                oBuffer[oPixel + 1] = alpha * lBuffer[lPixel + 1] + (1.0 - alpha) * pBuffer[pPixel + 1];
+                oBuffer[oPixel + 2] = alpha * lBuffer[lPixel + 2] + (1.0 - alpha) * pBuffer[pPixel + 2];
             } else {
                 oBuffer[oPixel + 0] = pBuffer[pPixel + 0];
                 oBuffer[oPixel + 1] = pBuffer[pPixel + 1];

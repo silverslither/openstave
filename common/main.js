@@ -36,6 +36,7 @@ async function setup() {
     controls.popup = document.getElementById("popup");
     controls.help = document.getElementById("help");
     controls.ahc = document.getElementById("ahc");
+    controls.atlas = document.getElementById("atlas");
     controls.leaderboard = document.getElementById("lb");
     controls.category = document.getElementById("category");
     controls.float = document.getElementById("float");
@@ -97,6 +98,17 @@ async function setup() {
             controls.root.classList.remove("hide");
         else
             controls.root.classList.add("hide");
+    });
+    controls.atlas?.addEventListener("click", () => {
+        if (canvases[0].canvas.height === 192) {
+            canvases[0].resize(432).render(frame);
+            canvases[1].resize(432).render(frame);
+            canvases[2].resize(432).render(frame);
+        } else {
+            canvases[0].resize(192).render(frame);
+            canvases[1].resize(192).render(frame);
+            canvases[2].resize(192).render(frame);
+        }
     });
     controls.leaderboard.addEventListener("click", () => {
         if (canvases[2].canvas.style.display === "none") {

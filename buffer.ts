@@ -3,28 +3,43 @@ import type { Frame, PlayerEvent } from "./types.ts";
 const SMB1_SMB2J_WARPLESS_SPLITS = [...Array(31).keys()];
 
 const SMB1_ANY_SPLITS = [
-    0 * 4 + 0, // 1-1
-    3 * 4 + 0 + 128, // 1-2 WZ
-    3 * 4 + 0, // 4-1
-    7 * 4 + 0 + 128, // 4-2 WZ
-    7 * 4 + 0, // 8-1
-    7 * 4 + 1, // 8-2
-    7 * 4 + 2, // 8-3
+    0x000, // 1-1
+    0x130, // 1-2 WZ
+    0x030, // 4-1
+    0x170, // 4-2 WZ
+    0x070, // 8-1
+    0x071, // 8-2
+    0x072, // 8-3
 ];
 
 const SMB2J_ANY_SPLITS = [
-    0 * 4 + 0, // 1-1
-    3 * 4 + 0 + 128, // 1-2 WZ
-    3 * 4 + 0, // 4-1
-    3 * 4 + 1, // 4-2
-    3 * 4 + 2, // 4-3
-    3 * 4 + 3, // 4-4
-    4 * 4 + 0, // 5-1
-    7 * 4 + 0 + 128, // 5-2 WZ
-    7 * 4 + 0, // 8-1
-    7 * 4 + 1, // 8-2
-    7 * 4 + 2, // 8-3
+    0x000, // 1-1
+    0x130, // 1-2 WZ
+    0x030, // 4-1
+    0x031, // 4-2
+    0x032, // 4-3
+    0x033, // 4-4
+    0x040, // 5-1
+    0x170, // 5-2 WZ
+    0x070, // 8-1
+    0x071, // 8-2
+    0x072, // 8-3
 ];
+
+const SMB3_ANYNWW_SPLITS = [
+    0x00200040, // 1-1
+    0x00200080, // 1-2
+    0x002000a0, // 1-3
+    0x00600060, // 1-F
+    0x07700040, // 8-Tanks 1
+    0x07700080, // 8-Navy
+    0x17500140, // 8-Airship (Entry)
+    0x07500140, // 8-Airship
+    0x07700240, // 8-1
+    0x07900220, // 8-2
+    0x07700280, // 8-Fortress
+    0x07700340, // 8-Tanks 2
+]
 
 const SMB1_SMB2J_GENERATOR = (game: string, current: Frame, frames: Frame[], events: PlayerEvent[]) => {
     const SPLITS = {
@@ -48,7 +63,11 @@ const SMB1_SMB2J_GENERATOR = (game: string, current: Frame, frames: Frame[], eve
             events.push({
                 code: "SPLIT",
                 data: [
-                    SPLITS.indexOf(Number(current.ram[0] === 0x00) * 128 + current.ram[3] * 4 + current.ram[4]),
+                    SPLITS.indexOf(
+                        (Number(current.ram[0] === 0x00) << 8) +
+                        (current.ram[3] << 4) +
+                        current.ram[4]
+                    ),
                     frames.length + current.ram[8],
                 ],
             });
@@ -81,6 +100,48 @@ const SMB3_ANYNWW_GENERATOR = (current: Frame, frames: Frame[], events: PlayerEv
         if (current.count !== last.count + 1) {
             events.push({ code: "DNF", data: frames.length - 1 });
             return;
+        }
+
+        const currentPosition =
+            (current.ram[10] << 16) +
+            (current.ram[11] << 8) +
+            current.ram[12];
+        const lastPosition =
+            (last.ram[10] << 16) +
+            (last.ram[11] << 8) +
+            last.ram[12];
+
+        // exit splits
+        if (current.ram[2] === 0x00 &&
+            current.ram[3] === 0x00 &&
+            last.ram[2] !== 0x00 &&
+            last.ram[3] !== 0x00) {
+
+            events.push({
+                code: "SPLIT",
+                data: [
+                    SMB3_ANYNWW_SPLITS.indexOf(
+                        (current.ram[1] << 24) +
+                        currentPosition
+                    ),
+                    frames.length,
+                ],
+            });
+        }
+
+        // entry splits
+        if (currentPosition !== lastPosition) {
+            events.push({
+                code: "SPLIT",
+                data: [
+                    SMB3_ANYNWW_SPLITS.indexOf(
+                        (1 << 28) +
+                        (current.ram[1] << 24) +
+                        currentPosition
+                    ),
+                    frames.length,
+                ],
+            });
         }
 
         const flags = current.ram[8];

@@ -3,6 +3,18 @@ function teeLog(str)
     emu.displayMessage("OpenStave", str)
 end
 
+HASHES = {
+    ["a03e7e526e79df222e048ae22214bca2bc49c449"] = true, -- (U) PRG0 iNES
+    ["5f9019040fe23cb412a484e1ef430e59e589f9b4"] = true, -- (U) PRG0 NES 2.0
+    ["6bd518e85eb46a4252af07910f61036e84b020d1"] = true, -- (U) PRG1 iNES
+    ["a25d2dcbf6ec3634a84318bfe2cfe28d5331d815"] = true, -- (U) PRG1 NES 2.0
+}
+
+if HASHES[emu.getRomInfo().fileSha1Hash:lower()] == nil then
+    teeLog("bad rom (see HASHES for valid sha1sums), exiting")
+    return
+end
+
 local callback = nil
 local auth = table.concat({
     string.format("%-32s", USERNAME),

@@ -13,6 +13,7 @@ const TIMEOUTS = {
     "smb1_warpless": 45 * MINUTE,
     "smb2j_any%": 20 * MINUTE,
     "smb2j_warpless": 50 * MINUTE,
+    "smb3_any%nww": 25 * MINUTE,
 };
 
 const FILE_BUFFER = 240;

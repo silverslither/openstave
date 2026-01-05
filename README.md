@@ -5,11 +5,13 @@ Extensible monolithic server for STA races.
 ## Supported games
 
 * Super Mario Bros. 
-    * any%
-    * warpless
+    * Any%
+    * Warpless
 * Super Mario Bros. 2 (Japan)
-    * any%
-    * warpless
+    * Any%
+    * Warpless
+* Super Mario Bros. 3
+    * Any% No Wrong Warp
 
 ## Hosting
 

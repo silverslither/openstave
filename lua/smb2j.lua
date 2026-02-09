@@ -168,7 +168,7 @@ function q_level()
     return { _p_area, _p_world, _p_stage }
 end
 
-function readmemory()
+function read_memory()
     frame = emu.getState().frameCount
 
     palette = {}
@@ -203,13 +203,13 @@ function u32le(n)
     local s = ""
     for _ = 0, 3, 1 do
         s = s .. string.char(n % 256)
-        n = math.floor(n / 256)
+        n = n >> 8
     end
     return s
 end
 
 function main()
-    readmemory()
+    read_memory()
     local data = table.concat({
         u32le(frame),
         string.char(table.unpack(palette)),

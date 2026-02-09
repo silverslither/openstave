@@ -77,6 +77,71 @@ function send(data)
     end
 end
 
+TILES = {
+    0xa5, -- coins
+}
+function read_tiles()
+    local offset = emu.read(0x71a, emu.memType.nesDebug) * 256 + emu.read(0x71c, emu.memType.nesDebug)
+    _tiles = {}
+    for _, v in ipairs(TILES) do _tiles[v] = {} end
+
+    for i = 0, 959 do
+        local tile
+
+        local x = i & 0x1f
+        local y = i >> 5
+        if (x & 1) == 1 or (y & 1) == 1 then goto continue end
+        a = (x >> 2) + 8 * (y >> 2)
+        b = (x & 2) + 2 * (y & 2)
+        x = x * 8
+        y = y * 8
+
+        local o = (x - offset) % 512
+        if o >= 256 and o <= 496 then goto right end
+
+        tile = emu.read(0x2000 + i, emu.memType.nesPpuDebug)
+        for _, v in ipairs(TILES) do
+            if tile == v then
+                table.insert(_tiles[v], o)
+                table.insert(_tiles[v], y + 2 * ((emu.read(0x23c0 + a, emu.memType.nesPpuDebug) >> b) & 3))
+            end
+        end
+
+        ::right::
+        x = x + 256
+        o = (x - offset) % 512
+        if o >= 256 and o <= 496 then goto continue end
+
+        tile = emu.read(0x2400 + i, emu.memType.nesPpuDebug)
+        for _, v in ipairs(TILES) do
+            if tile == v then
+                table.insert(_tiles[v], o)
+                table.insert(_tiles[v], y)
+            end
+        end
+
+        ::continue::
+    end
+end
+
+function serialize_tiles()
+    tiles = {}
+    for i, v in pairs(_tiles) do
+        if #v == 0 then goto continue end
+
+        table.insert(tiles, i)
+        table.insert(tiles, #v)
+        for j = 1, #v, 2 do
+            local x = v[j]
+            local y = v[j + 1]
+            table.insert(tiles, y + (x >= 256 and 1 or 0))
+            table.insert(tiles, x % 256)
+        end
+
+        ::continue::
+    end
+end
+
 local _r = 0xff
 local _r_timer = 0
 local _r_black_screen_soon = false
@@ -167,7 +232,7 @@ function q_level()
     return { _p_area, _p_world, _p_stage }
 end
 
-function readmemory()
+function read_memory()
     frame = emu.getState().frameCount
 
     palette = {}
@@ -188,24 +253,28 @@ function readmemory()
         emu.read(0x3ad, emu.memType.nesDebug), -- screen pixel
         remainder(),
     }
+
+    read_tiles()
+    serialize_tiles()
 end
 
 function u32le(n)
     local s = ""
     for _ = 0, 3, 1 do
-        s = s .. string.char(n % 256)
-        n = math.floor(n / 256)
+        s = s .. string.char(n & 0xff)
+        n = n >> 8
     end
     return s
 end
 
 function main()
-    readmemory()
+    read_memory()
     local data = table.concat({
         u32le(frame),
         string.char(table.unpack(palette)),
         string.char(table.unpack(sprites)),
-        string.char(table.unpack(ram))
+        string.char(table.unpack(ram)),
+        string.char(table.unpack(tiles))
     })
     send(u32le(#data + 4) .. data)
 end

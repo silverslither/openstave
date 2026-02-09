@@ -114,6 +114,19 @@ class RendererCanvas {
         this.context.putImageData(this.buffer, 0, 0);
     }
 
+    renderBGTileToBuffer(x, y, tile, p, palette, alpha) {
+        tile = TILES[0x100 + tile];
+
+        for (let j = 0; j < 8; j++) {
+            for (let i = 0; i < 8; i++) {
+                const o = (j << 3) + i;
+                if (tile[o] === 0)
+                    continue;
+                this.drawPixelToBuffer(x + i, y + j, palette[(p << 2) + tile[o]], alpha);
+            }
+        }
+    }
+
     renderTileToBuffer(x, y, tile, attributes, palette, alpha) {
         const vflip = attributes >>> 7;
         const hflip = (attributes >>> 6) & 1;
@@ -291,9 +304,11 @@ export class PlayerCanvas extends RendererCanvas {
         drawOrder.push(drawOrder.splice(drawOrder.indexOf(following), 1)[0]);
 
         const above = {};
+        const background = {};
         this.createBuffer(COMPONENT_NES_COLOURS[gPalette[0]]);
         for (const name of drawOrder) {
             above[name] = [];
+            background[name] = [];
 
             let frame = this.players[name].frames[count];
             let pframe = this.players[name].frames[count - 1] ?? frame;
@@ -344,6 +359,21 @@ export class PlayerCanvas extends RendererCanvas {
             }
             const o = outlineOrder.indexOf(name);
             this.drawOutline(COMPONENT_OUTLINE_COLOURS[o], name === following ? 1.0 : 0.8);
+
+            let tiles = pframe.subarray(32 + 256 + 9);
+            while (tiles.length !== 0) {
+                const tile = tiles[0];
+                const count = tiles[1];
+                const positions = tiles.subarray(2, 2 + count * 2);
+                for (let i = 0; i < positions.length; i += 2) {
+                    const y = positions[i] & 0xf8;
+                    const p = (positions[i] & 6) >>> 1;
+                    const x = (positions[i] & 1) ? -positions[i + 1] : positions[i + 1];
+                    for (let j = 0; j < 4; j++)
+                        background[name].push([xOffset + x + 8 * (j % 2), y + 8 * (j >>> 1), tile + j, p, palette, alpha]);
+                }
+                tiles = tiles.subarray(2 + count * 2);
+            }
         }
         this.fromBuffer();
 
@@ -352,6 +382,10 @@ export class PlayerCanvas extends RendererCanvas {
             this.context.drawImage(maps[map], gXOffset, 0);
 
         this.toBuffer();
+        for (const name of drawOrder) {
+            for (const tile of background[name])
+                this.renderBGTileToBuffer(...tile);
+        }
         for (const name of drawOrder) {
             this.outline.reset();
             for (const sprite of above[name])

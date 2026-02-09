@@ -142,7 +142,7 @@ function flag_bowser_door()
     return emu.read(0x78d, emu.memType.nesDebug) ~= 0 and 1 or 0
 end
 
-function readmemory()
+function read_memory()
     frame = emu.getState().frameCount
 
     palette = {}
@@ -177,13 +177,13 @@ function u32le(n)
     local s = ""
     for _ = 0, 3, 1 do
         s = s .. string.char(n % 256)
-        n = math.floor(n / 256)
+        n = n >> 8
     end
     return s
 end
 
 function main()
-    readmemory()
+    read_memory()
     local data = table.concat({
         u32le(frame),
         string.char(table.unpack(palette)),

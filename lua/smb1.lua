@@ -78,6 +78,7 @@ function send(data)
 end
 
 TILES = {
+    0x57, -- broken blocks
     0xa5, -- coins
 }
 function read_tiles()

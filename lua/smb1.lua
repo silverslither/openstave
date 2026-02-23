@@ -96,27 +96,29 @@ function read_tiles()
         x = x * 8
         y = y * 8
 
-        local o = (x - offset) % 512
+        local o = (x - offset) & 0x1ff
         if o >= 256 and o <= 496 then goto right end
 
         tile = emu.read(0x2000 + i, emu.memType.nesPpuDebug)
         for _, v in ipairs(TILES) do
             if tile == v then
+                local p = (emu.read(0x23c0 + a, emu.memType.nesPpuDebug) >> b) & 3
                 table.insert(_tiles[v], o)
-                table.insert(_tiles[v], y + 2 * ((emu.read(0x23c0 + a, emu.memType.nesPpuDebug) >> b) & 3))
+                table.insert(_tiles[v], y + 2 * p)
             end
         end
 
         ::right::
         x = x + 256
-        o = (x - offset) % 512
+        o = (x - offset) & 0x1ff
         if o >= 256 and o <= 496 then goto continue end
 
         tile = emu.read(0x2400 + i, emu.memType.nesPpuDebug)
         for _, v in ipairs(TILES) do
             if tile == v then
+                local p = (emu.read(0x27c0 + a, emu.memType.nesPpuDebug) >> b) & 3
                 table.insert(_tiles[v], o)
-                table.insert(_tiles[v], y)
+                table.insert(_tiles[v], y + 2 * p)
             end
         end
 
@@ -135,7 +137,7 @@ function serialize_tiles()
             local x = v[j]
             local y = v[j + 1]
             table.insert(tiles, y + (x >= 256 and 1 or 0))
-            table.insert(tiles, x % 256)
+            table.insert(tiles, x & 0xff)
         end
 
         ::continue::
@@ -219,7 +221,7 @@ local _p_world = 0
 local _p_stage = 0
 function q_level()
     local state = emu.read(0xe, emu.memType.nesDebug)
-    local area = (emu.read(0x74e, emu.memType.nesDebug) * 32 + emu.read(0x74f, emu.memType.nesDebug)) % 128
+    local area = (emu.read(0x74e, emu.memType.nesDebug) * 32 + emu.read(0x74f, emu.memType.nesDebug)) & 0x7f
     local world = emu.read(0x75f, emu.memType.nesDebug)
     local stage = emu.read(0x75c, emu.memType.nesDebug)
 

@@ -115,7 +115,7 @@ class RendererCanvas {
     }
 
     renderBGTileToBuffer(x, y, tile, p, palette, alpha) {
-        tile = TILES[0x100 + tile];
+        tile = TILES[tile];
 
         for (let j = 0; j < 8; j++) {
             for (let i = 0; i < 8; i++) {
@@ -127,12 +127,12 @@ class RendererCanvas {
         }
     }
 
-    renderTileToBuffer(x, y, tile, attributes, palette, alpha) {
+    renderFGTileToBuffer(x, y, tile, attributes, palette, alpha) {
         const vflip = attributes >>> 7;
         const hflip = (attributes >>> 6) & 1;
         const u = (attributes >>> 2) & 7;
         const p = attributes & 3;
-        tile = TILES[tile + u * 0x40];
+        tile = TILES[0x100 + tile + u * 0x40];
 
         for (let j = 0; j < 8; j++) {
             for (let i = 0; i < 8; i++) {
@@ -352,7 +352,7 @@ export class PlayerCanvas extends RendererCanvas {
 
                 if (tile !== 0xff && y < 240) {
                     if ((attributes >>> 5) & 1)
-                        this.renderTileToBuffer(xOffset + x, y, tile, attributes, palette, alpha);
+                        this.renderFGTileToBuffer(xOffset + x, y, tile, attributes, palette, alpha);
                     else
                         above[name].push([xOffset + x, y, tile, attributes, palette, alpha]);
                 }
@@ -389,7 +389,7 @@ export class PlayerCanvas extends RendererCanvas {
         for (const name of drawOrder) {
             this.outline.reset();
             for (const sprite of above[name])
-                this.renderTileToBuffer(...sprite);
+                this.renderFGTileToBuffer(...sprite);
             const o = outlineOrder.indexOf(name);
             this.drawOutline(COMPONENT_OUTLINE_COLOURS[o], name === following ? 1.0 : 0.8);
         }

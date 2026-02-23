@@ -176,7 +176,7 @@ end
 function u32le(n)
     local s = ""
     for _ = 0, 3, 1 do
-        s = s .. string.char(n % 256)
+        s = s .. string.char(n & 0xff)
         n = n >> 8
     end
     return s

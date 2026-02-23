@@ -76,6 +76,73 @@ function send(data)
     end
 end
 
+TILES = {
+    0xa5, -- coins
+}
+function read_tiles()
+    local offset = emu.read(0x71a, emu.memType.nesDebug) * 256 + emu.read(0x71c, emu.memType.nesDebug)
+    _tiles = {}
+    for _, v in ipairs(TILES) do _tiles[v] = {} end
+
+    for i = 0, 959 do
+        local tile
+
+        local x = i & 0x1f
+        local y = i >> 5
+        if (x & 1) == 1 or (y & 1) == 1 then goto continue end
+        a = (x >> 2) + 8 * (y >> 2)
+        b = (x & 2) + 2 * (y & 2)
+        x = x * 8
+        y = y * 8
+
+        local o = (x - offset) & 0x1ff
+        if o >= 256 and o <= 496 then goto right end
+
+        tile = emu.read(0x2000 + i, emu.memType.nesPpuDebug)
+        for _, v in ipairs(TILES) do
+            if tile == v then
+                local p = (emu.read(0x23c0 + a, emu.memType.nesPpuDebug) >> b) & 3
+                table.insert(_tiles[v], o)
+                table.insert(_tiles[v], y + 2 * p)
+            end
+        end
+
+        ::right::
+        x = x + 256
+        o = (x - offset) & 0x1ff
+        if o >= 256 and o <= 496 then goto continue end
+
+        tile = emu.read(0x2400 + i, emu.memType.nesPpuDebug)
+        for _, v in ipairs(TILES) do
+            if tile == v then
+                local p = (emu.read(0x27c0 + a, emu.memType.nesPpuDebug) >> b) & 3
+                table.insert(_tiles[v], o)
+                table.insert(_tiles[v], y + 2 * p)
+            end
+        end
+
+        ::continue::
+    end
+end
+
+function serialize_tiles()
+    tiles = {}
+    for i, v in pairs(_tiles) do
+        if #v == 0 then goto continue end
+
+        table.insert(tiles, i)
+        table.insert(tiles, #v)
+        for j = 1, #v, 2 do
+            local x = v[j]
+            local y = v[j + 1]
+            table.insert(tiles, y + (x >= 256 and 1 or 0))
+            table.insert(tiles, x & 0xff)
+        end
+
+        ::continue::
+    end
+end
+
 local _r = 0xff
 local _r_timer = 0
 local _r_black_screen_soon = false
@@ -155,7 +222,7 @@ function q_level()
     local state = emu.read(0xe, emu.memType.nesDebug)
     local area =
         emu.read(0x7fb, emu.memType.nesDebug) * 128
-        + (emu.read(0x74e, emu.memType.nesDebug) * 32 + emu.read(0x74f, emu.memType.nesDebug)) % 128
+        + ((emu.read(0x74e, emu.memType.nesDebug) * 32 + emu.read(0x74f, emu.memType.nesDebug)) & 0x7f)
     local world = emu.read(0x75f, emu.memType.nesDebug)
     local stage = emu.read(0x75c, emu.memType.nesDebug)
 
@@ -180,7 +247,7 @@ function read_memory()
     if (emu.read(0xbc0, emu.memType.nesPpuDebug) == 0) then
         for i = 1, 253, 4 do
             if (sprites[i + 1] < 0x80 or sprites[i + 1] >= 0xc0) then goto continue end
-            sprites[i + 2] = (sprites[i + 2] + 8) % 256 -- encode 2 * 0x40 offset hidden inside unused bits
+            sprites[i + 2] = (sprites[i + 2] + 8) & 0xff -- encode 2 * 0x40 offset hidden inside unused bits
             ::continue::
         end
     end
@@ -197,12 +264,15 @@ function read_memory()
         emu.read(0x3ad, emu.memType.nesDebug), -- screen pixel
         remainder(),
     }
+
+    read_tiles()
+    serialize_tiles()
 end
 
 function u32le(n)
     local s = ""
     for _ = 0, 3, 1 do
-        s = s .. string.char(n % 256)
+        s = s .. string.char(n & 0xff)
         n = n >> 8
     end
     return s
@@ -214,7 +284,8 @@ function main()
         u32le(frame),
         string.char(table.unpack(palette)),
         string.char(table.unpack(sprites)),
-        string.char(table.unpack(ram))
+        string.char(table.unpack(ram)),
+        string.char(table.unpack(tiles))
     })
     send(u32le(#data + 4) .. data)
 end

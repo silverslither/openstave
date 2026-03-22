@@ -14,7 +14,12 @@ const SMB2J_MAPS = ["00", "01", "02", "03", "04", "05", "06", "07", "20", "21", 
 const maps = {};
 const text = {};
 
+let hide_sprite_zero = false;
+
 export async function init(game) {
+    if (game === "smb1")
+        hide_sprite_zero = true;
+
     const promises = [];
 
     TILES = (await import(`/${game}/tiles.js`)).default.split(" ");
@@ -350,7 +355,7 @@ export class PlayerCanvas extends RendererCanvas {
                 const attributes = sprites[i + 2];
                 const x = sprites[i + 3];
 
-                if (tile !== 0xff && y < 240) {
+                if ((!hide_sprite_zero || tile !== 0xff) && y < 240) {
                     if ((attributes >>> 5) & 1)
                         this.renderFGTileToBuffer(xOffset + x, y, tile, attributes, palette, alpha);
                     else

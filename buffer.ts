@@ -39,7 +39,7 @@ const SMB3_ANYNWW_SPLITS = [
     0x07900220, // 8-2
     0x07700280, // 8-Fortress
     0x07700340, // 8-Tanks 2
-]
+];
 
 const SMB1_SMB2J_GENERATOR = (game: string, current: Frame, frames: Frame[], events: PlayerEvent[]) => {
     const SPLITS = {
@@ -66,7 +66,7 @@ const SMB1_SMB2J_GENERATOR = (game: string, current: Frame, frames: Frame[], eve
                     SPLITS.indexOf(
                         (Number(current.ram[0] === 0x00) << 8) +
                         (current.ram[3] << 4) +
-                        current.ram[4]
+                        current.ram[4],
                     ),
                     frames.length + current.ram[8],
                 ],
@@ -122,7 +122,7 @@ const SMB3_ANYNWW_GENERATOR = (current: Frame, frames: Frame[], events: PlayerEv
                 data: [
                     SMB3_ANYNWW_SPLITS.indexOf(
                         (current.ram[1] << 24) +
-                        currentPosition
+                        currentPosition,
                     ),
                     frames.length,
                 ],
@@ -137,7 +137,7 @@ const SMB3_ANYNWW_GENERATOR = (current: Frame, frames: Frame[], events: PlayerEv
                     SMB3_ANYNWW_SPLITS.indexOf(
                         (1 << 28) +
                         (current.ram[1] << 24) +
-                        currentPosition
+                        currentPosition,
                     ),
                     frames.length,
                 ],

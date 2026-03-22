@@ -133,7 +133,7 @@ function serialize_tiles()
         if #v == 0 then goto continue end
 
         table.insert(tiles, i)
-        table.insert(tiles, #v)
+        table.insert(tiles, #v >> 1)
         for j = 1, #v, 2 do
             local x = v[j]
             local y = v[j + 1]

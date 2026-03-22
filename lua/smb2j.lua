@@ -132,7 +132,7 @@ function serialize_tiles()
         if #v == 0 then goto continue end
 
         table.insert(tiles, i)
-        table.insert(tiles, #v)
+        table.insert(tiles, #v >> 1)
         for j = 1, #v, 2 do
             local x = v[j]
             local y = v[j + 1]
@@ -222,7 +222,7 @@ local _p_stage = 0
 function q_level()
     local state = emu.read(0xe, emu.memType.nesDebug)
     local area =
-        emu.read(0x7fb, emu.memType.nesDebug) * 128
+        (emu.read(0x7fb, emu.memType.nesDebug) & 1) * 128
         + ((emu.read(0x74e, emu.memType.nesDebug) * 32 + emu.read(0x74f, emu.memType.nesDebug)) & 0x7f)
     local world = emu.read(0x75f, emu.memType.nesDebug)
     local stage = emu.read(0x75c, emu.memType.nesDebug)
@@ -270,6 +270,35 @@ function read_memory()
     serialize_tiles()
 end
 
+local l_load_flag = false
+local l_running_count = 0
+function fdscontrol_callback(_, v)
+	if v == 0x26 then
+		l_load_flag = true
+	end
+end
+
+emu.addMemoryCallback(fdscontrol_callback, emu.callbackType.write, 0x4025, 0x4025, emu.cpuType.nes, emu.memType.nesMemory)
+
+function is_fds_load()
+	if emu.getPixel(25, 19) == 0 then
+		if not l_load_flag then
+			l_running_count = l_running_count + 1
+		end
+	else
+		if not l_load_flag then
+			l_running_count = 0
+		else
+			if l_running_count <= 0 then
+				l_load_flag = false
+			else
+				l_running_count = l_running_count - 1
+			end
+		end
+	end
+	return l_load_flag
+end
+
 function u32le(n)
     local s = ""
     for _ = 0, 3, 1 do
@@ -279,10 +308,25 @@ function u32le(n)
     return s
 end
 
+local f_pframe = 0
+local f_offset = 0
 function main()
     read_memory()
+
+    if frame ~= f_pframe + 1 then
+        l_load_flag = false
+        l_running_count = 0
+        f_offset = 0
+    end
+    f_pframe = frame
+
+    if is_fds_load() then
+        f_offset = f_offset + 1
+        return
+    end
+
     local data = table.concat({
-        u32le(frame),
+        u32le(frame - f_offset),
         string.char(table.unpack(palette)),
         string.char(table.unpack(sprites)),
         string.char(table.unpack(ram)),

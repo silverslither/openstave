@@ -115,7 +115,7 @@ const server = http.createServer((request, response) => {
                     return;
                 }
 
-                if (!supportedGames.has(game) || !Array.isArray(players) || players.length < 2 || players.length > 8 || players.findIndex(v => typeof v !== "string" || v === "" || v.length > 24) !== -1) {
+                if (!supportedGames.has(game) || !Array.isArray(players) || players.length < 2 || players.length > 16 || players.findIndex(v => typeof v !== "string" || v === "" || v.length > 24) !== -1) {
                     response.writeHead(400).end("You must fill out all form elements.");
                     return;
                 }

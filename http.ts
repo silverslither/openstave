@@ -144,6 +144,7 @@ const server = http.createServer((request, response) => {
                     ]),
                 }));
 
+                console.log(`created race ${race.id}`);
                 return;
             }
 

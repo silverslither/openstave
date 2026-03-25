@@ -194,7 +194,9 @@ local _p_page = 0
 local _p_loop = 0
 local _page_threshold = 0
 local _loop_offset = false
-function q_page()
+function q_page(princess)
+    if princess then return _p_page end
+
     local state = emu.read(0xe, emu.memType.nesDebug)
     local loop = emu.read(0x745, emu.memType.nesDebug)
     local page = emu.read(0x6d, emu.memType.nesDebug)
@@ -245,10 +247,12 @@ function read_memory()
     sprites = {}
     for i = 0, 255 do table.insert(sprites, emu.read(i, emu.memType.nesSpriteRam)) end
 
-    if (emu.read(0xbc0, emu.memType.nesPpuDebug) == 0) then
+    local princess = false
+    if (emu.read(0x760, emu.memType.nesPpuDebug) == 5) then
+        princess = true
         for i = 1, 253, 4 do
-            if (sprites[i + 1] < 0x80 or sprites[i + 1] >= 0xc0) then goto continue end
-            sprites[i + 2] = (sprites[i + 2] + 8) & 0xff -- encode 2 * 0x40 offset hidden inside unused bits
+            if (sprites[i + 1] < 0x76 or sprites[i + 1] > 0x79) then goto continue end
+            sprites[i + 2] = (sprites[i + 2] + 4) & 0xff -- set least significant unused bit as flag
             ::continue::
         end
     end
@@ -260,7 +264,7 @@ function read_memory()
         emu.read(0x770, emu.memType.nesDebug), -- game state
         aws[2],                                -- (quasi) world
         aws[3],                                -- (quasi) stage
-        q_page(),                              -- area (quasi) page
+        q_page(princess),                      -- area (quasi) page
         emu.read(0x86, emu.memType.nesDebug),  -- area pixel
         emu.read(0x3ad, emu.memType.nesDebug), -- screen pixel
         remainder(),

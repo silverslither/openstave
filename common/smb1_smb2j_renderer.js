@@ -132,9 +132,9 @@ class RendererCanvas {
     renderFGTileToBuffer(x, y, tile, attributes, palette, alpha) {
         const vflip = attributes >>> 7;
         const hflip = (attributes >>> 6) & 1;
-        const u = (attributes >>> 2) & 7;
+        const u0 = (attributes >>> 2) & 1;
         const p = attributes & 3;
-        tile = TILES[0x100 + tile + u * 0x40];
+        tile = TILES[0x100 + tile + u0 * 0x8a];
 
         for (let j = 0; j < 8; j++) {
             for (let i = 0; i < 8; i++) {

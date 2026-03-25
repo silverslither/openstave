@@ -7,7 +7,6 @@ HASHES = {
     ["ea343f4e445a9050d4b4fbac2c77d0693b1d0922"] = true, -- (W) iNES
     ["33d23c2f2cfa4c9efec87f7bc1321ce3ce6c89bd"] = true, -- (W) NES 2.0
     ["383ad8e3890a95de9595f0a6087648f51177da13"] = true, -- (J) FDS
-    ["41cf327605ccc7b65f1891427abe4f64218354a1"] = true, -- (J) FDS
 }
 
 if HASHES[emu.getRomInfo().fileSha1Hash:lower()] == nil then

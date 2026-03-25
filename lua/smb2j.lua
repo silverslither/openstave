@@ -4,9 +4,8 @@ function teeLog(str)
 end
 
 HASHES = {
-    ["3b8c8998b4887d6dd676965943d69a320738ab9c"] = true,
-    ["08927227b6ff67f42e759505d176cd924931bd14"] = true,
-    ["20e50128742162ee47561db9e82b2836399c880c"] = true,
+    ["20e50128742162ee47561db9e82b2836399c880c"] = true, -- DV 0
+    ["08927227b6ff67f42e759505d176cd924931bd14"] = true, -- DV 2
 }
 
 if HASHES[emu.getRomInfo().fileSha1Hash:lower()] == nil then

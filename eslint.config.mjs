@@ -1,22 +1,11 @@
 import { defineConfig } from "eslint/config";
-import globals from "globals";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import js from "@eslint/js";
-import { FlatCompat } from "@eslint/eslintrc";
-import tsParser from "@typescript-eslint/parser"
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const compat = new FlatCompat({
-    baseDirectory: __dirname,
-    recommendedConfig: js.configs.recommended,
-    allConfig: js.configs.all
-});
+import globals from "globals";
+import tseslint from "typescript-eslint";
 
 export default defineConfig([{
-    files: ["**/*.js", "**/*.ts"],
-    extends: compat.extends("eslint:recommended"),
+    files: ["**/*.{js,ts}"],
+    extends: [js.configs.recommended, tseslint.configs.recommended],
     languageOptions: {
         globals: {
             ...globals.node,
@@ -24,7 +13,6 @@ export default defineConfig([{
         },
         ecmaVersion: "latest",
         sourceType: "module",
-        parser: tsParser,
     },
     rules: {
         indent: ["error", 4, {

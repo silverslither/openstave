@@ -59,17 +59,17 @@ class IVFWriter {
 }
 
 export default class {
-    constructor(width, height, start, end, framerate) {
+    constructor(width, height, framerate) {
+        this.keyframeInterval = Math.max(30, Math.round(2 * framerate[0] / framerate[1]));
         this.timestep = 1000000 * framerate[1] / framerate[0];
-        this.start = start;
-        this.end = end;
         this.frame = 0;
+
+        this.ivf = new IVFWriter("video.ivf", width, height, framerate, "VP90");
 
         this.encoder = new VideoEncoder({
             output: (chunk) => this.ivf.writeChunk(chunk),
-            error: console.error
+            error: console.error,
         });
-
         this.encoder.configure({
             codec: "vp09.01.52.08.03",
             width,
@@ -78,8 +78,6 @@ export default class {
             bitrateMode: "quantizer",
             hardwareAcceleration: "prefer-software",
         });
-
-        this.ivf = new IVFWriter("video.ivf", width, height, framerate, "VP90");
     }
 
     get idle() {
@@ -92,13 +90,17 @@ export default class {
             codedWidth: data.width,
             codedHeight: data.height,
             format: "RGBA",
-        })
-        this.encoder.encode(frame, { vp9: { quantizer: 0 } });
+        });
+        this.encoder.encode(frame, {
+            keyFrame: this.frame % this.keyframeInterval === 1,
+            vp9: { quantizer: 0 },
+        });
         frame.close();
     }
 
     async close() {
         await this.encoder.flush();
+        this.encoder.close();
         return this.ivf.close();
     }
 }

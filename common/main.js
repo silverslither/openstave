@@ -209,11 +209,11 @@ async function setup() {
         if (rLock)
             return;
         rLock = true;
-        
+
         try {
             if (encoder == null) {
                 controls.record.innerText = "Stop Recording";
-                encoder = new Encoder(2 * canvases[0].canvas.width, 2 * canvases[0].canvas.height, 0, 1000, [39375000, 655171]);
+                encoder = new Encoder(2 * canvases[0].canvas.width, 2 * canvases[0].canvas.height, [39375000, 655171]);
                 rLock = false;
                 return;
             }
@@ -229,7 +229,7 @@ async function setup() {
             a.href = URL.createObjectURL(file);
             a.download = "video.ivf";
             a.click();
-            URL.revokeObjectURL(url);
+            URL.revokeObjectURL(a.href);
 
             rLock = false;
         } catch (e) {

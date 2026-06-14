@@ -41,6 +41,16 @@ Note: with these settings enabled, be careful to not run any scripts from unknow
 
 Then, to run a script, simply `File > Open` the script you wish to run (if necessary, click the triangle icon to run the script - the default settings automatically execute loaded scripts). If it is an OpenStave user script, you should see `[OpenStave] successfully connected` printed to the Mesen2 screen as well as the console in the script window. If an error message is printed, follow the instructions in the error message.
 
+### Using the recorder feature
+
+Before starting your recording, resize your browser to get your desired output resolution (smaller window sizes work well because the height of the video is constant). Do not resize your browser window in the middle of a recording.
+
+All frames rendered after you start your recording will be recorded. Additionally, seeking is disabled when the recorder is active. This means that once you start your recording, you may safely find the exact frame you wish to start on, and then unpause to begin recording from that frame onwards.
+
+The output codec is VP9, inside the Duck IVF container. FFmpeg natively supports decoding videos in this format. Before performing any long recordings, make sure that your browser is capable of outputting lossless VP9 by running a short recording through `ffprobe` (you should see `vp9 (Profile 1)` and `yuv444p`). Currently, lossless VP9 has been confirmed to work on Chromium on Linux.
+
+It is recommended to remux to WebM for compatibility with editing software, or upscale the output by at least 2x using `flags=neighbor` if `ffmpeg` alone is being used to process the output.
+
 ## Special Thanks
 
 * 100th_Coin, for generating all SMB3 level maps and helping me work with the SMB3 codebase

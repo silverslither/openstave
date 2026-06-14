@@ -239,6 +239,8 @@ export class PlayerCanvas extends RendererCanvas {
         this.canvas.width = Math.ceil(window.innerWidth / this.scale);
         this.canvas.style.width = `${this.canvas.width * this.scale}px`;
         this.canvas.style.height = `${this.canvas.height * this.scale}px`;
+
+        document.getElementById("size").innerText = `Size: ${2 * this.canvas.width}x${2 * this.canvas.height}`;
         return this;
     }
 

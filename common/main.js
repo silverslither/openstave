@@ -1,3 +1,5 @@
+import Encoder from "/common/encoder.js";
+
 let LeaderboardCanvas, PlayerCanvas, init, screenshot;
 
 const FRAME_BUFFER = 120;
@@ -16,6 +18,8 @@ let pingLength = 0;
 let finished = false;
 let category = "";
 
+let encoder = null;
+
 addEventListener("DOMContentLoaded", setup);
 
 const controls = {};
@@ -31,10 +35,10 @@ async function setup() {
     controls.framesLeft = document.getElementById("frames-left");
     controls.range = document.querySelector("input");
     controls.framesRight = document.getElementById("frames-right");
-    controls.menu = document.getElementById("menu");
+    controls.menuToggle = document.getElementById("menu-toggle");
 
-    controls.popup = document.getElementById("popup");
-    controls.help = document.getElementById("help");
+    controls.menu = document.getElementById("menu");
+    controls.mouseHelp = document.getElementById("mouse-help");
     controls.ahc = document.getElementById("ahc");
     controls.atlas = document.getElementById("atlas");
     controls.leaderboard = document.getElementById("lb");
@@ -42,9 +46,18 @@ async function setup() {
     controls.float = document.getElementById("float");
     controls.copyScreenshot = document.getElementById("copy-ss");
     controls.saveScreenshot = document.getElementById("save-ss");
+    controls.recorderOpen = document.getElementById("recorder-open");
 
-    controls.help.addEventListener("click", () => {
+    controls.recorder = document.getElementById("recorder");
+    controls.recorderHelp = document.getElementById("recorder-help");
+    controls.record = document.getElementById("record");
+    controls.recorderClose = document.getElementById("recorder-close");
+
+    controls.mouseHelp.addEventListener("click", () => {
         window.open("https://github.com/silverslither/openstave?tab=readme-ov-file#renderer-controls", "_blank").focus();
+    });
+    controls.recorderHelp.addEventListener("click", () => {
+        window.open("https://github.com/silverslither/openstave?tab=readme-ov-file#using-the-recorder-feature", "_blank").focus();
     });
 
     query().then(() => {
@@ -55,7 +68,8 @@ async function setup() {
         controls.range.value = frame;
 
         const oninput = () => {
-            seek = true;
+            if (encoder == null)
+                seek = true;
             frame = Number(controls.range.value);
             controls.framesLeft.textContent = frame.toString().padStart(7);
             controls.framesRight.textContent = (frame >= controls.range.max ? "-0" : frame - controls.range.max).toString().padEnd(7);
@@ -90,8 +104,8 @@ async function setup() {
             paused = false;
         }
     });
-    controls.menu.addEventListener("click", () => {
-        controls.popup.style.display = controls.popup.style.display === "flex" ? "none" : "flex";
+    controls.menuToggle.addEventListener("click", () => {
+        controls.menu.style.display = controls.menu.style.display === "flex" ? "none" : "flex";
     });
     controls.ahc.addEventListener("click", () => {
         if (controls.root.classList.contains("hide"))
@@ -183,6 +197,49 @@ async function setup() {
         }
     });
 
+    controls.recorderOpen.addEventListener("click", () => {
+        controls.recorder.style.display = "flex";
+    });
+    controls.recorderClose.addEventListener("click", () => {
+        controls.recorder.style.display = "none";
+    });
+
+    let rLock = false;
+    controls.record.addEventListener("click", async () => {
+        if (rLock)
+            return;
+        rLock = true;
+        
+        try {
+            if (encoder == null) {
+                controls.record.innerText = "Stop Recording";
+                encoder = new Encoder(2 * canvases[0].canvas.width, 2 * canvases[0].canvas.height, 0, 1000, [39375000, 655171]);
+                rLock = false;
+                return;
+            }
+
+            controls.record.innerText = "Stopping...";
+
+            const handle = await encoder.close();
+            encoder = null;
+            controls.record.innerText = "Start Recording";
+
+            const file = await handle.getFile();
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(file);
+            a.download = "video.ivf";
+            a.click();
+            URL.revokeObjectURL(url);
+
+            rLock = false;
+        } catch (e) {
+            console.error(e);
+            encoder?.close();
+            encoder = null;
+            rLock = false;
+        }
+    });
+
     if (drawCondition)
         start();
     drawCondition = true;
@@ -202,6 +259,9 @@ function start() {
 function draw(timeMs) {
     requestAnimationFrame(draw);
 
+    if (!(encoder?.idle ?? true))
+        return;
+
     if (paused && !seek) {
         lastFrameMs = timeMs;
         return;
@@ -217,7 +277,7 @@ function draw(timeMs) {
             const df = Math.max(Math.floor(dt), 1);
 
             if (!seek)
-                frame += Math.min(df, 5); // skip at most 4 frames
+                frame += (encoder == null) ? Math.min(df, 5) : 1; // skip at most 4 frames
             seek = false;
 
             controls.framesLeft.textContent = Math.min(frame, maxLength - 1).toString().padStart(7);
@@ -228,6 +288,9 @@ function draw(timeMs) {
                 query(frame + FRAME_BUFFER, FRAME_BUFFER);
 
             lastFrameMs += df * FRAME_TIME_MS;
+
+            if (encoder != null)
+                encoder.input(screenshot(canvases[0], canvases[2]));
         } else {
             if (finished || frame <= pingLength - 2 * FRAME_BUFFER)
                 query(frame, 2 * FRAME_BUFFER);

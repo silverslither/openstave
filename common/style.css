@@ -60,15 +60,22 @@ button:active {
     color: lightgray;
 }
 
-#popup {
+#menu, #recorder {
     display: none;
     flex-direction: column;
     gap: 4px;
     padding-top: 4px;
     position: absolute;
     right: 0px;
-    bottom: 30px;
     background-color: black;
+}
+
+#menu {
+    bottom: 30px;
+}
+
+#recorder {
+    bottom: 50vh;
 }
 
 span {

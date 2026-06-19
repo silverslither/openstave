@@ -71,12 +71,12 @@ async function create() {
         const data = await response.json();
 
         let html = "DO NOT CLOSE OR RELOAD THIS PAGE UNTIL AUTHENTICATION HAS BEEN DISTRIBUTED.\n";
-        html += `The permanent link to this race will be <a href="${data.link}">${location.href}${data.link}</a>.\n`;
+        html += `The permanent link to this race will be <a href="${data.link}">${location.origin}/${data.link}</a>.\n`;
         for (const player of data.authentication)
-            html += `\nScript for ${player[0].slice(0, -8)}: <a href="${player[1]}">${location.href}${player[1]}</a>\n`;
+            html += `\nScript for ${player[0].slice(0, -8)}: <a href="${player[1]}">${location.origin}/${player[1]}</a>\n`;
 
         form.innerHTML = html.replaceAll("\n", "<br/>");
-        window.location.hash = data.link;
+        location.hash = data.link;
     } catch (e) {
         error.innerText = e;
         lock = false;
@@ -87,12 +87,12 @@ async function create() {
 async function dashLoop() {
     while (true) {
         await new Promise(r => setTimeout(r, 1000));
-        if (window.location.hash.length === 0)
+        if (location.hash.length === 0)
             continue;
 
         try {
             let html = "";
-            const data = await (await fetch(`${window.location.protocol}//${window.location.host}/${window.location.hash.slice(1)}`, {
+            const data = await (await fetch(`${location.protocol}//${location.host}/${location.hash.slice(1)}`, {
                 method: "POST",
                 body: JSON.stringify({
                     start: 0,
@@ -101,7 +101,7 @@ async function dashLoop() {
             })).json();
 
             if (data.finished) {
-                history.pushState("", document.title, window.location.pathname);
+                history.pushState("", document.title, location.pathname);
                 dash.innerHTML = "";
                 return;
             }

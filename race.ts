@@ -95,7 +95,7 @@ export class Race implements AbstractRace {
         activeRaces.set(this.id, this);
     }
 
-    static from(obj: any) {
+    static from(obj: Record<string, any>) {
         const race = new Race();
         race.id = obj.id;
         race.game = obj.game;
@@ -135,8 +135,11 @@ export class Race implements AbstractRace {
     serialize() {
         this.minimize();
         return JSON.stringify(this, (_, v) => {
-            if (v instanceof Buffer)
-                return v.toString("base64");
+            if (typeof v !== "object")
+                return v;
+            for (const [key, value] of Object.entries(v))
+                if (value instanceof Buffer)
+                    v[key] = value.toString("base64");
             return v;
         });
     }

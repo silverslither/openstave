@@ -54,10 +54,10 @@ async function setup() {
     controls.recorderClose = document.getElementById("recorder-close");
 
     controls.mouseHelp.addEventListener("click", () => {
-        window.open("https://github.com/silverslither/openstave?tab=readme-ov-file#renderer-controls", "_blank").focus();
+        open("https://github.com/silverslither/openstave?tab=readme-ov-file#renderer-controls", "_blank").focus();
     });
     controls.recorderHelp.addEventListener("click", () => {
-        window.open("https://github.com/silverslither/openstave?tab=readme-ov-file#using-the-recorder-feature", "_blank").focus();
+        open("https://github.com/silverslither/openstave?tab=readme-ov-file#using-the-recorder-feature", "_blank").focus();
     });
 
     query().then(() => {
@@ -67,14 +67,13 @@ async function setup() {
         controls.framesRight.textContent = "-0".padEnd(7);
         controls.range.value = frame;
 
-        const oninput = () => {
+        controls.range.addEventListener("input", () => {
             if (encoder == null)
                 seek = true;
             frame = Number(controls.range.value);
             controls.framesLeft.textContent = frame.toString().padStart(7);
             controls.framesRight.textContent = (frame >= controls.range.max ? "-0" : frame - controls.range.max).toString().padEnd(7);
-        };
-        controls.range.addEventListener("input", oninput);
+        });
         controls.range.addEventListener("mousedown", (e) => {
             if (e.button === 0)
                 paused = true;
@@ -161,7 +160,7 @@ async function setup() {
             context.putImageData(ss, 0, 0);
             const blob = await canvas.convertToBlob();
 
-            window.navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+            navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
 
             ssLock = false;
         } catch (e) {
@@ -333,7 +332,7 @@ async function query(start = 0, length = 0, noRecurse = false) {
 
     try {
         const pingStart = performance.now();
-        const data = await (await fetch(window.location.href, {
+        const data = await (await fetch(location.href, {
             method: "POST",
             body: JSON.stringify({
                 start,

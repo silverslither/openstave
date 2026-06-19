@@ -91,7 +91,7 @@ const server = http.createServer((request, response) => {
         });
 
         request.on("end", () => {
-            let requestBody: any;
+            let requestBody;
             try {
                 requestBody = JSON.parse(Buffer.concat(chunks).toString());
             } catch (e) {

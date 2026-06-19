@@ -35,7 +35,7 @@ export async function init(game) {
         promises.push(new Promise((resolve) => {
             const image = new Image();
             image.addEventListener("load", async () => {
-                maps[i] = await window.createImageBitmap(image);
+                maps[i] = await createImageBitmap(image);
                 resolve();
             });
             image.src = encodeURI(`${game}/maps/${i}.png`);
@@ -46,7 +46,7 @@ export async function init(game) {
         promises.push(new Promise((resolve) => {
             const image = new Image();
             image.addEventListener("load", async () => {
-                text[i] = await window.createImageBitmap(image);
+                text[i] = await createImageBitmap(image);
                 resolve();
             });
             image.src = encodeURI(`common/text/${i}.png`);
@@ -235,8 +235,8 @@ export class PlayerCanvas extends RendererCanvas {
         }
 
         this.canvas.height = 240;
-        this.scale = Math.max(Math.min(Math.floor(window.innerHeight / this.canvas.height), Math.round(window.innerWidth / 240)), 1);
-        this.canvas.width = Math.ceil(window.innerWidth / this.scale);
+        this.scale = Math.max(Math.min(Math.floor(innerHeight / this.canvas.height), Math.round(innerWidth / 240)), 1);
+        this.canvas.width = Math.ceil(innerWidth / this.scale);
         this.canvas.style.width = `${this.canvas.width * this.scale}px`;
         this.canvas.style.height = `${this.canvas.height * this.scale}px`;
 
@@ -372,7 +372,8 @@ export class PlayerCanvas extends RendererCanvas {
                 for (let i = 0; i < positions.length; i += 2) {
                     const y = positions[i] & 0xf8;
                     const p = (positions[i] & 6) >>> 1;
-                    const x = (positions[i] & 1) ? -positions[i + 1] : positions[i + 1];
+                    const x = (positions[i] & 1) ? positions[i + 1] - 256 : positions[i + 1];
+                    console.log(tile, i, y, x);
                     for (let j = 0; j < 4; j++)
                         background[name].push([xOffset + x + 8 * (j % 2), y + 8 * (j >>> 1), tile + j, p, palette, alpha]);
                 }
@@ -479,7 +480,7 @@ export class LeaderboardCanvas extends RendererCanvas {
 
     resize() {
         this.canvas.height = 240;
-        this.scale = Math.max(Math.min(Math.floor(window.innerHeight / this.canvas.height), Math.round(window.innerWidth / 240)), 1);
+        this.scale = Math.max(Math.min(Math.floor(innerHeight / this.canvas.height), Math.round(innerWidth / 240)), 1);
         this.canvas.style.width = `${0.5 * this.canvas.width * this.scale}px`;
         this.canvas.style.height = `${this.canvas.height * this.scale}px`;
         return this;
@@ -497,7 +498,7 @@ export class LeaderboardCanvas extends RendererCanvas {
         this.context.fillRect(8, 4, 8 * 44, 16 + 8 * lines.length);
         this.context.globalAlpha = 1.0;
 
-        let title = window.location.pathname.slice(1, -8);
+        let title = location.pathname.slice(1, -8);
         if (title[title.length - 1] === "-" || title[title.length - 1] === "_")
             title = title.slice(0, -1);
         title = title.slice(0, 42);

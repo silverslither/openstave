@@ -30,7 +30,7 @@ export async function init() {
         promises.push(new Promise((resolve) => {
             const image = new Image();
             image.addEventListener("load", async () => {
-                maps[i] = await window.createImageBitmap(image);
+                maps[i] = await createImageBitmap(image);
                 resolve();
             });
             image.src = encodeURI(`smb3/maps/${i}.png`);
@@ -41,7 +41,7 @@ export async function init() {
         promises.push(new Promise((resolve) => {
             const image = new Image();
             image.addEventListener("load", async () => {
-                text[i] = await window.createImageBitmap(image);
+                text[i] = await createImageBitmap(image);
                 resolve();
             });
             image.src = encodeURI(`common/text/${i}.png`);
@@ -226,8 +226,8 @@ export class PlayerCanvas extends RendererCanvas {
         }
 
         this.canvas.height = height ?? this.canvas.height;
-        this.scale = Math.max(Math.min(Math.floor(window.innerHeight / this.canvas.height), Math.round(window.innerWidth / 240)), 1);
-        this.canvas.width = Math.ceil(window.innerWidth / this.scale);
+        this.scale = Math.max(Math.min(Math.floor(innerHeight / this.canvas.height), Math.round(innerWidth / 240)), 1);
+        this.canvas.width = Math.ceil(innerWidth / this.scale);
         this.canvas.style.width = `${this.canvas.width * this.scale}px`;
         this.canvas.style.height = `${this.canvas.height * this.scale}px`;
 
@@ -527,7 +527,7 @@ export class LeaderboardCanvas extends RendererCanvas {
 
     resize(height) {
         this.canvas.height = height ?? this.canvas.height;
-        this.scale = Math.max(Math.min(Math.floor(window.innerHeight / this.canvas.height), Math.round(window.innerWidth / 240)), 1);
+        this.scale = Math.max(Math.min(Math.floor(innerHeight / this.canvas.height), Math.round(innerWidth / 240)), 1);
         this.canvas.style.width = `${0.5 * this.canvas.width * this.scale}px`;
         this.canvas.style.height = `${this.canvas.height * this.scale}px`;
         return this;
@@ -545,7 +545,7 @@ export class LeaderboardCanvas extends RendererCanvas {
         this.context.fillRect(8, 4, 8 * 40, 16 + 8 * lines.length);
         this.context.globalAlpha = 1.0;
 
-        let title = window.location.pathname.slice(1, -8);
+        let title = location.pathname.slice(1, -8);
         if (title[title.length - 1] === "-" || title[title.length - 1] === "_")
             title = title.slice(0, -1);
         title = title.slice(0, 42);

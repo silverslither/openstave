@@ -55,13 +55,13 @@ export default class Player {
         return player;
     }
 
-    add(buffer: Buffer) {
+    add(chunk: Buffer) {
         if (this.finished)
             return;
 
-        this.buffers.push(buffer);
-        this.buffer_length += buffer.length;
-        this.total_length += buffer.length;
+        this.buffers.push(chunk);
+        this.buffer_length += chunk.length;
+        this.total_length += chunk.length;
         if (this.buffer_length > PLAYER_BUFFER) {
             const buffer: Buffer = Buffer.concat(this.buffers);
             const { buffer: _buffer, events } = bufferHandler(buffer, this.frames, this.game);

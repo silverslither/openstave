@@ -47,7 +47,7 @@ const SMB1_SMB2J_GENERATOR = (game: string, current: Frame, frames: Frame[], eve
         "smb1_warpless": SMB1_SMB2J_WARPLESS_SPLITS,
         "smb2j_any%": SMB2J_ANY_SPLITS,
         "smb2j_warpless": SMB1_SMB2J_WARPLESS_SPLITS,
-    }[game];
+    }[game] ?? [];
 
     const START_AREA = game.split("_")[0] === "smb1" ? 0x25 : 0x20;
     const END_AREA = game.split("_")[0] === "smb1" ? 0x65 : 0x67;
@@ -166,7 +166,7 @@ const SMB3_ANYNWW_GENERATOR = (current: Frame, frames: Frame[], events: PlayerEv
     }
 };
 
-const eventGenerators = {
+const eventGenerators: Record<string, (current: Frame, frames: Frame[], events: PlayerEvent[]) => void> = {
     "smb1_any%": (current: Frame, frames: Frame[], events: PlayerEvent[]) => SMB1_SMB2J_GENERATOR("smb1_any%", current, frames, events),
     "smb1_warpless": (current: Frame, frames: Frame[], events: PlayerEvent[]) => SMB1_SMB2J_GENERATOR("smb1_warpless", current, frames, events),
     "smb2j_any%": (current: Frame, frames: Frame[], events: PlayerEvent[]) => SMB1_SMB2J_GENERATOR("smb2j_any%", current, frames, events),
@@ -176,7 +176,7 @@ const eventGenerators = {
 
 export const supportedGames = new Set(Object.keys(eventGenerators));
 
-const RAM_OFFSET = {
+const RAM_OFFSET: Record<string, number> = {
     "smb1": 8 + 32 + 256,
     "smb2j": 8 + 32 + 256,
     "smb3": 8 + 32 + 6 + 256,

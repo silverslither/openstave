@@ -7,7 +7,7 @@ import { supportedGames } from "./buffer.ts";
 import Player from "./player.ts";
 
 const MINUTE = 60 * 1000;
-const TIMEOUTS = {
+const TIMEOUTS: Record<string, number> = {
     "default": 30 * MINUTE,
     "smb1_any%": 15 * MINUTE,
     "smb1_warpless": 45 * MINUTE,
@@ -36,7 +36,7 @@ export interface AbstractRace {
     getData: (start: number, length: number) => Promise<{
         game: string,
         finished: boolean,
-        players: { [key: string]: PlayerResponseObject },
+        players: Record<string, PlayerResponseObject | null>,
     } | null>;
 }
 
@@ -57,6 +57,11 @@ export class Race implements AbstractRace {
     }
 
     constructor(id: string = "", game: string = "", players: string[] = []) {
+        this.id = "";
+        this.game = "";
+        this.timeout = 0;
+        this.players = [];
+
         id = id.replace(/[^0-9A-Za-z_-]/g, "");
         if (id.length > 56)
             return;
@@ -103,7 +108,7 @@ export class Race implements AbstractRace {
     }
 
     async getData(start: number, length: number) {
-        const response: { [key: string]: PlayerResponseObject } = {};
+        const response: Record<string, PlayerResponseObject | null> = {};
 
         for (const player of this.players) {
             if (player.start !== player.start)
@@ -143,23 +148,26 @@ export class RaceData implements AbstractRace {
     dirty: boolean;
 
     constructor(racePath: string) {
-        this.dirty = false;
         this.path = racePath;
+        this.game = "";
+        this.dirty = false;
+
         if (fs.existsSync(this.path)) {
             const data = fs.readFileSync(path.join(this.path, "static"), { encoding: "utf8" });
             const staticData = JSON.parse(data);
             this.game = staticData.game;
 
-            if (Object.values(staticData.players).some(v => v?.["start"] != null))
+            if (Object.values(staticData.players).some(v => (v as Record<string, any>)?.start != null))
                 this.dirty = true;
         }
     }
 
     async clean() {
         const obj = await this.getData(0, Infinity);
-        obj.players = Object.entries(obj.players).map((v: [string, object]) => {
-            const r = { username: v[0], ...v[1], end: v[1]["time"] };
-            r["start"] ??= 0;
+        obj.players = Object.entries(obj.players).map(v => {
+            const w = v as [string, Record<string, any>];
+            const r: Record<string, any> = { username: w[0], ...w[1], end: w[1].time };
+            r.start ??= 0;
             return r;
         });
 
@@ -195,7 +203,7 @@ export class RaceData implements AbstractRace {
         const length = Math.max(...Object.values(staticData.players).map(v => v.length));
 
         for (let i = 0; i < length; i += FILE_BUFFER) {
-            const frames = {};
+            const frames: Record<string, string[]> = {};
             for (const player of race.players) {
                 const slice = player.frames.slice(i, i + FILE_BUFFER);
                 if (slice.length > 0)
@@ -226,7 +234,7 @@ export class RaceData implements AbstractRace {
                 break;
 
             const data = await fs.promises.readFile(file);
-            const frames: { [key: string]: string[] } = await new Promise((resolve, reject) => {
+            const frames: Record<string, string[]> = await new Promise((resolve, reject) => {
                 zlib.gunzip(data, (error, data) => {
                     if (error)
                         reject(error);

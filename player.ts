@@ -15,6 +15,7 @@ export default class Player {
     splits: number[];
     buffers: Buffer[];
     buffer_length: number;
+    total_length: number;
 
     get finished(): boolean {
         return this.end === this.end || this.dnf === this.dnf;
@@ -32,9 +33,10 @@ export default class Player {
         this.splits = [];
         this.buffers = [];
         this.buffer_length = 0;
+        this.total_length = 0;
     }
 
-    static from(obj: any) {
+    static from(obj: Record<string, any>) {
         const player = new Player();
         player.username = obj.username;
         player.password = obj.password;
@@ -49,6 +51,7 @@ export default class Player {
         player.splits = obj.splits;
         player.buffers = obj?.buffers?.map((v: string) => Buffer.from(v, "base64"));
         player.buffer_length = obj.buffer_length;
+        player.total_length = obj.total_length;
         return player;
     }
 
@@ -58,6 +61,7 @@ export default class Player {
 
         this.buffers.push(buffer);
         this.buffer_length += buffer.length;
+        this.total_length += buffer.length;
         if (this.buffer_length > PLAYER_BUFFER) {
             const buffer: Buffer = Buffer.concat(this.buffers);
             const { buffer: _buffer, events } = bufferHandler(buffer, this.frames, this.game);
@@ -108,6 +112,7 @@ export default class Player {
             this.splits = this.splits.map(v => v - this.start);
             this.buffers = [];
             this.buffer_length = 0;
+            this.total_length = 0;
             this.start = 0;
         }
 

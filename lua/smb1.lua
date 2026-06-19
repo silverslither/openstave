@@ -21,16 +21,18 @@ local auth = table.concat({
 })
 local socket = require("socket.core")
 local client = socket.connect(SERVER[1], SERVER[2])
+local total_length = 0
 if client ~= nil then
     client:send(auth)
-    local r = client:receive(1)
+    local r = client:receive(5)
     if r == nil then
-        client.close()
+        client:close()
         client = nil
-    end
-    if r ~= string.char(0) then
+    elseif string.byte(r, 1) ~= 0 then
         teeLog("invalid authentication for " .. SERVER[1] .. ":" .. SERVER[2] .. ", exiting")
-        return
+    else
+        local b1, b2, b3, b4 = string.byte(r, 2, 5)
+        total_length = b1 | (b2 << 8) | (b3 << 16) | (b4 << 24)
     end
 end
 local pclient = nil
@@ -51,6 +53,7 @@ function send(data)
             sent1 = sent2
         end
         buffer = buffer:sub(sent1 + 1)
+        total_length = total_length + sent1
     end
     if client == nil then
         if pclient ~= nil then
@@ -61,16 +64,22 @@ function send(data)
         client = socket.connect(SERVER[1], SERVER[2])
         if client ~= nil then
             client:send(auth)
-            local r = client:receive(1)
+            local r = client:receive(5)
             if r == nil then
-                client.close()
+                client:close()
                 client = nil
-            end
-            if r ~= string.char(0) then
+            elseif string.byte(r, 1) ~= 0 then
                 teeLog("invalid authentication for " .. SERVER[1] .. ":" .. SERVER[2] .. ", exiting")
                 if callback ~= nil then
                     emu.removeEventCallback(callback, emu.eventType.endFrame)
                 end
+            else
+                local b1, b2, b3, b4 = string.byte(r, 2, 5)
+                local skip = (b1 | (b2 << 8) | (b3 << 16) | (b4 << 24)) - total_length
+                buffer = buffer:sub(skip + 1)
+                total_length = total_length + skip
+                emu.log(skip)
+                emu.log(total_length)
             end
         end
     end

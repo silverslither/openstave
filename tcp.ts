@@ -7,8 +7,8 @@ export const openConnections: Set<net.Socket> = new Set();
 const authorize = (username: string, password: string) => {
     const player = activePlayers.get(username);
     if (player == null || player.connected)
-        return false;
-    return password === player.password;
+        return null;
+    return (password === player.password) ? player : null;
 };
 
 export const server = net.createServer((client) => {
@@ -25,7 +25,7 @@ export const server = net.createServer((client) => {
         }, AUTH_WAIT_MS);
     });
 
-    client.on("data", (data) => {
+    client.on("data", (data: Buffer) => {
         try {
             if (username !== "") {
                 const player = activePlayers.get(username);
@@ -49,16 +49,19 @@ export const server = net.createServer((client) => {
             const buffer = Buffer.concat(authChunks);
             const _username = buffer.subarray(0, 32).toString().trim();
             const _password = buffer.subarray(32, 64).toString().trim();
-            if (authorize(_username, _password)) {
-                client.write(new Uint8Array([0]));
+            const player = authorize(_username, _password);
+            const response = Buffer.alloc(5);
+            if (player != null) {
+                response.writeUint32LE(player.total_length, 1);
+                client.write(response);
                 username = _username;
-                const player = activePlayers.get(username);
                 player.connected = true;
                 player.add(buffer.subarray(64));
                 authChunks.length = 0;
                 authLength = 0;
             } else {
-                client.write(new Uint8Array([1]));
+                response.writeUint8(1, 0);
+                client.write(response);
                 client.destroySoon();
             }
         } catch (e) {

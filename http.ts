@@ -9,7 +9,7 @@ import { Race, activeRaces, inactiveRaces } from "./race.ts";
 
 import { HTTP_PORT, MAX_ACTIVE_RACES, TCP_ADDRESS, TCP_PORT } from "./env.ts";
 
-const MIME_TYPES = {
+const MIME_TYPES: Record<string, string> = {
     ".html": "text/html",
     ".css": "text/css",
     ".js": "text/javascript",
@@ -27,7 +27,7 @@ const server = http.createServer((request, response) => {
     try {
         let url: string;
         try {
-            url = decodeURI(request.url);
+            url = decodeURI(request.url ?? "%");
         } catch (e) {
             void e;
             response.writeHead(400).end();
@@ -42,11 +42,12 @@ const server = http.createServer((request, response) => {
             if (parts.length === 0) {
                 file = path.join(import.meta.dirname, "root", "index.html");
             } else if (parts.length === 1) {
-                if (!activeRaces.has(parts[0]) && !inactiveRaces.has(parts[0])) {
+                const race = activeRaces.get(parts[0]) ?? inactiveRaces.get(parts[0]);
+                if (race == null) {
                     response.writeHead(404).end();
                     return;
                 }
-                file = path.join(import.meta.dirname, (activeRaces.get(parts[0]) ?? inactiveRaces.get(parts[0])).game.split("_")[0], "index.html");
+                file = path.join(import.meta.dirname, race.game.split("_")[0], "index.html");
             } else {
                 file = path.join(import.meta.dirname, ...parts);
             }
@@ -84,7 +85,7 @@ const server = http.createServer((request, response) => {
             return;
         }
 
-        const chunks = [];
+        const chunks: Buffer[] = [];
         request.on("data", (data) => {
             chunks.push(data);
         });
@@ -157,12 +158,13 @@ const server = http.createServer((request, response) => {
             }
 
             const race = url.slice(1);
-            if (!activeRaces.has(race) && !inactiveRaces.has(race)) {
+            const raceObject = activeRaces.get(race) ?? inactiveRaces.get(race);
+
+            if (raceObject == null) {
                 response.writeHead(404).end();
                 return;
             }
 
-            const raceObject = activeRaces.get(race) ?? inactiveRaces.get(race);
             raceObject.getData(start, length).then((responseBody) => {
                 if (responseBody == null) {
                     response.writeHead(404).end();

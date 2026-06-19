@@ -38,6 +38,7 @@ end
 local pclient = nil
 
 local buffer = ""
+local backup = ""
 function send(data)
     buffer = buffer .. data
     if client ~= nil then
@@ -52,6 +53,7 @@ function send(data)
             client = nil
             sent1 = sent2
         end
+        backup = (backup .. buffer:sub(1, sent1)):sub(-65536)
         buffer = buffer:sub(sent1 + 1)
         total_length = total_length + sent1
     end
@@ -76,10 +78,15 @@ function send(data)
             else
                 local b1, b2, b3, b4 = string.byte(r, 2, 5)
                 local skip = (b1 | (b2 << 8) | (b3 << 16) | (b4 << 24)) - total_length
-                buffer = buffer:sub(skip + 1)
+                if skip < 0 then
+                    buffer = backup:sub(skip) .. buffer
+                    backup = backup:sub(1, skip - 1)
+                else
+                    backup = (backup .. buffer:sub(1, skip)):sub(65536)
+                    buffer = buffer:sub(skip + 1)
+                end
                 total_length = total_length + skip
                 emu.log(skip)
-                emu.log(total_length)
             end
         end
     end

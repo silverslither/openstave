@@ -83,7 +83,7 @@ function send(data)
                     buffer = backup:sub(skip) .. buffer
                     backup = backup:sub(1, skip - 1)
                 else
-                    backup = (backup .. buffer:sub(1, skip)):sub(65536)
+                    backup = (backup .. buffer:sub(1, skip)):sub(-65536)
                     buffer = buffer:sub(skip + 1)
                 end
                 total_length = total_length + skip

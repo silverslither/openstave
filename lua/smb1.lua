@@ -30,6 +30,7 @@ if client ~= nil then
         client = nil
     elseif string.byte(r, 1) ~= 0 then
         teeLog("invalid authentication for " .. SERVER[1] .. ":" .. SERVER[2] .. ", exiting")
+        return
     else
         local b1, b2, b3, b4 = string.byte(r, 2, 5)
         total_length = b1 | (b2 << 8) | (b3 << 16) | (b4 << 24)
@@ -86,7 +87,6 @@ function send(data)
                     buffer = buffer:sub(skip + 1)
                 end
                 total_length = total_length + skip
-                emu.log(skip)
             end
         end
     end

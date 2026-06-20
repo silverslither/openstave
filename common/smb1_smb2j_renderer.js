@@ -373,7 +373,6 @@ export class PlayerCanvas extends RendererCanvas {
                     const y = positions[i] & 0xf8;
                     const p = (positions[i] & 6) >>> 1;
                     const x = (positions[i] & 1) ? positions[i + 1] - 256 : positions[i + 1];
-                    console.log(tile, i, y, x);
                     for (let j = 0; j < 4; j++)
                         background[name].push([xOffset + x + 8 * (j % 2), y + 8 * (j >>> 1), tile + j, p, palette, alpha]);
                 }

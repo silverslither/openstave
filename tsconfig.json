@@ -4,5 +4,5 @@
         "lib": [ "esnext" ],
         "allowImportingTsExtensions": true,
         "types": [ "node" ]
-    },
+    }
 }

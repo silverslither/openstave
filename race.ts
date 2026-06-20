@@ -137,6 +137,10 @@ export class Race implements AbstractRace {
         return JSON.stringify(this, (_, v) => {
             if (typeof v !== "object")
                 return v;
+            if (Array.isArray(v))
+                v = [...v];
+            else
+                v = {...v};
             for (const [key, value] of Object.entries(v))
                 if (value instanceof Buffer)
                     v[key] = value.toString("base64");

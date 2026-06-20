@@ -233,7 +233,7 @@ async function setup() {
             rLock = false;
         } catch (e) {
             console.error(e);
-            encoder?.close();
+            await encoder?.close();
             encoder = null;
             rLock = false;
         }

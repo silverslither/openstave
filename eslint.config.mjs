@@ -34,7 +34,7 @@ export default defineConfig([
         rules,
     },
     {
-        files: ["**/*.{js,ts}"],
+        files: ["**/*.ts"],
         extends: [js.configs.recommended, tseslint.configs.recommended],
         languageOptions: {
             globals: globals.node,

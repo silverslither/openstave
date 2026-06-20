@@ -60,6 +60,8 @@ class IVFWriter {
 
 export default class {
     constructor(width, height, framerate) {
+        this.closing = false;
+        this.closed = false;
         this.keyframeInterval = Math.max(30, Math.round(2 * framerate[0] / framerate[1]));
         this.timestep = 1000000 * framerate[1] / framerate[0];
         this.frame = 0;
@@ -67,8 +69,8 @@ export default class {
         this.ivf = new IVFWriter("video.ivf", width, height, framerate, "VP90");
 
         this.encoder = new VideoEncoder({
-            output: (chunk) => this.ivf.writeChunk(chunk),
-            error: console.error,
+            output: chunk => this.ivf.writeChunk(chunk),
+            error: e => this.error(e),
         });
         this.encoder.configure({
             codec: "vp09.01.52.08.03",
@@ -85,6 +87,9 @@ export default class {
     }
 
     input(data) {
+        if (this.closing)
+            return this.closed;
+
         const frame = new VideoFrame(data.data, {
             timestamp: this.timestep * (this.frame++),
             codedWidth: data.width,
@@ -96,11 +101,23 @@ export default class {
             vp9: { quantizer: 0 },
         });
         frame.close();
+
+        return false;
+    }
+
+    error(e) {
+        console.error(e);
+        this.close();
     }
 
     async close() {
+        if (this.closing)
+            return null;
+        this.closing = true;
         await this.encoder.flush();
         this.encoder.close();
-        return this.ivf.close();
+        const r = await this.ivf.close();
+        this.closed = true;
+        return r;
     }
 }

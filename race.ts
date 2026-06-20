@@ -140,7 +140,7 @@ export class Race implements AbstractRace {
             if (Array.isArray(v))
                 v = [...v];
             else
-                v = {...v};
+                v = { ...v };
             for (const [key, value] of Object.entries(v))
                 if (value instanceof Buffer)
                     v[key] = value.toString("base64");
@@ -171,7 +171,7 @@ export class RaceData implements AbstractRace {
 
     async clean() {
         const obj = await this.getData(0, Infinity);
-        obj.players = Object.entries(obj.players).map(v => {
+        obj.players = Object.entries(obj.players).map((v) => {
             const w = v as [string, Record<string, any>];
             const r: Record<string, any> = { username: w[0], ...w[1], end: w[1].time };
             r.start ??= 0;

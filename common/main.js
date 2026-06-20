@@ -235,6 +235,7 @@ async function setup() {
             console.error(e);
             await encoder?.close();
             encoder = null;
+            controls.record.innerText = "Start Recording";
             rLock = false;
         }
     });
@@ -288,8 +289,10 @@ function draw(timeMs) {
 
             lastFrameMs += df * FRAME_TIME_MS;
 
-            if (encoder != null)
-                encoder.input(screenshot(canvases[0], canvases[2]));
+            if (encoder?.input(screenshot(canvases[0], canvases[2]))) {
+                encoder = null;
+                controls.record.innerText = "Start Recording";
+            }
         } else {
             if (finished || frame <= pingLength - 2 * FRAME_BUFFER)
                 query(frame, 2 * FRAME_BUFFER);

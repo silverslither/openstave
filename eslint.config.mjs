@@ -15,6 +15,9 @@ const rules = {
     "no-multi-spaces": ["error"],
     "object-curly-spacing": ["error", "always"],
     "template-curly-spacing": ["error", "never"],
+    "arrow-parens": ["error", "as-needed", {
+        "requireForBlockBody": true
+    }],
     "comma-dangle": ["error", "always-multiline"],
     "no-shadow": ["warn", {
         "builtinGlobals": true

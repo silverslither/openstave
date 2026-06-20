@@ -200,8 +200,8 @@ export class PlayerCanvas extends RendererCanvas {
             window.addEventListener("resize", () => this.resize().render(this.count));
         this.resize();
 
-        this.canvas.addEventListener("mousedown", (event) => this.onclick(event));
-        this.canvas.addEventListener("contextmenu", (event) => event.preventDefault(), false);
+        this.canvas.addEventListener("mousedown", event => this.onclick(event));
+        this.canvas.addEventListener("contextmenu", event => event.preventDefault(), false);
 
         document.getElementById(id === 0 ? "screen" : "renderer").append(this.canvas);
 
@@ -453,8 +453,8 @@ export class LeaderboardCanvas extends RendererCanvas {
         window.addEventListener("resize", () => this.resize().render(this.count));
         this.resize();
 
-        this.canvas.addEventListener("mousedown", (event) => this.onclick(event), true);
-        this.canvas.addEventListener("contextmenu", (event) => event.preventDefault(), false);
+        this.canvas.addEventListener("mousedown", event => this.onclick(event), true);
+        this.canvas.addEventListener("contextmenu", event => event.preventDefault(), false);
 
         document.getElementById("screen").append(this.canvas);
         this.context = this.canvas.getContext("2d");
@@ -574,7 +574,7 @@ export class LeaderboardCanvas extends RendererCanvas {
 }
 
 function getPlacements(players, count) {
-    const leaderboard = Object.entries(players).map(v => {
+    const leaderboard = Object.entries(players).map((v) => {
         const splits = v[1].splits.slice(0, v[1].splits.findLastIndex(w => w != null && w <= count) + 1);
         if (v[1].time <= count)
             splits.push(v[1].time);

@@ -1,4 +1,4 @@
-const COMPONENT = (arr) => arr.map(v => v.slice(1).match(/../g).map(w => parseInt(w, 16)));
+const COMPONENT = arr => arr.map(v => v.slice(1).match(/../g).map(w => parseInt(w, 16)));
 
 export const OUTLINE_COLOURS = ["#ff0000", "#00ffff", "#00ff00", "#ff00ff", "#0000ff", "#ffff00", "#ffffff", "#000000", "#ff7f00", "#007fff", "#00ff7f", "#ff007f", "#7f00ff", "#7fff00", "#aaaaaa", "#555555"];
 export const COMPONENT_OUTLINE_COLOURS = COMPONENT(OUTLINE_COLOURS);

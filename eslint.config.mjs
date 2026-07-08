@@ -1,7 +1,8 @@
-import { defineConfig } from "eslint/config";
-import js from "@eslint/js";
 import globals from "globals";
+import js from "@eslint/js";
 import tseslint from "typescript-eslint";
+
+import { defineConfig } from "eslint/config";
 
 const rules = {
     indent: ["error", 4, {
@@ -16,11 +17,11 @@ const rules = {
     "object-curly-spacing": ["error", "always"],
     "template-curly-spacing": ["error", "never"],
     "arrow-parens": ["error", "as-needed", {
-        "requireForBlockBody": true
+        "requireForBlockBody": true,
     }],
     "comma-dangle": ["error", "always-multiline"],
     "no-shadow": ["warn", {
-        "builtinGlobals": true
+        "builtinGlobals": true,
     }],
     "sort-imports": ["warn"],
 };
@@ -45,5 +46,5 @@ export default defineConfig([
             sourceType: "module",
         },
         rules,
-    }
+    },
 ]);

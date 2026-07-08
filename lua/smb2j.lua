@@ -13,6 +13,8 @@ if HASHES[emu.getRomInfo().fileSha1Hash:lower()] == nil then
     return
 end
 
+ADDRESS = SERVER[1] .. ":" .. SERVER[2]
+
 local callback = nil
 local auth = table.concat({
     string.format("%-32s", USERNAME),
@@ -28,7 +30,7 @@ if client ~= nil then
         client:close()
         client = nil
     elseif string.byte(r, 1) ~= 0 then
-        teeLog("invalid authentication for " .. SERVER[1] .. ":" .. SERVER[2] .. ", exiting")
+        teeLog("invalid authentication for " .. ADDRESS .. ", exiting")
         return
     else
         local b1, b2, b3, b4 = string.byte(r, 2, 5)
@@ -43,7 +45,7 @@ function send(data)
     buffer = buffer .. data
     if client ~= nil then
         if pclient == nil then
-            teeLog("successfully connected to " .. SERVER[1] .. ":" .. SERVER[2] .. ".")
+            teeLog("successfully connected to " .. ADDRESS .. ".")
             pclient = client
         end
 
@@ -59,7 +61,7 @@ function send(data)
     end
     if client == nil then
         if pclient ~= nil then
-            teeLog("reconnecting to " .. SERVER[1] .. ":" .. SERVER[2] .. "...")
+            teeLog("reconnecting to " .. ADDRESS .. "...")
             pclient = client
         end
 
@@ -71,7 +73,7 @@ function send(data)
                 client:close()
                 client = nil
             elseif string.byte(r, 1) ~= 0 then
-                teeLog("invalid authentication for " .. SERVER[1] .. ":" .. SERVER[2] .. ", exiting")
+                teeLog("invalid authentication for " .. ADDRESS .. ", exiting")
                 if callback ~= nil then
                     emu.removeEventCallback(callback, emu.eventType.endFrame)
                 end

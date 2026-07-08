@@ -1,0 +1,43 @@
+export default class {
+    constructor() {
+        this.ctx = new AudioContext({
+            latencyHint: "interactive",
+            sampleRate: 48000,
+        });
+
+        this.initialized = this.ctx.audioWorklet.addModule("/common/buffered_processor.js").then(() => {
+            this.node = new AudioWorkletNode(
+                this.ctx,
+                "buffered-player",
+            );
+            this.node.connect(this.ctx.destination);
+        });
+    }
+
+    async resume() {
+        await this.initialized;
+
+        if (this.ctx.state !== "running")
+            await this.ctx.resume();
+    }
+
+    async suspend() {
+        await this.initialized;
+
+        if (this.ctx.state !== "suspended")
+            await this.ctx.suspend();
+    }
+
+    async push(buffer, offset) {
+        await this.initialized;
+
+        this.node.port.postMessage([
+            buffer, offset
+        ], [buffer.buffer]);
+    }
+
+    async close() {
+        await this.initialized;
+        this.ctx.close();
+    }
+}

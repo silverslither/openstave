@@ -14,6 +14,8 @@ if HASHES[emu.getRomInfo().fileSha1Hash:lower()] == nil then
     return
 end
 
+ADDRESS = SERVER[1] .. ":" .. SERVER[2]
+
 local callback = nil
 local auth = table.concat({
     string.format("%-32s", USERNAME),
@@ -29,7 +31,7 @@ if client ~= nil then
         client:close()
         client = nil
     elseif string.byte(r, 1) ~= 0 then
-        teeLog("invalid authentication for " .. SERVER[1] .. ":" .. SERVER[2] .. ", exiting")
+        teeLog("invalid authentication for " .. ADDRESS .. ", exiting")
         return
     else
         local b1, b2, b3, b4 = string.byte(r, 2, 5)
@@ -44,7 +46,7 @@ function send(data)
     buffer = buffer .. data
     if client ~= nil then
         if pclient == nil then
-            teeLog("successfully connected to " .. SERVER[1] .. ":" .. SERVER[2] .. ".")
+            teeLog("successfully connected to " .. ADDRESS .. ".")
             pclient = client
         end
 
@@ -60,7 +62,7 @@ function send(data)
     end
     if client == nil then
         if pclient ~= nil then
-            teeLog("reconnecting to " .. SERVER[1] .. ":" .. SERVER[2] .. "...")
+            teeLog("reconnecting to " .. ADDRESS .. "...")
             pclient = client
         end
 
@@ -72,7 +74,7 @@ function send(data)
                 client:close()
                 client = nil
             elseif string.byte(r, 1) ~= 0 then
-                teeLog("invalid authentication for " .. SERVER[1] .. ":" .. SERVER[2] .. ", exiting")
+                teeLog("invalid authentication for " .. ADDRESS .. ", exiting")
                 if callback ~= nil then
                     emu.removeEventCallback(callback, emu.eventType.endFrame)
                 end
@@ -90,6 +92,51 @@ function send(data)
             end
         end
     end
+end
+
+local _p_channels = { 0, 0, 0, 0 }
+local _c_channels = { -1, -1, -1, -1 }
+function serialize_sfx()
+    local queues = {
+        emu.read(0xff, emu.memType.nesDebug),
+        emu.read(0xfe, emu.memType.nesDebug),
+        emu.read(0xfd, emu.memType.nesDebug),
+        emu.read(0xfc, emu.memType.nesDebug)
+    }
+
+    local channels = {
+        emu.read(0xf1, emu.memType.nesDebug),
+        emu.read(0xf2, emu.memType.nesDebug),
+        emu.read(0xf3, emu.memType.nesDebug),
+        emu.read(0x7b1, emu.memType.nesDebug)
+    }
+
+    sfx = { 0 }
+    for i = 1, 4 do
+        if queues[i] ~= 0 then
+            _c_channels[i] = 0
+            channels[i] = queues[i]
+        elseif channels[i] ~= 0 and _p_channels[i] == channels[i] then
+            _c_channels[i] = _c_channels[i] + 1
+        else
+            _c_channels[i] = -1
+        end
+
+        if i < 4 and _c_channels[i] >= 0 then
+            sfx[1] = sfx[1] | (1 << (i - 1))
+            table.insert(sfx, channels[i])
+            table.insert(sfx, _c_channels[i])
+        end
+    end
+
+    if channels[4] == 1 then
+        sfx[1] = sfx[1] | (1 << 3)
+        table.insert(sfx, _c_channels[4])
+    end
+
+    if sfx[1] == 0 then sfx = {} end
+
+    _p_channels = channels
 end
 
 TILES = {
@@ -166,21 +213,21 @@ local _r_black_screen_soon = false
 function remainder()
     local state = emu.read(0xe, emu.memType.nesDebug)
 
-    if (state == 0) then
-        if (_r_black_screen_soon and _r == 0xff and emu.read(0x7a0, emu.memType.nesDebug) == 7) then
+    if state == 0 then
+        if _r_black_screen_soon and _r == 0xff and emu.read(0x7a0, emu.memType.nesDebug) == 7 then
             _r = emu.read(0x77f, emu.memType.nesDebug)
             _r_timer = 0x7a0 - 0x795
         end
     else
-        if (state == 3) then
+        if state == 3 then
             _r_black_screen_soon = true
-        elseif (state == 7 or state == 8) then
+        elseif state == 7 or state == 8 then
             _r_black_screen_soon = false
         end
 
-        if (state == 5 and _r == 0xff) then
+        if state == 5 and _r == 0xff then
             for i = 1, 6 do
-                if (emu.read(0x795 + i, emu.memType.nesDebug) == 6) then
+                if emu.read(0x795 + i, emu.memType.nesDebug) == 6 then
                     _r = emu.read(0x77f, emu.memType.nesDebug)
                     _r_timer = i
                     break
@@ -188,17 +235,17 @@ function remainder()
             end
         end
 
-        if (_r == 0xff and emu.read(0x7a1, emu.memType.nesDebug) == 6) then
+        if _r == 0xff and emu.read(0x7a1, emu.memType.nesDebug) == 6 then
             _r = emu.read(0x77f, emu.memType.nesDebug)
             _r_timer = 0x7a1 - 0x795
         end
 
-        if (state == 7) then
+        if state == 7 then
             _r = 0xff
         end
     end
 
-    if (_r_timer ~= 0 and emu.read(0x795 + _r_timer, emu.memType.nesDebug) == 0) then
+    if _r_timer ~= 0 and emu.read(0x795 + _r_timer, emu.memType.nesDebug) == 0 then
         _r = 0xff
         _r_timer = 0
     end
@@ -215,7 +262,7 @@ function q_page()
     local loop = emu.read(0x745, emu.memType.nesDebug)
     local page = emu.read(0x6d, emu.memType.nesDebug)
 
-    if (_p_page - page >= 3 and loop == 0 and _p_loop ~= 0) then
+    if _p_page - page >= 3 and loop == 0 and _p_loop ~= 0 then
         _page_threshold = page + 1
         _loop_offset = true
     end
@@ -224,11 +271,11 @@ function q_page()
     _p_loop = loop
 
     -- change area failsafe is 1f late
-    if (state == 7 or page >= _page_threshold) then
+    if state == 7 or page >= _page_threshold then
         _loop_offset = false
     end
 
-    if (_loop_offset) then return page + 4 end
+    if _loop_offset then return page + 4 end
     return page
 end
 
@@ -274,6 +321,7 @@ function read_memory()
 
     read_tiles()
     serialize_tiles()
+    serialize_sfx()
 end
 
 function u32le(n)
@@ -292,7 +340,8 @@ function main()
         string.char(table.unpack(palette)),
         string.char(table.unpack(sprites)),
         string.char(table.unpack(ram)),
-        string.char(table.unpack(tiles))
+        string.char(table.unpack(tiles)),
+        string.char(table.unpack(sfx))
     })
     send(u32le(#data + 4) .. data)
 end

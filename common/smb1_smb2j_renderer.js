@@ -1,4 +1,3 @@
-import BufferedPlayer from "/common/buffered_player.js";
 import { COMPONENT_NES_COLOURS, COMPONENT_OUTLINE_COLOURS, NES_COLOURS, OUTLINE_COLOURS } from "/common/colours.js";
 
 const FRAME_TIME_MS = 655171 / 39375;
@@ -9,15 +8,12 @@ const CHARACTERS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", 
 const SMB1_MAPS = ["00", "01", "02", "09", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "2a", "2b", "2c", "2d", "2e", "2f", "30", "31", "32", "33", "34", "35", "40", "41", "42", "44", "60", "61", "62", "63", "64", "65"];
 const SMB2J_MAPS = ["00", "01", "02", "03", "04", "05", "06", "07", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "2a", "2b", "2c", "2d", "2e", "2f", "30", "31", "32", "33", "34", "35", "36", "38", "3b", "3c", "40", "41", "42", "43", "44", "60", "61", "62", "63", "64", "65", "66", "67", "68", "69", "80", "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9", "aa", "ab", "c0", "c1", "e0", "e1", "e2", "e3"];
 
-const SFX = ["sq1_01", "sq1_02", "sq1_04", "sq1_08", "sq1_10", "sq1_20", "sq1_40", "sq1_80", "sq2_01", "sq2_02", "sq2_04", "sq2_08", "sq2_10", "sq2_20", "sq2_40", "sq2_80", "noise_01", "noise_02", "event_01"];
-
 const maps = {};
 const text = {};
-const sfx = {};
 
 let hide_sprite_zero = false;
 
-export async function init(game) {
+export async function renderer_init(game) {
     if (game === "smb1")
         hide_sprite_zero = true;
 
@@ -57,48 +53,7 @@ export async function init(game) {
         }));
     }
 
-    const context = new AudioContext({
-        latencyHint: "interactive",
-        sampleRate: 48000,
-    });
-    for (const i of SFX) {
-        promises.push(
-            fetch(`common/smb1_smb2j_sfx/${i}.opus`)
-            .then(response => response.arrayBuffer())
-            .then(buffer => context.decodeAudioData(buffer))
-            .then(buffer => sfx[i] = buffer.getChannelData(0))
-        );
-    }
-    promises.push(context.close());
-
     await Promise.all(promises);
-}
-
-class Mixer {
-    constructor(bufferLength) {
-        this.player = new BufferedPlayer();
-        this.bufferLength = bufferLength;
-        this.buffer = new Float32Array(this.bufferLength);
-    }
-
-    mix(channels) {
-        for (const channel of channels) {
-            if (channel == null)
-                continue;
-            const [id, offset] = channel;
-            const effect = sfx[id]?.slice(offset * 799); // FIXME: magic
-            if (effect == null)
-                continue;
-            for (let i = 0; i < this.buffer.length && i < effect.length; i++)
-                this.buffer[i] += effect[i] / 4;
-        }
-    }
-
-    send() {
-        this.player.resume();
-        this.player.push(this.buffer, 799); // FIXME: magic
-        this.buffer.fill(0);
-    }
 }
 
 class Outline {
@@ -241,10 +196,8 @@ export class PlayerCanvas extends RendererCanvas {
 
         this.canvas = document.createElement("canvas");
         this.canvas.id = `player${id}`;
-        if (this.id === 0) {
+        if (this.id === 0)
             window.addEventListener("resize", () => this.resize().render(this.count));
-            this.mixer = new Mixer(4800); // 100 ms at 48KHz
-        }
         this.resize();
 
         this.canvas.addEventListener("mousedown", event => this.onclick(event));
@@ -254,6 +207,12 @@ export class PlayerCanvas extends RendererCanvas {
 
         this.context = this.canvas.getContext("2d", { alpha: false, willReadFrequently: true });
         this.outline = new Outline();
+    }
+
+    getFollowing(count) {
+        return typeof this.following === "string" ?
+            this.following :
+            getPlacements(this.players, Math.max(count, 0)).flat()[this.following][0];
     }
 
     onclick(event) {
@@ -300,9 +259,7 @@ export class PlayerCanvas extends RendererCanvas {
         this.count = count;
         this.context.fillStyle = "#000000";
 
-        const following = typeof this.following === "string" ?
-            this.following :
-            getPlacements(this.players, Math.max(this.count, 0)).flat()[this.following][0];
+        const following = this.getFollowing(count);
 
         if (count < 0) {
             this.clear(following);
@@ -415,35 +372,21 @@ export class PlayerCanvas extends RendererCanvas {
             while (dynamic.length !== 0) {
                 const opcode = dynamic[0];
 
-                if (opcode < 0x10) {
+                if (opcode < 0x10) { // skip sfx data
                     dynamic = dynamic.subarray(1);
-                    const channels = [null, null, null];
 
-                    if (opcode & 1) {
-                        channels[0] = [`sq1_${dynamic[0].toString(16).padStart(2, "0")}`, dynamic[1]];
+                    if (opcode & 1)
                         dynamic = dynamic.subarray(2);
-                    }
-
-                    if (opcode & 2) {
-                        channels[1] = [`sq2_${dynamic[0].toString(16).padStart(2, "0")}`, dynamic[1]];
+                    if (opcode & 2)
                         dynamic = dynamic.subarray(2);
-                    }
-
-                    if (opcode & 4) {
-                        channels[2] = [`sq2_${dynamic[0].toString(16).padStart(2, "0")}`, dynamic[1]];
+                    if (opcode & 4)
                         dynamic = dynamic.subarray(2);
-                    }
-
-                    if (opcode & 8) {
-                        channels[0] = ["event_01", dynamic[0]];
+                    if (opcode & 8)
                         dynamic = dynamic.subarray(1);
-                    }
 
-                    this.mixer?.mix(channels);
                     continue;
                 }
 
-                // tile data
                 const count = dynamic[1];
                 const positions = dynamic.subarray(2, 2 + count * 2);
                 for (let i = 0; i < positions.length; i += 2) {
@@ -477,7 +420,6 @@ export class PlayerCanvas extends RendererCanvas {
         this.fromBuffer();
 
         this.renderHUD(following);
-        this.mixer?.send();
         return false;
     }
 

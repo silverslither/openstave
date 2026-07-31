@@ -1,12 +1,14 @@
 import Encoder from "/common/encoder.js";
 
-let LeaderboardCanvas, PlayerCanvas, init, screenshot;
+let LeaderboardCanvas, PlayerCanvas, renderer_init, screenshot;
+let Mixer, mixer_init;
 
 const FRAME_BUFFER = 120;
 const FRAME_TIME_MS = 655171 / 39375;
 const REREQUEST_INTERVAL_MS = 0.5 * FRAME_BUFFER * FRAME_TIME_MS;
 let lastFrameMs = 0;
 
+let mixer;
 const canvases = [];
 const players = {};
 const buffered = [];
@@ -24,10 +26,12 @@ addEventListener("DOMContentLoaded", setup);
 
 const controls = {};
 async function setup() {
-    const path = window.__game === "smb3" ? "/smb3/renderer.js" : "/common/smb1_smb2j_renderer.js";
-    ({ LeaderboardCanvas, PlayerCanvas, init, screenshot } = await import(path));
+    const renderer_path = window.__game === "smb3" ? "/smb3/renderer.js" : "/common/smb1_smb2j_renderer.js";
+    ({ LeaderboardCanvas, PlayerCanvas, renderer_init, screenshot } = await import(renderer_path));
+    if (window.__game !== "smb3")
+        ({ Mixer, mixer_init } = await import("/common/smb1_smb2j_mixer.js"));
 
-    let drawCondition = false;
+    let drawCondition = 0;
 
     controls.root = document.getElementById("controls");
 
@@ -83,12 +87,21 @@ async function setup() {
                 paused = false;
         });
 
-        if (drawCondition)
+        if (drawCondition === 2)
             start();
-        drawCondition = true;
+        drawCondition++;
     });
 
-    await init(window.__game);
+    mixer_init().then(async () => {
+        mixer = new Mixer(players, 4800);
+        await mixer.bufferedPlayer.initialized;
+
+        if (drawCondition === 2)
+            start();
+        drawCondition++;
+    });
+
+    await renderer_init(window.__game);
     canvases[0] = new PlayerCanvas(0, players);
     canvases[1] = new PlayerCanvas(1, players);
     canvases[2] = new LeaderboardCanvas(players, canvases[0]);
@@ -240,9 +253,9 @@ async function setup() {
         }
     });
 
-    if (drawCondition)
+    if (drawCondition === 2)
         start();
-    drawCondition = true;
+    drawCondition++;
 }
 
 function start() {
@@ -256,6 +269,7 @@ function start() {
     draw();
 }
 
+let cf = 0;
 function draw(timeMs) {
     requestAnimationFrame(draw);
 
@@ -270,14 +284,18 @@ function draw(timeMs) {
     const dt = (timeMs - lastFrameMs) / FRAME_TIME_MS;
     if (dt > 0.5) {
         if (buffered[frame]) {
+            mixer.mix(canvases[0].getFollowing(frame - 1), frame - 1, 6);
+            mixer.send(frame - 1, cf);
+
             for (const canvas of canvases)
                 if (canvas.canvas.style.display !== "none")
                     canvas.render(frame);
 
             const df = Math.max(Math.floor(dt), 1);
+            cf = (encoder == null) ? Math.min(df, 5) : 1;
 
             if (!seek)
-                frame += (encoder == null) ? Math.min(df, 5) : 1; // skip at most 4 frames
+                frame += cf;
             seek = false;
 
             controls.framesLeft.textContent = Math.min(frame, maxLength - 1).toString().padStart(7);

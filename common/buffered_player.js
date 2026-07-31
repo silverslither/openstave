@@ -15,29 +15,20 @@ export default class {
     }
 
     async resume() {
-        await this.initialized;
-
         if (this.ctx.state !== "running")
             await this.ctx.resume();
     }
 
     async suspend() {
-        await this.initialized;
-
         if (this.ctx.state !== "suspended")
             await this.ctx.suspend();
     }
 
     async push(buffer, offset) {
-        await this.initialized;
-
-        this.node.port.postMessage([
-            buffer, offset
-        ], [buffer.buffer]);
+        this.node.port.postMessage([buffer, offset], [buffer.buffer]);
     }
 
     async close() {
-        await this.initialized;
         this.ctx.close();
     }
 }

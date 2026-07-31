@@ -22,8 +22,10 @@ class BufferedProcessor extends AudioWorkletProcessor {
                 this.current = buffer;
                 this.next = null;
                 this.sample -= offset;
-                if (this.sample > 2400) // 50 ms at 48KHz
+                if (this.sample > 800) { // 17 ms at 48KHz
                     this.sample = 0;
+                    console.log("reset!");
+                }
                 this.nextOffset = Infinity;
                 return;
             }
@@ -77,5 +79,5 @@ class BufferedProcessor extends AudioWorkletProcessor {
 
 registerProcessor(
     "buffered-player",
-    BufferedProcessor
+    BufferedProcessor,
 );

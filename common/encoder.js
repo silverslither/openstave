@@ -1,10 +1,10 @@
 class IVFWriter {
-    constructor(name, width, height, framerate, fourcc) {
+    constructor(filename, width, height, framerate, fourcc) {
         this.timestep = 1000000 * framerate[1] / framerate[0];
         this.writeQueueSize = 0;
         this.queue = (async () => {
             const root = await navigator.storage.getDirectory();
-            this.handle = await root.getFileHandle(name, { create: true });
+            this.handle = await root.getFileHandle(filename, { create: true });
             this.writable = await this.handle.createWritable();
         })();
 

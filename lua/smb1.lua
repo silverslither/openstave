@@ -123,7 +123,7 @@ function serialize_sfx()
         end
 
         if i < 4 and _c_channels[i] >= 0 then
-            sfx[1] = sfx[1] | (1 << (i - 1))
+            fx[1] = sfx[1] | (1 << (i - 1))
             table.insert(sfx, channels[i])
             table.insert(sfx, _c_channels[i])
         end
@@ -288,7 +288,7 @@ function q_level()
     local world = emu.read(0x75f, emu.memType.nesDebug)
     local stage = emu.read(0x75c, emu.memType.nesDebug)
 
-    if (state ~= 3 and state ~= 8) then
+    if state ~= 3 and state ~= 8 then
         _p_area = area
         _p_world = world
         _p_stage = stage

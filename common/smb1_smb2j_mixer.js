@@ -3,7 +3,7 @@ import BufferedPlayer from "/common/buffered_player.js";
 const FRAME_SAMPLES = 48 * 655171 / 39375;
 const SS = x => Math.round(FRAME_SAMPLES * x);
 
-const SFX = ["sq1_01", "sq1_02", "sq1_04", "sq1_08", "sq1_10", "sq1_20", "sq1_40", "sq1_80", "sq2_01", "sq2_02", "sq2_04", "sq2_08", "sq2_10", "sq2_20", "sq2_40", "sq2_80", "noise_01", "noise_02", "event_01"];
+const SFX = ["sq1_01", "sq1_02", "sq1_04", "sq1_08", "sq1_10", "sq1_20", "sq1_40", "sq1_80", "sq2_01", "sq2_02", "sq2_04", "sq2_08", "sq2_10", "sq2_20", "sq2_40", "sq2_80", "noise_01", "noise_02", "noise_80", "event_01"];
 
 const sfx = {};
 
@@ -97,7 +97,7 @@ export class Mixer {
                     }
 
                     if (opcode & 4) {
-                        channels[2] = [`sq2_${dynamic[0].toString(16).padStart(2, "0")}`, dynamic[1]];
+                        channels[2] = [`noise_${dynamic[0].toString(16).padStart(2, "0")}`, dynamic[1]];
                         dynamic = dynamic.subarray(2);
                     }
 

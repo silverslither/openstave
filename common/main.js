@@ -284,8 +284,8 @@ function draw(timeMs) {
     const dt = (timeMs - lastFrameMs) / FRAME_TIME_MS;
     if (dt > 0.5) {
         if (buffered[frame]) {
-            mixer.mix(canvases[0].getFollowing(frame - 1), frame - 1, 6);
-            mixer.send(frame - 1, cf);
+            mixer.mix(canvases[0].getFollowing(frame), frame, 6);
+            mixer.send(frame, cf);
 
             for (const canvas of canvases)
                 if (canvas.canvas.style.display !== "none")

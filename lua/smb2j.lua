@@ -93,6 +93,7 @@ function send(data)
     end
 end
 
+local _p_queues = { 0, 0, 0, 0 }
 local _p_channels = { 0, 0, 0, 0 }
 local _c_channels = { -1, -1, -1, -1 }
 function serialize_sfx()
@@ -112,30 +113,44 @@ function serialize_sfx()
 
     sfx = { 0 }
     for i = 1, 4 do
-        if queues[i] ~= 0 then
-            _c_channels[i] = 0
-            channels[i] = queues[i]
-        elseif channels[i] ~= 0 and _p_channels[i] == channels[i] then
-            _c_channels[i] = _c_channels[i] + 1
-        else
-            _c_channels[i] = -1
+        if channels[i] == 0 then goto continue end
+
+        if i == 3 and channels[i] == 0x04 then -- special handling for wind
+            if queues[i] ~= 0x04 then
+                channels[i] = 0
+            else
+                _c_channels[i] = 0xc0 - emu.read(0x7bf, emu.memType.nesDebug)
+            end
+
+            goto special
         end
 
-        if i < 4 and _c_channels[i] >= 0 then
-            sfx[1] = sfx[1] | (1 << (i - 1))
+        if (i == 2 and channels[i] == 0x40) or (i == 3 and channels[i] == 0x80) then -- special handling for 1-up and skid
+            _c_channels[i] = channels[i] ~= _p_channels[i] and 0 or _c_channels[i] + 1
+        else
+            _c_channels[i] = channels[i] == _p_queues[i] and 0 or _c_channels[i] + 1
+        end
+
+        ::special::
+
+        if i < 4 then
+            sfx[1] = sfx[1]| (1 << (i - 1))
             table.insert(sfx, channels[i])
             table.insert(sfx, _c_channels[i])
         end
+
+        ::continue::
     end
 
     if channels[4] == 1 then
-        sfx[1] = sfx[1] | (1 << 3)
+        sfx[1] = sfx[1]| (1 << 3)
         table.insert(sfx, _c_channels[4])
     end
 
     if sfx[1] == 0 then sfx = {} end
 
     _p_channels = channels
+    _p_queues = queues
 end
 
 TILES = {

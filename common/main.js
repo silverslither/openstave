@@ -1,4 +1,4 @@
-import { VP9Encoder, RawAudioEncoder, MultiEncoder } from "/common/encoder.js";
+import { MultiEncoder, RawAudioEncoder, VP9Encoder } from "/common/encoder.js";
 
 let LeaderboardCanvas, PlayerCanvas, renderer_init, screenshot;
 let Mixer, mixer_init;

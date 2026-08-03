@@ -37,8 +37,9 @@ export class Mixer {
     }
 
     mix(following, count, length) {
-        let j = 0;
+        this.buffer.fill(0);
 
+        let j = 0;
         for (let _ = 0, f = count; _ < length; _++, f++) {
             const ss_now = SS(count);
             const ss_fwd = SS(count + 1) - ss_now;
@@ -131,6 +132,6 @@ export class Mixer {
         const samples = SS(count) - SS(count - cf);
         this.bufferedPlayer.resume();
         this.bufferedPlayer.push(this.buffer, samples);
-        this.buffer = new Float32Array(this.bufferLength);
+        return this.buffer.subarray(0, samples);
     }
 }

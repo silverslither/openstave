@@ -1,4 +1,4 @@
-import Encoder from "/common/encoder.js";
+import { VP9Encoder, RawAudioEncoder, MultiEncoder } from "/common/encoder.js";
 
 let LeaderboardCanvas, PlayerCanvas, renderer_init, screenshot;
 let Mixer, mixer_init;
@@ -92,14 +92,19 @@ async function setup() {
         drawCondition++;
     });
 
-    mixer_init().then(async () => {
-        mixer = new Mixer(players, 4800);
-        await mixer.bufferedPlayer.initialized;
 
-        if (drawCondition === 2)
-            start();
+    if (window.__game !== "smb3") {
+        mixer_init().then(async () => {
+            mixer = new Mixer(players, 4800);
+            await mixer.bufferedPlayer.initialized;
+
+            if (drawCondition === 2)
+                start();
+            drawCondition++;
+        });
+    } else {
         drawCondition++;
-    });
+    }
 
     await renderer_init(window.__game);
     canvases[0] = new PlayerCanvas(0, players);
@@ -225,23 +230,36 @@ async function setup() {
         try {
             if (encoder == null) {
                 controls.record.innerText = "Stop Recording";
-                encoder = new Encoder(2 * canvases[0].canvas.width, 2 * canvases[0].canvas.height, [39375000, 655171]);
+
+                if (window.__game !== "smb3") {
+                    encoder = new MultiEncoder([
+                        new VP9Encoder(2 * canvases[0].canvas.width, 2 * canvases[0].canvas.height, [39375000, 655171]),
+                        new RawAudioEncoder(48000),
+                    ]);
+                } else {
+                    encoder = new MultiEncoder([
+                        new VP9Encoder(2 * canvases[0].canvas.width, 2 * canvases[0].canvas.height, [39375000, 655171]),
+                    ]);
+                }
+
                 rLock = false;
                 return;
             }
 
             controls.record.innerText = "Stopping...";
 
-            const handle = await encoder.close();
+            const handles = await encoder.close();
             encoder = null;
             controls.record.innerText = "Start Recording";
 
-            const file = await handle.getFile();
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(file);
-            a.download = "video.ivf";
-            a.click();
-            URL.revokeObjectURL(a.href);
+            for (const handle of handles) {
+                const file = await handle.getFile();
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(file);
+                a.download = file.name;
+                a.click();
+                URL.revokeObjectURL(a.href);
+            }
 
             rLock = false;
         } catch (e) {
@@ -284,8 +302,8 @@ function draw(timeMs) {
     const dt = (timeMs - lastFrameMs) / FRAME_TIME_MS;
     if (dt > 0.5) {
         if (buffered[frame]) {
-            mixer.mix(canvases[0].getFollowing(frame), frame, 6);
-            mixer.send(frame, cf);
+            mixer?.mix(canvases[0].getFollowing(frame), frame, 6);
+            const sinkshot = mixer?.send(frame, cf);
 
             for (const canvas of canvases)
                 if (canvas.canvas.style.display !== "none")
@@ -307,7 +325,7 @@ function draw(timeMs) {
 
             lastFrameMs += df * FRAME_TIME_MS;
 
-            if (encoder?.input(screenshot(canvases[0], canvases[2]))) {
+            if (encoder?.input([screenshot(canvases[0], canvases[2]), sinkshot])) {
                 encoder = null;
                 controls.record.innerText = "Start Recording";
             }

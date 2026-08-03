@@ -11,7 +11,7 @@ const MAPS = ["A13a7fa", "A13aa40", "A13ac58", "A13ad78", "A13ad98", "A13ade7", 
 const maps = {};
 const text = {};
 
-export async function init() {
+export async function renderer_init() {
     const promises = [];
 
     TILES = (await import("/smb3/tiles.js")).default.split(" ");

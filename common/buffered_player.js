@@ -25,7 +25,7 @@ export default class {
     }
 
     async push(buffer, offset) {
-        this.node.port.postMessage([buffer, offset], [buffer.buffer]);
+        this.node.port.postMessage([buffer, offset]);
     }
 
     async close() {

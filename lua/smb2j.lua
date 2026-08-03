@@ -134,7 +134,7 @@ function serialize_sfx()
         ::special::
 
         if i < 4 then
-            sfx[1] = sfx[1]| (1 << (i - 1))
+            sfx[1] = sfx[1] | (1 << (i - 1))
             table.insert(sfx, channels[i])
             table.insert(sfx, _c_channels[i])
         end
@@ -143,7 +143,7 @@ function serialize_sfx()
     end
 
     if channels[4] == 1 then
-        sfx[1] = sfx[1]| (1 << 3)
+        sfx[1] = sfx[1] | (1 << 3)
         table.insert(sfx, _c_channels[4])
     end
 

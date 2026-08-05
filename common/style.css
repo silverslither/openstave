@@ -60,7 +60,7 @@ button:active {
     color: lightgray;
 }
 
-#menu, #recorder {
+#volume, #menu, #recorder {
     display: none;
     flex-direction: column;
     gap: 4px;
@@ -70,8 +70,13 @@ button:active {
     background-color: black;
 }
 
-#menu {
+#volume, #menu {
     bottom: 30px;
+}
+
+#volume {
+    align-items: center;
+    transform: translate(calc(-133.333% + 4px));
 }
 
 #recorder {

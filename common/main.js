@@ -31,15 +31,20 @@ async function setup() {
     if (window.__game !== "smb3")
         ({ Mixer, mixer_init } = await import("/common/smb1_smb2j_mixer.js"));
 
-    let drawCondition = 0;
+    let componentsInitialized = 0;
 
     controls.root = document.getElementById("controls");
 
     controls.play = document.getElementById("play");
     controls.framesLeft = document.getElementById("frames-left");
-    controls.range = document.querySelector("input");
+    controls.progress = document.getElementById("progress");
     controls.framesRight = document.getElementById("frames-right");
+    controls.volumeToggle = document.getElementById("volume-toggle");
     controls.menuToggle = document.getElementById("menu-toggle");
+
+    controls.volume = document.getElementById("volume");
+    controls.intensity = document.getElementById("intensity");
+    controls.slider = document.getElementById("slider");
 
     controls.menu = document.getElementById("menu");
     controls.mouseHelp = document.getElementById("mouse-help");
@@ -69,27 +74,27 @@ async function setup() {
 
         controls.framesLeft.textContent = frame.toString().padStart(7);
         controls.framesRight.textContent = "-0".padEnd(7);
-        controls.range.value = frame;
+        controls.progress.value = frame;
 
-        controls.range.addEventListener("input", () => {
+        controls.progress.addEventListener("input", () => {
             if (encoder == null)
                 seek = true;
-            frame = Number(controls.range.value);
+            frame = Number(controls.progress.value);
             controls.framesLeft.textContent = frame.toString().padStart(7);
-            controls.framesRight.textContent = (frame >= controls.range.max ? "-0" : frame - controls.range.max).toString().padEnd(7);
+            controls.framesRight.textContent = (frame >= controls.progress.max ? "-0" : frame - controls.progress.max).toString().padEnd(7);
         });
-        controls.range.addEventListener("mousedown", (e) => {
+        controls.progress.addEventListener("mousedown", (e) => {
             if (e.button === 0)
                 paused = true;
         });
-        controls.range.addEventListener("mouseup", (e) => {
+        controls.progress.addEventListener("mouseup", (e) => {
             if (e.button === 0 && controls.play.textContent === "Pause")
                 paused = false;
         });
 
-        if (drawCondition === 2)
+        if (componentsInitialized === 2)
             start();
-        drawCondition++;
+        componentsInitialized++;
     });
 
 
@@ -97,13 +102,14 @@ async function setup() {
         mixer_init().then(async () => {
             mixer = new Mixer(players, 4800);
             await mixer.bufferedPlayer.initialized;
+            mixer.bufferedPlayer.setVolume(0.8);
 
-            if (drawCondition === 2)
+            if (componentsInitialized === 2)
                 start();
-            drawCondition++;
+            componentsInitialized++;
         });
     } else {
-        drawCondition++;
+        componentsInitialized++;
     }
 
     await renderer_init(window.__game);
@@ -121,6 +127,16 @@ async function setup() {
             paused = false;
         }
     });
+
+    controls.volumeToggle.addEventListener("click", () => {
+        controls.volume.style.display = controls.volume.style.display === "flex" ? "none" : "flex";
+    });
+    controls.slider.value = 80;
+    controls.slider.addEventListener("input", () => {
+        controls.intensity.innerText = controls.slider.value.padStart(3, "0");
+        mixer.bufferedPlayer.setVolume(Number(controls.slider.value) / Number(controls.slider.max));
+    });
+
     controls.menuToggle.addEventListener("click", () => {
         controls.menu.style.display = controls.menu.style.display === "flex" ? "none" : "flex";
     });
@@ -271,9 +287,9 @@ async function setup() {
         }
     });
 
-    if (drawCondition === 2)
+    if (componentsInitialized === 2)
         start();
-    drawCondition++;
+    componentsInitialized++;
 }
 
 function start() {
@@ -317,8 +333,8 @@ function draw(timeMs) {
             seek = false;
 
             controls.framesLeft.textContent = Math.min(frame, maxLength - 1).toString().padStart(7);
-            controls.framesRight.textContent = (frame >= controls.range.max ? "-0" : frame - controls.range.max).toString().padEnd(7);
-            controls.range.value = frame;
+            controls.framesRight.textContent = (frame >= controls.progress.max ? "-0" : frame - controls.progress.max).toString().padEnd(7);
+            controls.progress.value = frame;
 
             if (frame <= pingLength - FRAME_BUFFER && !buffered[frame + FRAME_BUFFER])
                 query(frame + FRAME_BUFFER, FRAME_BUFFER);
@@ -438,9 +454,9 @@ async function query(start = 0, length = 0, noRecurse = false) {
         for (let i = start; i < j; i++)
             buffered[i] = true;
 
-        controls.range.max = finished ? maxLength - 1 : Math.max(maxLength - 4 * FRAME_BUFFER, 0);
-        controls.range.value = frame;
-        controls.framesRight.textContent = (frame >= controls.range.max ? "-0" : frame - controls.range.max).toString().padEnd(7);
+        controls.progress.max = finished ? maxLength - 1 : Math.max(maxLength - 4 * FRAME_BUFFER, 0);
+        controls.progress.value = frame;
+        controls.framesRight.textContent = (frame >= controls.progress.max ? "-0" : frame - controls.progress.max).toString().padEnd(7);
 
         lock = false;
     } catch (e) {

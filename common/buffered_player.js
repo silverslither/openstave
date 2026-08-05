@@ -24,8 +24,12 @@ export default class {
             await this.ctx.suspend();
     }
 
-    async push(buffer, offset) {
+    push(buffer, offset) {
         this.node.port.postMessage([buffer, offset]);
+    }
+
+    setVolume(volume) {
+        this.node.port.postMessage(volume);
     }
 
     async close() {

@@ -2,12 +2,21 @@ class BufferedProcessor extends AudioWorkletProcessor {
     constructor() {
         super();
 
+        this.volume = 1.0;
         this.current = null;
         this.next = null;
         this.sample = 0;
         this.nextOffset = Infinity;
 
         this.port.onmessage = (e) => {
+            if (typeof e.data === "number") {
+                if (e.data <= 0.14426950408889633)
+                    this.volume = 0.018400091653942578 * e.data;
+                else
+                    this.volume = 1024.0 ** (e.data - 1);
+                return;
+            }
+
             const [buffer, offset] = e.data;
 
             if (this.current == null || offset == 0) {
@@ -48,9 +57,9 @@ class BufferedProcessor extends AudioWorkletProcessor {
                 if (this.next != null && j >= 0) {
                     if (j >= this.next.length)
                         break;
-                    output[c][s] = this.next[j];
+                    output[c][s] = this.volume * this.next[j];
                 } else if (i < this.current.length) {
-                    output[c][s] = this.current[i];
+                    output[c][s] = this.volume * this.current[i];
                 } else {
                     break;
                 }

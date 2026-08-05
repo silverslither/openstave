@@ -115,8 +115,9 @@ export class Mixer {
                         const effect = sfx[id]?.subarray(start, start + ss_fwd);
                         if (effect == null)
                             continue;
-                        for (let i = 0; i < this.buffer.length && i < effect.length; i++)
-                            this.buffer[i + j] += alpha * effect[i];
+                        const _i = Math.min(effect.length, this.buffer.length - j);
+                        for (let i = 0; i < _i; i++)
+                            this.buffer[i + j] += 0.5 * alpha * effect[i];
                     }
 
                     break;

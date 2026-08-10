@@ -16,7 +16,7 @@ export async function mixer_init() {
     });
     for (const i of SFX) {
         promises.push(
-            fetch(`common/smb1_smb2j_sfx/${i}.opus`)
+            fetch(`/common/smb1_smb2j_sfx/${i}.opus`)
                 .then(response => response.arrayBuffer())
                 .then(buffer => context.decodeAudioData(buffer))
                 .then(buffer => sfx[i] = buffer.getChannelData(0)),

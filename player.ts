@@ -1,7 +1,7 @@
 import type { Frame, PlayerEvent } from "./types.ts";
 import { bufferHandler } from "./buffer.ts";
 
-import { PLAYER_BUFFER } from "./env.ts";
+import { PLAYER_BUFFER_BYTES } from "./env.ts";
 
 export default class Player {
     connected: boolean;
@@ -62,7 +62,7 @@ export default class Player {
         this.buffers.push(chunk);
         this.buffer_length += chunk.length;
         this.total_length += chunk.length;
-        if (this.buffer_length > PLAYER_BUFFER) {
+        if (this.buffer_length > PLAYER_BUFFER_BYTES) {
             const buffer: Buffer = Buffer.concat(this.buffers);
             const { buffer: _buffer, events } = bufferHandler(buffer, this.frames, this.game);
 
@@ -95,7 +95,7 @@ export default class Player {
                     this.splits[event.data[0]] = event.data[1];
                 break;
             case "DNF":
-                if (this.start === this.start && this.end !== this.end) {
+                if (event.data == null || (this.start === this.start && this.end !== this.end)) {
                     this.dnf = event.data ?? this.frames.length - 1;
                     this.frames.length = this.dnf + 1;
                 }

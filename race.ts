@@ -5,6 +5,7 @@ import * as zlib from "node:zlib";
 
 import { supportedGames } from "./buffer.ts";
 import Player from "./player.ts";
+import { LowSecurityHasher } from "./security.ts";
 
 const MINUTE = 60 * 1000;
 const TIMEOUTS: Record<string, number> = {
@@ -41,6 +42,7 @@ export interface AbstractRace {
 }
 
 export class Race implements AbstractRace {
+    hash: string | null;
     id: string;
     game: string;
     timeout: number;
@@ -53,12 +55,13 @@ export class Race implements AbstractRace {
             this.timeout = Infinity;
             return true;
         }
-        return this.players.findIndex(v => !v.finished) === -1;
+        return this.players.every(v => v.finished);
     }
 
-    constructor(id: string = "", game: string = "", players: string[] = []) {
+    constructor(password: string = "", id: string = "", game: string = "", players: string[] = []) {
+        this.hash = LowSecurityHasher.hash(password);
         this.id = "";
-        this.game = "";
+        this.game = game;
         this.timeout = 0;
         this.players = [];
 
@@ -67,14 +70,15 @@ export class Race implements AbstractRace {
             return;
         if (!supportedGames.has(game))
             return;
-        this.game = game;
+        if (players.length > 16)
+            return;
         const timeout_ms = TIMEOUTS[game] ?? TIMEOUTS.default;
         this.timeout = Date.now() + timeout_ms;
         this.players = [];
 
         for (let player of players) {
             player = player.replace(/[^0-9A-Za-z_-]/g, "");
-            if (player.length > 24)
+            if (player === "" || player.length > 24)
                 return;
 
             let username = "";
@@ -93,6 +97,7 @@ export class Race implements AbstractRace {
         } while (activeRaces.has(this.id) || inactiveRaces.has(this.id));
 
         activeRaces.set(this.id, this);
+        console.log(`created race ${this.id}`);
     }
 
     static from(obj: Record<string, any>) {
@@ -149,7 +154,7 @@ export class Race implements AbstractRace {
     }
 }
 
-export class RaceData implements AbstractRace {
+export class RaceData implements AbstractRace { // TODO: remove this.dirty and clean() after race editing is implemented
     path: string;
     game: string;
     dirty: boolean;
@@ -194,6 +199,7 @@ export class RaceData implements AbstractRace {
             await fs.promises.mkdir(this.path);
 
         const staticData = {
+            hash: race.hash,
             game: race.game,
             finished: true,
             players: Object.fromEntries(race.players.map(v => ([v.username, {

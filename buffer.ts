@@ -149,6 +149,7 @@ const SMB3_ANYNWW_GENERATOR = (current: Frame, frames: Frame[], events: PlayerEv
             current.ram[1] === 0x00 &&
             current.ram[2] === 0x00 &&
             current.ram[3] === 0x00 &&
+            current.ram[10] === 0x00 &&
             flags & 0b10) {
 
             events.push({ code: "START", data: frames.length });

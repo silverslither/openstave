@@ -47,7 +47,7 @@ Before starting your recording, resize your browser to get your desired output r
 
 All frames rendered after you start your recording will be recorded. Additionally, seeking is disabled when the recorder is active. This means that once you start your recording, you may safely find the exact frame you wish to start on, and then unpause to begin recording from that frame onwards.
 
-The output codec is VP9, inside the Duck IVF container. FFmpeg natively supports decoding videos in this format. Before performing any long recordings, make sure that your browser is capable of outputting lossless VP9 by running a short recording through `ffprobe` (you should see `vp9 (Profile 1)` and `yuv444p`). Currently, lossless VP9 has been confirmed to work on Chromium on Linux.
+The output video codec is VP9, inside the Duck IVF container. FFmpeg natively supports decoding this format. Before performing any long recordings, make sure that your browser is capable of outputting lossless VP9 by running a short recording through `ffprobe` (you should see `vp9 (Profile 1)` and `yuv444p`). Currently, lossless VP9 has only been confirmed to work on Chromium on Linux.
 
 It is recommended to remux to WebM for compatibility with editing software, or upscale the output by at least 2x using `flags=neighbor` if `ffmpeg` alone is being used to process the output.
 

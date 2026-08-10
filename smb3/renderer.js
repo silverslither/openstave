@@ -33,7 +33,7 @@ export async function renderer_init() {
                 maps[i] = await createImageBitmap(image);
                 resolve();
             });
-            image.src = encodeURI(`smb3/maps/${i}.png`);
+            image.src = encodeURI(`/smb3/maps/${i}.png`);
         }));
     }
 
@@ -44,7 +44,7 @@ export async function renderer_init() {
                 text[i] = await createImageBitmap(image);
                 resolve();
             });
-            image.src = encodeURI(`common/text/${i}.png`);
+            image.src = encodeURI(`/common/text/${i}.png`);
         }));
     }
 

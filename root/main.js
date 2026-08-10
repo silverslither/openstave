@@ -1,13 +1,10 @@
-let form, dash;
-let key, id, game, players, names, submit, error;
+let key, password, id, game, players, names, submit, error;
 
 document.addEventListener("DOMContentLoaded", main);
 
 function main() {
-    form = document.getElementById("form");
-    dash = document.getElementById("dash");
-
     key = document.getElementById("key");
+    password = document.getElementById("password");
     id = document.getElementById("id");
     game = document.getElementById("game");
     players = document.getElementById("players");
@@ -18,7 +15,7 @@ function main() {
     players.value = "";
 
     players.addEventListener("input", () => {
-        players.valueAsNumber = Math.min(Math.max(Math.round(players.valueAsNumber), 2), 8);
+        players.valueAsNumber = Math.min(Math.max(Math.round(players.valueAsNumber), 2), 16);
 
         if (players.valueAsNumber !== players.valueAsNumber)
             return;
@@ -36,7 +33,6 @@ function main() {
     });
 
     submit.addEventListener("click", create);
-    dashLoop();
 }
 
 let lock = false;
@@ -49,6 +45,7 @@ async function create() {
         const response = await fetch("/", {
             method: "POST",
             body: JSON.stringify({
+                password: password.value,
                 id: id.value,
                 key: key.value,
                 game: game.value,
@@ -68,55 +65,10 @@ async function create() {
             return;
         }
 
-        const data = await response.json();
-
-        let html = "DO NOT CLOSE OR RELOAD THIS PAGE UNTIL AUTHENTICATION HAS BEEN DISTRIBUTED.\n";
-        html += `The permanent link to this race will be <a href="${data.link}">${location.origin}/${data.link}</a>.\n`;
-        for (const player of data.authentication)
-            html += `\nScript for ${player[0].slice(0, -8)}: <a href="${player[1]}">${location.origin}/${player[1]}</a>\n`;
-
-        form.innerHTML = html.replaceAll("\n", "<br/>");
-        location.hash = data.link;
+        sessionStorage.setItem("password", password.value);
+        location.pathname = `/dashboard/${await response.text()}`;
     } catch (e) {
         error.innerText = e;
         lock = false;
-        return;
-    }
-}
-
-async function dashLoop() {
-    while (true) {
-        await new Promise(r => setTimeout(r, 1000));
-        if (location.hash.length === 0)
-            continue;
-
-        try {
-            let html = "";
-            const data = await (await fetch(`${location.protocol}//${location.host}/${location.hash.slice(1)}`, {
-                method: "POST",
-                body: JSON.stringify({
-                    start: 0,
-                    length: 0,
-                }),
-            })).json();
-
-            if (data.finished) {
-                history.pushState("", document.title, location.pathname);
-                dash.innerHTML = "";
-                return;
-            }
-
-            for (const name in data.players) {
-                const player = data.players[name];
-                html += `${name.slice(0, -8)}: `;
-                html += player.connected ? "connected, " : "not connected, ";
-                html += (player.dnf != null || player.time != null) ? "finished" : (player.length > 0 ? "started" : "not started");
-                html += "<br/>";
-            }
-
-            dash.innerHTML = html;
-        } catch (e) {
-            console.error(e);
-        }
     }
 }

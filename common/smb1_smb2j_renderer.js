@@ -38,7 +38,7 @@ export async function renderer_init(game) {
                 maps[i] = await createImageBitmap(image);
                 resolve();
             });
-            image.src = encodeURI(`${game}/maps/${i}.png`);
+            image.src = encodeURI(`/${game}/maps/${i}.png`);
         }));
     }
 
@@ -49,7 +49,7 @@ export async function renderer_init(game) {
                 text[i] = await createImageBitmap(image);
                 resolve();
             });
-            image.src = encodeURI(`common/text/${i}.png`);
+            image.src = encodeURI(`/common/text/${i}.png`);
         }));
     }
 

@@ -4,10 +4,10 @@ import * as zlib from "node:zlib";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { supportedGames } from "./buffer.ts";
 import { Race, activeRaces, inactiveRaces } from "./race.ts";
+import { LowSecurityHasher } from "./security.ts";
 
-import { HTTP_PORT, MAX_ACTIVE_RACES, TCP_ADDRESS, TCP_PORT } from "./env.ts";
+import { HTTP_PORT, MAX_ACTIVE_RACES, MAX_BODY_SIZE_BYTES, TCP_ADDRESS, TCP_PORT } from "./env.ts";
 
 const MIME_TYPES: Record<string, string> = {
     ".html": "text/html",
@@ -17,7 +17,7 @@ const MIME_TYPES: Record<string, string> = {
     ".lua": "application/octet-stream",
 };
 
-const MAX_REQUEST_BUFFER = 240;
+const MAX_REQUEST_BUFFER_FRAMES = 240;
 
 let gKey = crypto.randomBytes(24).toString("base64");
 export const getKey = () => gKey;
@@ -48,6 +48,8 @@ const server = http.createServer((request, response) => {
                     return;
                 }
                 file = path.join(import.meta.dirname, race.game.split("_")[0], "index.html");
+            } else if (parts[0] === "dashboard" && (activeRaces.has(parts[1]) || inactiveRaces.has(parts[1]))) {
+                file = path.join(import.meta.dirname, "dashboard", "index.html");
             } else {
                 file = path.join(import.meta.dirname, ...parts);
             }
@@ -86,8 +88,13 @@ const server = http.createServer((request, response) => {
         }
 
         const chunks: Buffer[] = [];
+        let bytesReceived = 0;
         request.on("data", (data) => {
             chunks.push(data);
+            bytesReceived += data.length;
+
+            if (bytesReceived > MAX_BODY_SIZE_BYTES)
+                response.writeHead(400).end();
         });
 
         request.on("end", () => {
@@ -105,8 +112,11 @@ const server = http.createServer((request, response) => {
                 return;
             }
 
-            if (url === "/") {
+            const parts = url.split("/").filter(v => v !== "");
+
+            if (parts.length === 0) {
                 const key = requestBody.key;
+                const password = requestBody.password;
                 const id = requestBody.id;
                 const game = requestBody.game;
                 const players = requestBody.players;
@@ -116,7 +126,12 @@ const server = http.createServer((request, response) => {
                     return;
                 }
 
-                if (!supportedGames.has(game) || !Array.isArray(players) || players.length < 2 || players.length > 16 || players.findIndex(v => typeof v !== "string" || v === "" || v.length > 24) !== -1) {
+                if (typeof password !== "string" || password.length < 8 || password.length > 64) {
+                    response.writeHead(400).end("Dashboard password must be at least 8 characters long.");
+                    return;
+                }
+
+                if (typeof id !== "string" || typeof game !== "string" || !Array.isArray(players) || players.length < 2 || players.some(v => typeof v !== "string")) {
                     response.writeHead(400).end("You must fill out all form elements.");
                     return;
                 }
@@ -131,41 +146,57 @@ const server = http.createServer((request, response) => {
                     return;
                 }
 
-                const race = new Race(id, game, players);
-                if (typeof race.id !== "string") {
+                const race = new Race(password, id, game, players);
+                if (!activeRaces.has(race.id)) {
                     response.writeHead(400).end("Check that all inputs are valid and contain only basic characters.");
                     return;
                 }
 
-                response.writeHead(200).end(JSON.stringify({
-                    link: race.id,
-                    authentication: race.players.map(v => [
-                        v.username,
-                        `lua/${game.split("_")[0]}.lua?${Buffer.from(v.getAuthString(TCP_ADDRESS, TCP_PORT)).toString("base64url")}`,
-                    ]),
-                }));
+                response.writeHead(200).end(race.id);
+                return;
+            }
 
-                console.log(`created race ${race.id}`);
+            if (parts.length === 2 && parts[0] === "authentication") {
+                const id = parts[1];
+                const race = activeRaces.get(id);
+
+                if (race == null) {
+                    response.writeHead(404).end();
+                    return;
+                }
+
+                if (!LowSecurityHasher.verify(requestBody.password, race.hash)) {
+                    response.writeHead(401).end();
+                    return;
+                }
+
+                response.writeHead(200).end(JSON.stringify(
+                    race.players.map(v => [
+                        v.username,
+                        `lua/${race.game.split("_")[0]}.lua?${Buffer.from(v.getAuthString(TCP_ADDRESS, TCP_PORT)).toString("base64url")}`,
+                    ]),
+                ));
+
                 return;
             }
 
             const start = requestBody.start;
             const length = requestBody.length;
 
-            if (typeof start !== "number" || typeof length !== "number" || !Number.isInteger(start) || !Number.isInteger(length) || length > MAX_REQUEST_BUFFER) {
+            if (typeof start !== "number" || typeof length !== "number" || !Number.isInteger(start) || !Number.isInteger(length) || length > MAX_REQUEST_BUFFER_FRAMES) {
                 response.writeHead(400).end();
                 return;
             }
 
-            const race = url.slice(1);
-            const raceObject = activeRaces.get(race) ?? inactiveRaces.get(race);
+            const id = parts[0];
+            const race = activeRaces.get(id) ?? inactiveRaces.get(id);
 
-            if (raceObject == null) {
+            if (race == null) {
                 response.writeHead(404).end();
                 return;
             }
 
-            raceObject.getData(start, length).then((responseBody) => {
+            race.getData(start, length).then((responseBody) => {
                 if (responseBody == null) {
                     response.writeHead(404).end();
                     return;

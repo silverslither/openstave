@@ -160,6 +160,10 @@ function flag_bowser_door()
     return emu.read(0x78d, emu.memType.nesDebug) ~= 0 and 1 or 0
 end
 
+function flag_dying()
+    return emu.read(0xf1, emu.memType.nesDebug) ~= 0 and 1 or 0
+end
+
 function read_memory()
     frame = emu.getState().frameCount
 
@@ -170,9 +174,10 @@ function read_memory()
     for i = 0, 255 do table.insert(sprites, emu.read(i, emu.memType.nesSpriteRam)) end
 
     local flags =
-        flag_in_screen_transition()
-        + flag_start() * 2
-        + flag_bowser_door() * 4
+        (flag_in_screen_transition()) +
+        (flag_start() << 1) +
+        (flag_bowser_door() << 2) +
+        (flag_dying() << 3)
     ram = {
         emu.read(0x70a, emu.memType.nesDebug), -- tileset
         emu.read(0x727, emu.memType.nesDebug), -- world

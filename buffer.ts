@@ -102,28 +102,30 @@ const SMB3_ANYNWW_GENERATOR = (current: Frame, frames: Frame[], events: PlayerEv
             return;
         }
 
+        const currentFlags = current.ram[8];
+        const lastFlags = last.ram[8];
         const currentPosition =
+            (current.ram[1] << 24) +
             (current.ram[10] << 16) +
             (current.ram[11] << 8) +
-            current.ram[12];
+            (current.ram[12]);
         const lastPosition =
+            (last.ram[1] << 24) +
             (last.ram[10] << 16) +
             (last.ram[11] << 8) +
-            last.ram[12];
+            (last.ram[12]);
 
         // exit splits
         if (current.ram[2] === 0x00 &&
             current.ram[3] === 0x00 &&
             last.ram[2] !== 0x00 &&
-            last.ram[3] !== 0x00) {
+            last.ram[3] !== 0x00 &&
+            (lastFlags & 0b1000) === 0) {
 
             events.push({
                 code: "SPLIT",
                 data: [
-                    SMB3_ANYNWW_SPLITS.indexOf(
-                        (current.ram[1] << 24) +
-                        currentPosition,
-                    ),
+                    SMB3_ANYNWW_SPLITS.indexOf(currentPosition),
                     frames.length,
                 ],
             });
@@ -134,23 +136,18 @@ const SMB3_ANYNWW_GENERATOR = (current: Frame, frames: Frame[], events: PlayerEv
             events.push({
                 code: "SPLIT",
                 data: [
-                    SMB3_ANYNWW_SPLITS.indexOf(
-                        (1 << 28) +
-                        (current.ram[1] << 24) +
-                        currentPosition,
-                    ),
+                    SMB3_ANYNWW_SPLITS.indexOf((1 << 28) + currentPosition),
                     frames.length,
                 ],
             });
         }
 
-        const flags = current.ram[8];
         if (current.ram[0] === 0x00 &&
             current.ram[1] === 0x00 &&
             current.ram[2] === 0x00 &&
             current.ram[3] === 0x00 &&
             current.ram[10] === 0x00 &&
-            flags & 0b10) {
+            currentFlags & 0b10) {
 
             events.push({ code: "START", data: frames.length });
         }
@@ -160,7 +157,7 @@ const SMB3_ANYNWW_GENERATOR = (current: Frame, frames: Frame[], events: PlayerEv
             current.ram[10] === 0x70 &&
             current.ram[11] === 0x03 &&
             current.ram[12] === 0xc0 &&
-            flags & 0b100) {
+            currentFlags & 0b100) {
 
             events.push({ code: "END", data: frames.length });
         }

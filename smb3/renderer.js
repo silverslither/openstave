@@ -475,7 +475,7 @@ export class PlayerCanvas extends RendererCanvas {
 
     renderTransition(timer) {
         timer--;
-        const params = [0, 192, 256, 0];
+        const params = [11, 192 - 11, 256, 0];
         let j = 0;
         for (let i = timer; i <= 0x30; i++) {
             params[j] -= 8;
@@ -489,9 +489,9 @@ export class PlayerCanvas extends RendererCanvas {
         y2 += this.yOffset;
         this.context.fillStyle = "#000000";
         this.context.fillRect(0, 0, this.canvas.width, y1);
-        this.context.fillRect(0, y2, this.canvas.width, this.canvas.height);
-        this.context.fillRect(0, y1, x1, y2);
-        this.context.fillRect(x2, y1, this.canvas.width, y2);
+        this.context.fillRect(0, y2, this.canvas.width, this.canvas.height - y2);
+        this.context.fillRect(0, y1, x1, y2 - y1);
+        this.context.fillRect(x2, y1, this.canvas.width - x2, y2 - y1);
     }
 
     renderHUD(following) {

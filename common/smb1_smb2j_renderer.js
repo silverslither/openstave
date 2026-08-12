@@ -123,8 +123,9 @@ class RendererCanvas {
             for (let i = 0; i < 8; i++) {
                 const o = (j << 3) + i;
                 if (tile[o] === 0)
-                    continue;
-                this.drawPixelToBuffer(x + i, y + j, palette[(p << 2) + tile[o]], alpha);
+                    this.drawPixelToBuffer(x + i, y + j, palette[0], alpha);
+                else
+                    this.drawPixelToBuffer(x + i, y + j, palette[(p << 2) + tile[o]], alpha);
             }
         }
     }
@@ -134,14 +135,13 @@ class RendererCanvas {
         const hflip = (attributes >>> 6) & 1;
         const u0 = (attributes >>> 2) & 1;
         const p = attributes & 3;
-        tile = TILES[0x100 + tile + u0 * 0x8a];
+        tile = TILES[0x100 + tile + 0x8a * u0];
 
         for (let j = 0; j < 8; j++) {
             for (let i = 0; i < 8; i++) {
                 const o = ((vflip ? 7 - j : j) << 3) + (hflip ? 7 - i : i);
-                if (tile[o] === 0)
-                    continue;
-                this.drawPixelToBuffer(x + i, y + j + 1, palette[0x10 + (p << 2) + tile[o]], alpha);
+                if (tile[o] !== 0)
+                    this.drawPixelToBuffer(x + i, y + j + 1, palette[0x10 + (p << 2) + tile[o]], alpha);
             }
         }
     }
@@ -178,7 +178,7 @@ class RendererCanvas {
 
         for (let i = 0; i < str.length; i++)
             if (str[i] in text)
-                this.context.drawImage(text[str[i]], x + i * 8, y);
+                this.context.drawImage(text[str[i]], x + 8 * i, y);
 
         this.context.restore();
     }
@@ -368,7 +368,7 @@ export class PlayerCanvas extends RendererCanvas {
             const o = outlineOrder.indexOf(name);
             this.drawOutline(COMPONENT_OUTLINE_COLOURS[o], name === following ? 1.0 : 0.8);
 
-            let dynamic = pframe.subarray(32 + 256 + 9);
+            let dynamic = frame.subarray(32 + 256 + 9);
             while (dynamic.length !== 0) {
                 const opcode = dynamic[0];
 

@@ -119,12 +119,94 @@ emu.addMemoryCallback(set8000, emu.callbackType.write, 0x8000, 0x8000, emu.cpuTy
 emu.addMemoryCallback(set8001, emu.callbackType.write, 0x8001, 0x8001, emu.cpuType.nes, emu.memType.nesMemory)
 emu.addEventCallback(setIRQ, emu.eventType.irq)
 
+NORMAL_CONDITIONS = {
+    2,
+    {
+        [0x60] = true,
+        [0x62] = true,
+        [0x64] = true,
+        [0x66] = true,
+        [0x6a] = true
+    }
+}
+TILES = {
+    { 0xd8, NORMAL_CONDITIONS }, -- hit blocks
+    { 0xdc, NORMAL_CONDITIONS }, -- dynamic coins
+}
+local _p_offset = 0
+function read_tiles()
+    _tiles = {}
+    for _, v in ipairs(TILES) do
+        if v[2][2][chr_banks[v[2][1]]] then
+            _tiles[v[1]] = {}
+        end
+    end
+
+    for i = 0, 0x3bf do
+        local tile
+
+        local x = i & 0x1f
+        local y = i >> 5
+        if (x & 1) == 1 or (y & 1) == 1 then goto continue end
+        a = (x >> 2) + ((y >> 2) << 3)
+        b = (x & 2) + ((y & 2) << 1)
+        x = x << 3
+        y = y << 3
+
+        local o = (x - _p_offset) & 0xff
+        if o < 8 or o >= 0xf8 then goto continue end
+
+        tile = emu.read(0x2000 + i, emu.memType.nesPpuDebug)
+        for v in pairs(_tiles) do
+            if tile == v then
+                local p = (emu.read(0x23c0 + a, emu.memType.nesPpuDebug) >> b) & 3
+                table.insert(_tiles[v], o)
+                table.insert(_tiles[v], (y >> 1) + p)
+            end
+        end
+
+        y = y + 240
+        if y >= 432 then goto continue end
+
+        tile = emu.read(0x2800 + i, emu.memType.nesPpuDebug)
+        for v in pairs(_tiles) do
+            if tile == v then
+                local p = (emu.read(0x2bc0 + a, emu.memType.nesPpuDebug) >> b) & 3
+                table.insert(_tiles[v], o)
+                table.insert(_tiles[v], (y >> 1) + p)
+            end
+        end
+
+        ::continue::
+    end
+
+    _p_offset = emu.read(0xfd, emu.memType.nesDebug)
+end
+
+function serialize_tiles()
+    tiles = {}
+    for i, v in pairs(_tiles) do
+        if #v == 0 then goto continue end
+
+        table.insert(tiles, i)
+        table.insert(tiles, #v >> 1)
+        for j = 1, #v, 2 do
+            local x = v[j]
+            local y = v[j + 1]
+            table.insert(tiles, y)
+            table.insert(tiles, x)
+        end
+
+        ::continue::
+    end
+end
+
 local _load_flag = false
 local _wz_flag = false
 local _p_area = 0
 local _p_world = 0
 function flag_in_screen_transition()
-    local area = emu.read(0x61, emu.memType.nesDebug) * 256 + emu.read(0x62, emu.memType.nesDebug)
+    local area = (emu.read(0x61, emu.memType.nesDebug) << 8) + emu.read(0x62, emu.memType.nesDebug)
     local world = emu.read(0x727, emu.memType.nesDebug)
     local fade_timer = emu.read(0x41c, emu.memType.nesDebug)
     local fade_step = emu.read(0x41d, emu.memType.nesDebug)
@@ -194,6 +276,9 @@ function read_memory()
         emu.read(0x797a, emu.memType.nesDebug), -- map xpos low byte
         emu.read(0x100, emu.memType.nesDebug), -- level type
     }
+
+    read_tiles()
+    serialize_tiles()
 end
 
 function u32le(n)
@@ -212,7 +297,8 @@ function main()
         string.char(table.unpack(palette)),
         string.char(table.unpack(chr_banks)),
         string.char(table.unpack(sprites)),
-        string.char(table.unpack(ram))
+        string.char(table.unpack(ram)),
+        string.char(table.unpack(tiles))
     })
     send(u32le(#data + 4) .. data)
     new_frame = true

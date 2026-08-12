@@ -111,13 +111,34 @@ class RendererCanvas {
         this.context.putImageData(this.buffer, 0, 0);
     }
 
-    getCHRTile(banks, tile) {
-        if (tile & 1)
+    getCHRTile(banks, tile, bg = false) {
+        if (!bg)
             return (banks[(tile >>> 6) + 2] << 6) + (tile & 0x3e);
         return (banks[tile >>> 7] << 6) + (tile & 0x7e);
     }
 
-    renderTileToBuffer(x, y, tile, attributes, palette, alpha) {
+    renderBGTileToBuffer(x, y, tile, p, palette, alpha) {
+        const lo = TILES[tile];
+        const hi = TILES[tile + 1];
+
+        for (let j = 0; j < 8; j++) {
+            for (let i = 0; i < 8; i++) {
+                const o = (j << 3) + i;
+
+                if (lo[o] === 0)
+                    this.drawPixelToBuffer(x + i, y + j, palette[0], alpha);
+                else
+                    this.drawPixelToBuffer(x + i, y + j, palette[(p << 2) + lo[o]], alpha);
+
+                if (hi[o] === 0)
+                    this.drawPixelToBuffer(x + i, y + j + 8, palette[0], alpha);
+                else
+                    this.drawPixelToBuffer(x + i, y + j + 8, palette[(p << 2) + hi[o]], alpha);
+            }
+        }
+    }
+
+    renderFGTileToBuffer(x, y, tile, attributes, palette, alpha) {
         const vflip = attributes >>> 7;
         const hflip = (attributes >>> 6) & 1;
         const p = attributes & 3;
@@ -168,7 +189,7 @@ class RendererCanvas {
 
         for (let i = 0; i < str.length; i++)
             if (str[i] in text)
-                this.context.drawImage(text[str[i]], x + i * 8, y);
+                this.context.drawImage(text[str[i]], x + 8 * i, y);
 
         this.context.restore();
     }
@@ -321,10 +342,12 @@ export class PlayerCanvas extends RendererCanvas {
 
         const above = {};
         const mask = {};
+        const background = {};
         this.createBuffer(COMPONENT_NES_COLOURS[gPalette[0]]);
         for (const name of drawOrder) {
             above[name] = [];
             mask[name] = [];
+            background[name] = [];
 
             let frame = this.players[name].frames[count];
             let pframe = this.players[name].frames[count - 1] ?? frame;
@@ -383,7 +406,7 @@ export class PlayerCanvas extends RendererCanvas {
 
                 // send world map side tiles and w8 dark room tiles to background
                 if (((attributes >>> 5) & 1) || (0x800 <= tile && tile <= 0x80b) || (0x880 <= tile && tile <= 0x887)) {
-                    this.renderTileToBuffer(xOffset + x, yOffset + y, tile, attributes, palette, alpha);
+                    this.renderFGTileToBuffer(xOffset + x, yOffset + y, tile, attributes, palette, alpha);
                 } else {
                     above[name].push([xOffset + x, yOffset + y, tile, attributes, palette, alpha]);
                     mask[name].push(new Set(this.outline.selection));
@@ -391,6 +414,21 @@ export class PlayerCanvas extends RendererCanvas {
             }
             const o = outlineOrder.indexOf(name);
             this.drawOutline(COMPONENT_OUTLINE_COLOURS[o], name === following ? 1.0 : 0.8);
+
+            let dynamic = frame.subarray(38 + 256 + 14);
+            while (dynamic.length !== 0) {
+                const opcode = dynamic[0];
+                const count = dynamic[1];
+                const positions = dynamic.subarray(2, 2 + count * 2);
+                for (let i = 0; i < positions.length; i += 2) {
+                    const y = (positions[i] >>> 2) << 3;
+                    const p = positions[i] & 3;
+                    const x = positions[i + 1];
+                    for (let j = 0; j < 2; j++)
+                        background[name].push([xOffset + x + 8 * j, gYOffset + y, this.getCHRTile(banks, opcode + 2 * j, true), p, palette, alpha]);
+                }
+                dynamic = dynamic.subarray(2 + count * 2);
+            }
         }
         this.fromBuffer();
 
@@ -403,10 +441,15 @@ export class PlayerCanvas extends RendererCanvas {
         this.toBuffer();
         for (const name of drawOrder) {
             this.outline.reset();
+            for (const tile of background[name])
+                this.renderBGTileToBuffer(...tile);
+        }
+        for (const name of drawOrder) {
+            this.outline.reset();
 
             for (let i = 0; i < above[name].length; i++) {
                 this.mask = mask[name][i];
-                this.renderTileToBuffer(...above[name][i]);
+                this.renderFGTileToBuffer(...above[name][i]);
             }
             this.mask = undefined;
 
@@ -457,7 +500,7 @@ export class PlayerCanvas extends RendererCanvas {
 
         this.context.fillStyle = "#000000";
         this.context.globalAlpha = 0.7;
-        this.context.fillRect(4, this.canvas.height - 20, following.length * 8 + 8, 16);
+        this.context.fillRect(4, this.canvas.height - 20, 8 * following.length + 8, 16);
         this.context.globalAlpha = 1.0;
 
         this.drawText(8, this.canvas.height - 16, following);
@@ -467,7 +510,7 @@ export class PlayerCanvas extends RendererCanvas {
                 return;
 
             this.context.globalAlpha = 0.7;
-            this.context.fillRect(this.canvas.width - this.alt.length * 8 - 12, this.canvas.height - 20, this.alt.length * 8 + 8, 16);
+            this.context.fillRect(this.canvas.width - 8 * this.alt.length - 12, this.canvas.height - 20, 8 * this.alt.length + 8, 16);
             this.context.globalAlpha = 1.0;
 
             this.drawText(this.canvas.width - 8, this.canvas.height - 16, this.alt, "right");

@@ -154,53 +154,55 @@ function serialize_sfx()
 end
 
 TILES = {
-    0x57, -- broken blocks
+    0x57, -- hit blocks
     0xa5, -- coins
 }
+local _p_offset = 0
 function read_tiles()
-    local offset = emu.read(0x71a, emu.memType.nesDebug) * 256 + emu.read(0x71c, emu.memType.nesDebug)
     _tiles = {}
     for _, v in ipairs(TILES) do _tiles[v] = {} end
 
-    for i = 0, 959 do
+    for i = 0, 0x3bf do
         local tile
 
         local x = i & 0x1f
         local y = i >> 5
         if (x & 1) == 1 or (y & 1) == 1 then goto continue end
-        a = (x >> 2) + 8 * (y >> 2)
-        b = (x & 2) + 2 * (y & 2)
-        x = x * 8
-        y = y * 8
+        a = (x >> 2) + ((y >> 2) << 3)
+        b = (x & 2) + ((y & 2) << 1)
+        x = x << 3
+        y = y << 3
 
-        local o = (x - offset) & 0x1ff
+        local o = (x - _p_offset) & 0x1ff
         if o >= 256 and o <= 496 then goto right end
 
         tile = emu.read(0x2000 + i, emu.memType.nesPpuDebug)
-        for _, v in ipairs(TILES) do
+        for v in pairs(_tiles) do
             if tile == v then
                 local p = (emu.read(0x23c0 + a, emu.memType.nesPpuDebug) >> b) & 3
                 table.insert(_tiles[v], o)
-                table.insert(_tiles[v], y + 2 * p)
+                table.insert(_tiles[v], y + (p << 1))
             end
         end
 
         ::right::
         x = x + 256
-        o = (x - offset) & 0x1ff
+        o = (x - _p_offset) & 0x1ff
         if o >= 256 and o <= 496 then goto continue end
 
         tile = emu.read(0x2400 + i, emu.memType.nesPpuDebug)
-        for _, v in ipairs(TILES) do
+        for v in pairs(_tiles) do
             if tile == v then
                 local p = (emu.read(0x27c0 + a, emu.memType.nesPpuDebug) >> b) & 3
                 table.insert(_tiles[v], o)
-                table.insert(_tiles[v], y + 2 * p)
+                table.insert(_tiles[v], y + (p << 1))
             end
         end
 
         ::continue::
     end
+
+    _p_offset = (emu.read(0x71a, emu.memType.nesDebug) << 8) + emu.read(0x71c, emu.memType.nesDebug)
 end
 
 function serialize_tiles()
@@ -213,7 +215,7 @@ function serialize_tiles()
         for j = 1, #v, 2 do
             local x = v[j]
             local y = v[j + 1]
-            table.insert(tiles, y + (x >= 256 and 1 or 0))
+            table.insert(tiles, y + (x >> 8))
             table.insert(tiles, x & 0xff)
         end
 
@@ -301,8 +303,8 @@ local _p_stage = 0
 function q_level()
     local state = emu.read(0xe, emu.memType.nesDebug)
     local area =
-        (emu.read(0x7fb, emu.memType.nesDebug) & 1) * 128
-        + ((emu.read(0x74e, emu.memType.nesDebug) * 32 + emu.read(0x74f, emu.memType.nesDebug)) & 0x7f)
+        ((emu.read(0x7fb, emu.memType.nesDebug) & 1) << 7)
+        + (((emu.read(0x74e, emu.memType.nesDebug) << 5) + emu.read(0x74f, emu.memType.nesDebug)) & 0x7f)
     local world = emu.read(0x75f, emu.memType.nesDebug)
     local stage = emu.read(0x75c, emu.memType.nesDebug)
 

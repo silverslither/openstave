@@ -15,9 +15,9 @@ Extensible monolithic server for STA races.
 
 ## Hosting
 
-The public instance is hosted at <https://openstave.ca/>. Contact `silverslither_` on Discord to obtain the race key.
+The public instance is hosted at <https://openstave.ca/>. Contact `silverslither_` on Discord to obtain the global race key.
 
-To host OpenStave, create the `env.ts` file in the repo root with the same format as `env.ts.example`. Then, launch with `node server.ts` (tested on Node 24).
+To host OpenStave, create the `env.ts` file in the repo root with the same format as `env.ts.example`. Then, launch with `node server.ts` (tested on latest Node.js).
 
 ## Usage
 
@@ -31,7 +31,7 @@ To host OpenStave, create the `env.ts` file in the repo root with the same forma
 
 On the homepage, fill out all form elements and click Submit to start a new race. You will see the race ID be appended to the end of your URL, and the current status of all players will be printed below the links to the user scripts. Once all user scripts have been distributed (e.g. in a private channel visible to only runners), you may safely reload the page, and the current race status will keep printing under the form (which can still be submitted).
 
-### Running user scripts in Mesen2
+### Running user scripts in Mesen2/MesenCE
 
 `Debug > Script Window` opens a new Lua script window. From within the script window, open `Script > Settings`, and enable:
 * Allow access to I/O and OS functions

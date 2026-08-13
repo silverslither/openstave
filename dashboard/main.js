@@ -76,11 +76,24 @@ async function updateLive() {
             })).json();
 
             if (data.finished) {
-                live.innerHTML = "The race has completed.";
+                let html = "";
+
+                for (const name in data.players) {
+                    const player = data.players[name];
+                    html += `${name.slice(0, -8)}: `;
+                    if (player.dnf != null)
+                        html += `DNFed at ${player.dnf}`;
+                    if (player.time != null)
+                        html += `Finished at ${player.time}`;
+                    html += "<br/>";
+                }
+
+                live.innerHTML = html;
                 return;
             }
 
             let html = "";
+
             for (const name in data.players) {
                 const player = data.players[name];
                 html += `${name.slice(0, -8)}: `;

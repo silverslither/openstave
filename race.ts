@@ -70,14 +70,11 @@ export class Race implements AbstractRace {
             return;
         if (!supportedGames.has(game))
             return;
-        if (players.length > 16)
-            return;
         const timeout_ms = TIMEOUTS[game] ?? TIMEOUTS.default;
         this.timeout = Date.now() + timeout_ms;
         this.players = [];
 
         for (let player of players) {
-            player = player.replace(/[^0-9A-Za-z_-]/g, "");
             if (player === "" || player.length > 24)
                 return;
 

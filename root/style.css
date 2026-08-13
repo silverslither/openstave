@@ -1,0 +1,90 @@
+@font-face {
+    font-family: "Open Sans";
+    font-style: normal;
+    font-weight: 400;
+    font-stretch: 100%;
+    font-display: swap;
+    src: url("/common/OpenSans-Regular.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Open Sans";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("/common/OpenSans-Bold.woff2") format("woff2");
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: "Open Sans", sans-serif;
+    font-size: 16px;
+    margin: 0px;
+}
+
+#header {
+    margin-top: 8px;
+    max-width: 90vw;
+}
+
+h1 {
+    font-size: 28px;
+    margin: 12px 0px;
+}
+
+#create-race {
+    width: 720px;
+    max-width: 90vw;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+h2 {
+    font-size: 22px;
+    margin: 0px;
+}
+
+input, select, button, .textbox {
+    padding: 4px;
+    border: 1px solid black;
+    border-radius: 2px;
+    font-family: inherit;
+    font-size: 14px;
+}
+
+label, button {
+    margin-top: 12px;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+select, button {
+    background-color: #eee;
+}
+
+select:hover, button:hover {
+    background-color: #ddd;
+}
+
+select:active, button:active {
+    background-color: #ccc;
+}
+
+button {
+    padding: 2.5px;
+}
+
+.textbtn {
+    padding: 0px;
+    border: none;
+    margin: 0px;
+    background-color: inherit;
+    text-decoration: underline;
+}
+
+.textbox {
+    min-height: 96px;
+}

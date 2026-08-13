@@ -119,7 +119,7 @@ const server = http.createServer((request, response) => {
                 const password = requestBody.password;
                 const id = requestBody.id;
                 const game = requestBody.game;
-                const players = requestBody.players;
+                let players = requestBody.players;
 
                 if (key !== gKey) {
                     response.writeHead(400).end("The entered key is incorrect.");
@@ -131,11 +131,12 @@ const server = http.createServer((request, response) => {
                     return;
                 }
 
-                if (typeof id !== "string" || typeof game !== "string" || !Array.isArray(players) || players.length < 2 || players.some(v => typeof v !== "string")) {
+                if (typeof id !== "string" || typeof game !== "string" || !Array.isArray(players) || players.length === 0 || players.some(v => typeof v !== "string")) {
                     response.writeHead(400).end("You must fill out all form elements.");
                     return;
                 }
 
+                players = players.map(v => v.replace(/[^0-9A-Za-z_-]/g, ""));
                 if (new Set(players).size !== players.length) {
                     response.writeHead(400).end("All players must have unique names.");
                     return;

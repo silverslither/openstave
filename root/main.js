@@ -1,37 +1,20 @@
-let key, password, id, game, players, names, submit, error;
+let key, showHidePassword, password, id, game, players, submit, error;
 
 document.addEventListener("DOMContentLoaded", main);
 
 function main() {
     key = document.getElementById("key");
+    showHidePassword = document.getElementById("show-hide-password");
     password = document.getElementById("password");
     id = document.getElementById("id");
     game = document.getElementById("game");
     players = document.getElementById("players");
-    names = document.getElementById("names");
     submit = document.getElementById("submit");
     error = document.getElementById("error");
+
     game.value = "";
-    players.value = "";
 
-    players.addEventListener("input", () => {
-        players.valueAsNumber = Math.min(Math.max(Math.round(players.valueAsNumber), 2), 16);
-
-        if (players.valueAsNumber !== players.valueAsNumber)
-            return;
-
-        for (let i = names.children.length >>> 1; i < players.valueAsNumber; i++) {
-            const input = document.createElement("input");
-            input.type = "text";
-            input.maxLength = 24;
-            names.append(input, document.createElement("br"));
-        }
-
-        for (let i = names.children.length - 1; i >= 2 * players.valueAsNumber; i--) {
-            names.children[i].remove();
-        }
-    });
-
+    showHidePassword.addEventListener("click", () => password.type = password.type === "password" ? "text" : "password");
     submit.addEventListener("click", create);
 }
 
@@ -42,6 +25,12 @@ async function create() {
     lock = true;
 
     try {
+        const parsedPlayers = parsePlayers(players.innerText);
+        if (parsedPlayers == null) {
+            lock = false;
+            return;
+        }
+
         const response = await fetch("/", {
             method: "POST",
             body: JSON.stringify({
@@ -49,7 +38,7 @@ async function create() {
                 id: id.value,
                 key: key.value,
                 game: game.value,
-                players: [...names.getElementsByTagName("input")].map(v => v.value),
+                players: parsedPlayers,
             }),
         });
 
@@ -65,10 +54,39 @@ async function create() {
             return;
         }
 
+        id.value = "";
+        game.value = "";
+        players.innerText = "";
+        lock = false;
+
         sessionStorage.setItem("password", password.value);
         location.pathname = `/dashboard/${await response.text()}`;
     } catch (e) {
         error.innerText = e;
         lock = false;
     }
+}
+
+function parsePlayers(str) {
+    const players = str.split("\n").map(v => v.trim()).filter(v => v !== "");
+    if (players.length < 2 || players.length > 16) {
+        error.innerText = "The number of players must be between 2 and 16, inclusive.";
+        return null;
+    }
+
+    for (let i = 0; i < players.length; i++) {
+        const player = players[i].replace(/[^0-9A-Za-z_-]/g, "");
+
+        if (player.length > 24) {
+            error.innerText = `The player name ${players[i]} is too long; the maximum allowed length is 24 characters.`;
+            return null;
+        }
+
+        if (player === "") {
+            error.innerText = `The player name ${players[i]} contains only forbidden characters.`;
+            return null;
+        }
+    }
+
+    return players;
 }

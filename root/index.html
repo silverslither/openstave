@@ -10,26 +10,30 @@
 </head>
 
 <body>
-    <label for="key">Global Key (ask the server administrator)</label><br/>
-    <input id="key" type="text"><br/><br/>
-    <label for="password">Dashboard Password</label><br/>
-    <input id="password" type="password" maxlength="64"><br/><br/>
-    <label for="id">Race ID (Race URL will be /{id}{8 base64 characters})</label><br/>
-    <input id="id" type="text" maxlength="56"><br/><br/>
-    <label for="game">Category</label><br/>
-    <select id="game">
-        <option value="smb1_any%">Super Mario Bros. Any%</option>
-        <option value="smb1_warpless">Super Mario Bros. Warpless</option>
-        <option value="smb2j_any%">Super Mario Bros. 2 (Japan) Any%</option>
-        <option value="smb2j_warpless">Super Mario Bros. 2 (Japan) Warpless</option>
-        <option value="smb3_any%nww">Super Mario Bros. 3 Any% NWW</option>
-    </select><br/><br/>
-    <label for="players">Players (between 2 and 16)</label><br/>
-    <input id="players" type="number" min="2" max="16"><br/><br/>
-    <label for="names">Player Names</label><br/>
-    <div id="names"></div><br/>
-    <button id="submit">Submit</button>
-    <span id="error"></span>
+    <div id="header">
+        <h1>OpenStave v0.3.3-beta</h1>
+    </div>
+    <div id="create-race">
+        <h2>Create Race</h2>
+        <label for="key">Global Key (ask the server administrator)</label>
+        <input id="key" type="password">
+        <label for="password">Dashboard Password (<button id="show-hide-password" class="textbtn">show/hide</button>)</label>
+        <input id="password" type="password" maxlength="64">
+        <label for="id">Race ID</label>
+        <input id="id" type="text" maxlength="56">
+        <label for="game">Category</label>
+        <select id="game">
+            <option value="smb1_any%">Super Mario Bros. Any%</option>
+            <option value="smb1_warpless">Super Mario Bros. Warpless</option>
+            <option value="smb2j_any%">Super Mario Bros. 2 (Japan) Any%</option>
+            <option value="smb2j_warpless">Super Mario Bros. 2 (Japan) Warpless</option>
+            <option value="smb3_any%nww">Super Mario Bros. 3 Any% NWW</option>
+        </select>
+        <label for="players">Players (up to 16, one name per line)</label>
+        <span class="textbox" id="players" role="textbox" contenteditable></span>
+        <button id="submit">Submit</button>
+        <span id="error"></span>
+    </div>
 </body>
 
 </html>

@@ -34,7 +34,7 @@ h1 {
     margin: 12px 0px 0px 0px;
 }
 
-#create-race {
+#dashboard {
     width: 720px;
     max-width: 90vw;
     display: flex;
@@ -44,7 +44,7 @@ h1 {
 
 h2 {
     font-size: 22px;
-    margin: 12px 0px 0px 0px;
+    margin: 24px 0px 0px 0px;
 }
 
 input, select, button, .textbox {
@@ -74,16 +74,16 @@ select:active, button:active {
 
 button {
     padding: 2.5px;
-}
-
-.textbtn {
-    padding: 0px;
-    border: none;
     margin: 0px;
-    background-color: inherit;
-    text-decoration: underline;
 }
 
-.textbox {
-    min-height: 96px;
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 4px;
+    border: 1px solid black;
+    text-align: center;
 }

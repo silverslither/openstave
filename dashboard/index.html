@@ -10,17 +10,34 @@
 </head>
 
 <body>
-    <label for="link">Permanent Link</label><br/>
-    <a id="link"></a><br/><br/>
-    <label for="password">Dashboard Password</label><br/>
-    <input id="password" type="password" maxlength="64"><br/><br/>
-    <label for="live">Live Status</label><br/>
-    <div id="live"></div><br/>
-    <label for="authentication">Authentication</label><br/>
-    <div id="authentication">
-        <button>Get Authentication</button><br/>
-        <span></span>
-    </div><br/>
+    <div id="header">
+        <h1>OpenStave Dashboard</h1>
+    </div>
+    <div id="dashboard">
+        <label for="link">Permanent Link</label>
+        <a id="link"></a>
+        <label for="password">Dashboard Password</label>
+        <input id="password" type="password" maxlength="64">
+        <h2>Live Status</h2>
+        <div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="live">
+                </tbody>
+            </table>
+        </div>
+        <h2>Authentication</h2>
+        <div id="authentication" style="overflow-wrap: break-word">
+            <button style="width: 100%">Get Authentication</button>
+            <span></span>
+        </div>
+    </div>
 </body>
 
 </html>

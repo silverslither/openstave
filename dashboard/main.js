@@ -64,49 +64,59 @@ async function getAuthentication() {
     }
 }
 
+let actionLock = false;
+async function handleAction() {
+    if (actionLock)
+        return;
+    actionLock = true;
+
+}
+
 async function updateLive() {
-    while (true) {
-        try {
-            const data = await (await fetch(`/${RACE_ID}`, {
-                method: "POST",
-                body: JSON.stringify({
-                    start: 0,
-                    length: 0,
-                }),
-            })).json();
+    const rows = []
+
+    try {
+        const data = await (await fetch(`/${RACE_ID}`, {
+            method: "POST",
+            body: JSON.stringify({
+                start: 0,
+                length: 0,
+            }),
+        })).json();
+
+        for (const i in data.players) {
+            const player = data.players[i];
+            const row = document.createElement("tr");
+            const name = document.createElement("td");
+            const status = document.createElement("td");
+            const actions = document.createElement("td");
+
+            name.innerText = i.slice(0, -8);
 
             if (data.finished) {
-                let html = "";
-
-                for (const name in data.players) {
-                    const player = data.players[name];
-                    html += `${name.slice(0, -8)}: `;
-                    if (player.dnf != null)
-                        html += `DNFed at ${player.dnf}`;
-                    if (player.time != null)
-                        html += `Finished at ${player.time}`;
-                    html += "<br/>";
-                }
-
-                live.innerHTML = html;
-                return;
+                if (player.time != null)
+                    status.innerText = `finished at frame ${player.time}`;
+                else
+                    status.innerText = `dnf at frame ${player.dnf ?? 0}`;
+                actions.innerText = "todo";
+            } else {
+                status.innerText = 
+                    (player.connected ? "connected, " : "not connected, ") +
+                    ((player.dnf != null || player.time != null) ?
+                        "finished" :
+                        (player.length > 0 ? "started" : "not started"));
+                actions.innerText = "todo";
             }
 
-            let html = "";
-
-            for (const name in data.players) {
-                const player = data.players[name];
-                html += `${name.slice(0, -8)}: `;
-                html += player.connected ? "connected, " : "not connected, ";
-                html += (player.dnf != null || player.time != null) ? "finished" : (player.length > 0 ? "started" : "not started");
-                html += "<br/>";
-            }
-
-            live.innerHTML = html;
-        } catch (e) {
-            console.error(e);
+            row.append(name, status, actions);
+            rows.push(row);
         }
 
-        await new Promise(r => setTimeout(r, 1000));
+        live.innerHTML = "";
+        live.append(...rows);
+    } catch (e) {
+        console.error(e);
     }
+
+    setTimeout(updateLive, 1000);
 }

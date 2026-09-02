@@ -60,7 +60,7 @@ async function create() {
         lock = false;
 
         sessionStorage.setItem("password", password.value);
-        location.pathname = `/dashboard/${await response.text()}`;
+        location.pathname = `/dash/${await response.text()}`;
     } catch (e) {
         error.innerText = e;
         lock = false;

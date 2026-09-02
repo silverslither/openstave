@@ -87,3 +87,11 @@ th, td {
     border: 1px solid black;
     text-align: center;
 }
+
+.textbtn {
+    padding: 0px;
+    border: none;
+    margin: 0px;
+    background-color: inherit;
+    text-decoration: underline;
+}

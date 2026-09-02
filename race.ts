@@ -27,11 +27,27 @@ interface PlayerResponseObject {
     length: number;
 };
 
+interface StaticPlayerData {
+    splits: number[];
+    dnf: number;
+    time: number;
+    frames: any[];
+    length: number;
+}
+
+interface StaticRaceData {
+    hash: string;
+    game: string;
+    finished: boolean;
+    players: Record<string, StaticPlayerData>;
+}
+
 export const activePlayers: Map<string, Player> = new Map();
 export const activeRaces: Map<string, Race> = new Map();
 export const inactiveRaces: Map<string, AbstractRace> = new Map();
 
 export interface AbstractRace {
+    hash: string;
     game: string;
 
     getData: (start: number, length: number) => Promise<{
@@ -39,10 +55,12 @@ export interface AbstractRace {
         finished: boolean,
         players: Record<string, PlayerResponseObject | null>,
     } | null>;
+
+    exec: (name: string, command: string, args: string[]) => [number, string];
 }
 
 export class Race implements AbstractRace {
-    hash: string | null;
+    hash: string;
     id: string;
     game: string;
     timeout: number;
@@ -99,6 +117,7 @@ export class Race implements AbstractRace {
 
     static from(obj: Record<string, any>) {
         const race = new Race();
+        race.hash = obj.hash;
         race.id = obj.id;
         race.game = obj.game;
         race.timeout = obj.timeout ?? -Infinity;
@@ -149,53 +168,50 @@ export class Race implements AbstractRace {
             return v;
         });
     }
+
+    exec(name: string, command: string, _args: string[]): [number, string] {
+        const player = this.players.find(v => v.username === name);
+        if (player == null)
+            return [400, "Player does not exist."];
+
+        switch (command.toLowerCase()) {
+            case "dnf":
+                player.eventHandler({ code: "DNF", data: null });
+                return [200, ""];
+            default:
+                return [400, "Command does not exist."];
+        }
+    }
 }
 
-export class RaceData implements AbstractRace { // TODO: remove this.dirty and clean() after race editing is implemented
+export class RaceData implements AbstractRace {
     path: string;
-    game: string;
-    dirty: boolean;
+    static: StaticRaceData;
 
     constructor(racePath: string) {
         this.path = racePath;
-        this.game = "";
-        this.dirty = false;
 
         if (fs.existsSync(this.path)) {
             const data = fs.readFileSync(path.join(this.path, "static"), { encoding: "utf8" });
-            const staticData = JSON.parse(data);
-            this.game = staticData.game;
-
-            if (Object.values(staticData.players).some(v => (v as Record<string, any>)?.start != null))
-                this.dirty = true;
+            this.static = JSON.parse(data);
         }
     }
 
-    async clean() {
-        const obj = await this.getData(0, Infinity);
-        obj.players = Object.entries(obj.players).map((v) => {
-            const w = v as [string, Record<string, any>];
-            const r: Record<string, any> = { username: w[0], ...w[1], end: w[1].time };
-            r.start ??= 0;
-            return r;
-        });
-
-        const race = Race.from(obj);
-        race.minimize();
-
-        await this.write(race);
-
-        this.dirty = false;
+    get hash() {
+        return this.static?.hash ?? null;
     }
 
-    // assumes race has been minimized
+    get game() {
+        return this.static?.game ?? "";
+    }
+
     async write(race: Race) {
-        this.game = race.game;
+        race.minimize();
 
         if (!fs.existsSync(this.path))
             await fs.promises.mkdir(this.path);
 
-        const staticData = {
+        this.static = {
             hash: race.hash,
             game: race.game,
             finished: true,
@@ -208,9 +224,9 @@ export class RaceData implements AbstractRace { // TODO: remove this.dirty and c
             }]))),
         };
 
-        await fs.promises.writeFile(path.join(this.path, "static"), JSON.stringify(staticData));
+        await fs.promises.writeFile(path.join(this.path, "static"), JSON.stringify(this.static));
 
-        const length = Math.max(...Object.values(staticData.players).map(v => v.length));
+        const length = Math.max(...Object.values(this.static.players).map(v => v.length));
 
         for (let i = 0; i < length; i += FILE_BUFFER) {
             const frames: Record<string, string[]> = {};
@@ -234,9 +250,9 @@ export class RaceData implements AbstractRace { // TODO: remove this.dirty and c
     }
 
     async getData(start: number, length: number) {
-        if (!fs.existsSync(this.path))
+        if (this.static == null)
             return null;
-        const response = JSON.parse(await fs.promises.readFile(path.join(this.path, "static"), { encoding: "utf8" }));
+        const response = structuredClone(this.static);
 
         for (let i = FILE_BUFFER * Math.floor(start / FILE_BUFFER); i < start + length; i += FILE_BUFFER) {
             const file = path.join(this.path, i.toString());
@@ -258,5 +274,23 @@ export class RaceData implements AbstractRace { // TODO: remove this.dirty and c
         }
 
         return response;
+    }
+
+    exec(name: string, command: string, _args: string[]): [number, string] {
+        if (this.static == null)
+            return [500, "Missing race static data."];
+
+        const player = this.static.players[name];
+        if (player == null)
+            return [400, "Player does not exist."];
+
+        switch (command.toLowerCase()) {
+            case "remove":
+                delete this.static.players[name];
+                fs.writeFileSync(path.join(this.path, "static"), JSON.stringify(this.static));
+                return [200, ""];
+            default:
+                return [400, "Command does not exist."];
+        }
     }
 }

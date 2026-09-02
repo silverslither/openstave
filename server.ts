@@ -67,10 +67,6 @@ if (!fs.existsSync(RACE_PATH)) {
     const keys = fs.readdirSync(RACE_PATH);
     for (const key of keys) {
         const race = new RaceData(path.join(RACE_PATH, key));
-        if (race.dirty) {
-            console.log("cleaning race", key);
-            await race.clean();
-        }
         inactiveRaces.set(key, race);
     }
 }
@@ -88,7 +84,6 @@ while (true) {
         for (const [id, race] of activeRaces) {
             if (!race.finished)
                 continue;
-            race.minimize();
             activeRaces.delete(id);
             inactiveRaces.set(id, race);
         }

@@ -96,6 +96,8 @@ export default class Player {
                 break;
             case "DNF":
                 if (event.data == null || (this.start === this.start && this.end !== this.end)) {
+                    if (this.start !== this.start)
+                        this.start = this.frames.length;
                     this.dnf = event.data ?? this.frames.length - 1;
                     this.frames.length = this.dnf + 1;
                 }

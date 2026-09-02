@@ -48,8 +48,8 @@ const server = http.createServer((request, response) => {
                     return;
                 }
                 file = path.join(import.meta.dirname, race.game.split("_")[0], "index.html");
-            } else if (parts[0] === "dashboard" && (activeRaces.has(parts[1]) || inactiveRaces.has(parts[1]))) {
-                file = path.join(import.meta.dirname, "dashboard", "index.html");
+            } else if (parts[0] === "dash" && (activeRaces.has(parts[1]) || inactiveRaces.has(parts[1]))) {
+                file = path.join(import.meta.dirname, "dash", "index.html");
             } else {
                 file = path.join(import.meta.dirname, ...parts);
             }
@@ -98,7 +98,7 @@ const server = http.createServer((request, response) => {
         });
 
         request.on("end", () => {
-            let requestBody;
+            let requestBody: any;
             try {
                 requestBody = JSON.parse(Buffer.concat(chunks).toString());
             } catch (e) {
@@ -157,7 +157,7 @@ const server = http.createServer((request, response) => {
                 return;
             }
 
-            if (parts.length === 2 && parts[0] === "authentication") {
+            if (parts.length === 2 && parts[0] === "auth") {
                 const id = parts[1];
                 const race = activeRaces.get(id);
 
@@ -177,6 +177,35 @@ const server = http.createServer((request, response) => {
                         `lua/${race.game.split("_")[0]}.lua?${Buffer.from(v.getAuthString(TCP_ADDRESS, TCP_PORT)).toString("base64url")}`,
                     ]),
                 ));
+
+                return;
+            }
+
+            if (parts.length === 2 && parts[0] === "exec") {
+                const id = parts[1];
+                const race = activeRaces.get(id) ?? inactiveRaces.get(id);
+
+                if (race == null) {
+                    response.writeHead(404).end();
+                    return;
+                }
+
+                if (!LowSecurityHasher.verify(requestBody.password, race.hash)) {
+                    response.writeHead(401).end();
+                    return;
+                }
+
+                const name = requestBody.name;
+                const command = requestBody.command;
+                const args = requestBody.args;
+
+                if (typeof name !== "string" || typeof command !== "string" || !Array.isArray(args) || args.some(v => typeof v !== "string")){
+                    response.writeHead(400).end("Invalid request.");
+                    return;
+                }
+
+                const [status, message] = race.exec(name, command, args);
+                response.writeHead(status).end(message);
 
                 return;
             }

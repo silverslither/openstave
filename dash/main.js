@@ -29,7 +29,7 @@ async function getAuthentication() {
     authLock = true;
 
     try {
-        const response = await fetch(`/authentication/${RACE_ID}`, {
+        const response = await fetch(`/auth/${RACE_ID}`, {
             method: "POST",
             body: JSON.stringify({
                 password: password.value,
@@ -65,11 +65,39 @@ async function getAuthentication() {
 }
 
 let actionLock = false;
-async function handleAction() {
+async function handleAction(player, action, options) {
     if (actionLock)
         return;
     actionLock = true;
 
+    try {
+        const response = await fetch(`/exec/${RACE_ID}`, {
+            method: "POST",
+            body: JSON.stringify({
+                password: password.value,
+                name: player,
+                command: action,
+                args: options,
+            }),
+        });
+
+        if (response.status === 401) {
+            live.parentElement.nextElementSibling = "The entered password is incorrect.";
+            actionLock = false;
+            return;
+        }
+
+        if (response.status === 404) {
+            live.parentElement.nextElementSibling = "uhhhhhhhh TODO?";
+            actionLock = false;
+            return;
+        }
+
+        live.parentElement.nextElementSibling = response.statusText;
+        actionLock = false;
+    } catch (e) {
+        actionLock = false;
+    }
 }
 
 async function updateLive() {
@@ -105,7 +133,9 @@ async function updateLive() {
                     ((player.dnf != null || player.time != null) ?
                         "finished" :
                         (player.length > 0 ? "started" : "not started"));
-                actions.innerText = "todo";
+                actions.append(
+                    getActionButton(i, "dnf", [])
+                );
             }
 
             row.append(name, status, actions);
@@ -119,4 +149,12 @@ async function updateLive() {
     }
 
     setTimeout(updateLive, 1000);
+}
+
+function getActionButton(player, action, options) {
+    const button = document.createElement("button");
+    button.className = "textbtn";
+    button.innerText = action;
+    button.addEventListener("click", () => handleAction(player, action, options));
+    return button;
 }

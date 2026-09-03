@@ -28,10 +28,10 @@ async function cleanup() {
         if (!fs.existsSync(CRASH_PATH))
             fs.mkdirSync(CRASH_PATH);
         for (const [key, value] of activeRaces)
-            fs.writeFileSync(path.join(CRASH_PATH, key), value.serialize(), { encoding: "utf8" });
+            fs.writeFileSync(path.join(CRASH_PATH, key), value.serialize(), "utf8");
         for (const [key, value] of inactiveRaces)
             if (value instanceof Race)
-                fs.writeFileSync(path.join(CRASH_PATH, key), value.serialize(), { encoding: "utf8" });
+                fs.writeFileSync(path.join(CRASH_PATH, key), value.serialize(), "utf8");
     } catch (e) {
         console.error(e);
         console.error("error in cleanup handler - forcefully shutting down");
@@ -55,7 +55,7 @@ process.on("uncaughtException", async (error) => {
 if (fs.existsSync(CRASH_PATH)) {
     const keys = fs.readdirSync(CRASH_PATH);
     for (const key of keys) {
-        const value = JSON.parse(fs.readFileSync(path.join(CRASH_PATH, key), { encoding: "utf8" }));
+        const value = JSON.parse(fs.readFileSync(path.join(CRASH_PATH, key), "utf8"));
         activeRaces.set(key, Race.from(value));
         fs.rmSync(path.join(CRASH_PATH, key));
     }
@@ -67,7 +67,9 @@ if (!fs.existsSync(RACE_PATH)) {
     const keys = fs.readdirSync(RACE_PATH);
     for (const key of keys) {
         const race = new RaceData(path.join(RACE_PATH, key));
-        inactiveRaces.set(key, race);
+        race.import().then(() => {
+            inactiveRaces.set(key, race);
+        });
     }
 }
 
@@ -76,10 +78,12 @@ while (true) {
         break;
 
     try {
-        if (fs.existsSync("key"))
+        try {
             setKey((await fs.promises.readFile("key", "utf8")).trim());
-        else
+        } catch (e) {
+            void e;
             await fs.promises.writeFile("key", getKey(), "utf8");
+        }
 
         for (const [id, race] of activeRaces) {
             if (!race.finished)

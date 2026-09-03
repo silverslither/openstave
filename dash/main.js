@@ -96,12 +96,13 @@ async function handleAction(player, action, options) {
         live.parentElement.nextElementSibling = response.statusText;
         actionLock = false;
     } catch (e) {
+        live.parentElement.nextElementSibling = e;
         actionLock = false;
     }
 }
 
 async function updateLive() {
-    const rows = []
+    const rows = [];
 
     try {
         const data = await (await fetch(`/${RACE_ID}`, {
@@ -125,16 +126,20 @@ async function updateLive() {
                 if (player.time != null)
                     status.innerText = `finished at frame ${player.time}`;
                 else
-                    status.innerText = `dnf at frame ${player.dnf ?? 0}`;
-                actions.innerText = "todo";
+                    status.innerText = `dnf at frame ${player.dnf}`;
+
+                actions.append(
+                    getActionButton(i, "remove", []),
+                );
             } else {
-                status.innerText = 
+                status.innerText =
                     (player.connected ? "connected, " : "not connected, ") +
                     ((player.dnf != null || player.time != null) ?
                         "finished" :
                         (player.length > 0 ? "started" : "not started"));
+
                 actions.append(
-                    getActionButton(i, "dnf", [])
+                    getActionButton(i, "dnf", []),
                 );
             }
 

@@ -31,7 +31,7 @@ interface StaticPlayerData {
     splits: number[];
     dnf: number;
     time: number;
-    frames: any[];
+    frames: string[];
     length: number;
 }
 
@@ -56,7 +56,7 @@ export interface AbstractRace {
         players: Record<string, PlayerResponseObject | null>,
     } | null>;
 
-    exec: (name: string, command: string, args: string[]) => [number, string];
+    exec: (name: string, command: string, args: string[]) => Promise<[number, string]>;
 }
 
 export class Race implements AbstractRace {
@@ -92,7 +92,7 @@ export class Race implements AbstractRace {
         this.timeout = Date.now() + timeout_ms;
         this.players = [];
 
-        for (let player of players) {
+        for (const player of players) {
             if (player === "" || player.length > 24)
                 return;
 
@@ -113,19 +113,6 @@ export class Race implements AbstractRace {
 
         activeRaces.set(this.id, this);
         console.log(`created race ${this.id}`);
-    }
-
-    static from(obj: Record<string, any>) {
-        const race = new Race();
-        race.hash = obj.hash;
-        race.id = obj.id;
-        race.game = obj.game;
-        race.timeout = obj.timeout ?? -Infinity;
-        race.players = obj.players.map((v: any) => Player.from(v));
-        for (const player of race.players)
-            if (player.end !== player.end && player.dnf !== player.dnf)
-                activePlayers.set(player.username, player);
-        return race;
     }
 
     async getData(start: number, length: number) {
@@ -169,7 +156,20 @@ export class Race implements AbstractRace {
         });
     }
 
-    exec(name: string, command: string, _args: string[]): [number, string] {
+    static deserialize(obj: Record<string, any>) {
+        const race = new Race();
+        race.hash = obj.hash;
+        race.id = obj.id;
+        race.game = obj.game;
+        race.timeout = obj.timeout ?? -Infinity;
+        race.players = obj.players.map((v: any) => Player.from(v));
+        for (const player of race.players)
+            if (player.end !== player.end && player.dnf !== player.dnf)
+                activePlayers.set(player.username, player);
+        return race;
+    }
+
+    async exec(name: string, command: string, _args: string[]): Promise<[number, string]> {
         const player = this.players.find(v => v.username === name);
         if (player == null)
             return [400, "Player does not exist."];
@@ -190,10 +190,14 @@ export class RaceData implements AbstractRace {
 
     constructor(racePath: string) {
         this.path = racePath;
+    }
 
-        if (fs.existsSync(this.path)) {
-            const data = fs.readFileSync(path.join(this.path, "static"), { encoding: "utf8" });
+    async import() {
+        try {
+            const data = await fs.promises.readFile(path.join(this.path, "static"), "utf8");
             this.static = JSON.parse(data);
+        } catch (e) {
+            void e;
         }
     }
 
@@ -208,8 +212,7 @@ export class RaceData implements AbstractRace {
     async write(race: Race) {
         race.minimize();
 
-        if (!fs.existsSync(this.path))
-            await fs.promises.mkdir(this.path);
+        await fs.promises.mkdir(this.path, { recursive: true });
 
         this.static = {
             hash: race.hash,
@@ -256,10 +259,14 @@ export class RaceData implements AbstractRace {
 
         for (let i = FILE_BUFFER * Math.floor(start / FILE_BUFFER); i < start + length; i += FILE_BUFFER) {
             const file = path.join(this.path, i.toString());
-            if (!fs.existsSync(file))
-                break;
 
-            const data = await fs.promises.readFile(file);
+            let data: Buffer;
+            try {
+                data = await fs.promises.readFile(file);
+            } catch (e) {
+                void e;
+                break;
+            }
             const frames: Record<string, string[]> = await new Promise((resolve, reject) => {
                 zlib.gunzip(data, (error, data) => {
                     if (error)
@@ -276,7 +283,7 @@ export class RaceData implements AbstractRace {
         return response;
     }
 
-    exec(name: string, command: string, _args: string[]): [number, string] {
+    async exec(name: string, command: string, _args: string[]): Promise<[number, string]> {
         if (this.static == null)
             return [500, "Missing race static data."];
 
@@ -287,7 +294,7 @@ export class RaceData implements AbstractRace {
         switch (command.toLowerCase()) {
             case "remove":
                 delete this.static.players[name];
-                fs.writeFileSync(path.join(this.path, "static"), JSON.stringify(this.static));
+                await fs.promises.writeFile(path.join(this.path, "static"), JSON.stringify(this.static));
                 return [200, ""];
             default:
                 return [400, "Command does not exist."];

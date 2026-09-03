@@ -1,5 +1,8 @@
 import * as net from "node:net";
+
 import { activePlayers } from "./race.ts";
+import { trySync } from "./wrapper.ts";
+
 import { AUTH_WAIT_MS, TCP_PORT } from "./env.ts";
 
 export const openConnections: Set<net.Socket> = new Set();
@@ -25,51 +28,45 @@ export const server = net.createServer((client) => {
         }, AUTH_WAIT_MS);
     });
 
-    client.on("data", (data: Buffer) => {
-        try {
-            if (username !== "") {
-                const player = activePlayers.get(username);
-                if (player == null || !player.connected) {
-                    client.destroy();
-                    return;
-                }
-                player.add(data);
-
-                if (player.finished)
-                    client.destroy();
-
+    client.on("data", trySync((data: Buffer) => {
+        if (username !== "") {
+            const player = activePlayers.get(username);
+            if (player == null || !player.connected) {
+                client.destroy();
                 return;
             }
+            player.add(data);
 
-            authChunks.push(data);
-            authLength += data.byteLength;
-            if (authLength < 64)
-                return;
+            if (player.finished)
+                client.destroy();
 
-            const buffer = Buffer.concat(authChunks);
-            const _username = buffer.subarray(0, 32).toString().trim();
-            const _password = buffer.subarray(32, 64).toString().trim();
-            const player = authorize(_username, _password);
-            const response = Buffer.alloc(5);
-            if (player != null) {
-                response.writeUint32LE(player.total_length, 1);
-                client.write(response);
-                username = _username;
-                player.connected = true;
-                player.add(buffer.subarray(64));
-                authChunks.length = 0;
-                authLength = 0;
-            } else {
-                response.writeUint8(1, 0);
-                client.write(response);
-                client.destroySoon();
-            }
-        } catch (e) {
-            console.error(e);
-            console.error("error in client data handler - resuming execution");
-            client.destroy();
+            return;
         }
-    });
+
+        authChunks.push(data);
+        authLength += data.byteLength;
+        if (authLength < 64)
+            return;
+
+        const buffer = Buffer.concat(authChunks);
+        const _username = buffer.subarray(0, 32).toString().trim();
+        const _password = buffer.subarray(32, 64).toString().trim();
+        const player = authorize(_username, _password);
+        const response = Buffer.alloc(5);
+        if (player != null) {
+            response.writeUint32LE(player.total_length, 1);
+            client.write(response);
+            username = _username;
+            player.connected = true;
+            player.add(buffer.subarray(64));
+            authChunks.length = 0;
+            authLength = 0;
+        } else {
+            response.writeUint8(1, 0);
+            client.write(response);
+            client.destroySoon();
+        }
+    }, () => { console.error("error in client data handler - resuming execution"); client.destroy(); }));
 
     client.on("error", () => { });
     client.on("close", () => {

@@ -8,7 +8,7 @@ export const LowSecurityHasher = {
         const hash = crypto.createHash("sha3-384").update(password + salt).digest("base64");
         return hash + salt;
     },
-    verify: (password: string | null, hash: string | null) => {
+    verify: (password: unknown, hash: string | null) => {
         if (typeof password !== "string" || hash == null)
             return false;
         const salt = hash.slice(64);

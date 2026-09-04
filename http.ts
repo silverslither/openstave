@@ -216,13 +216,8 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
                 return;
             }
 
-            try {
-                const [status, message] = await race.exec(name, command, args);
-                response.writeHead(status).end(message);
-            } catch (e) {
-                console.error(e);
-                response.writeHead(500).end();
-            }
+            const [status, message] = await race.exec(name, command, args);
+            response.writeHead(status).end(message);
 
             return;
         }
@@ -243,31 +238,26 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             return;
         }
 
-        try {
-            const responseBody = race.getData(start, length);
-            if (responseBody == null) {
-                response.writeHead(404).end();
+        const responseBody = await race.getData(start, length);
+        if (responseBody == null) {
+            response.writeHead(404).end();
+            return;
+        }
+
+        zlib.gzip(JSON.stringify(responseBody), { level: 1 }, (error, data) => {
+            if (error) {
+                console.error(error);
+                response.writeHead(500).end();
                 return;
             }
-
-            zlib.gzip(JSON.stringify(responseBody), { level: 1 }, (error, data) => {
-                if (error) {
-                    console.error(error);
-                    response.writeHead(500).end();
-                    return;
-                }
-                response.writeHead(200, {
-                    "Content-Encoding": "gzip",
-                    "Content-Length": data.length,
-                    "Content-Type": "application/json",
-                }).end(data);
-            });
-        } catch (e) {
-            console.error(e);
-            response.writeHead(500).end();
-        }
-    }, "error in request handler - resuming execution"));
-}, "error in request handler - resuming execution"));
+            response.writeHead(200, {
+                "Content-Encoding": "gzip",
+                "Content-Length": data.length,
+                "Content-Type": "application/json",
+            }).end(data);
+        });
+    }, () => response.writeHead(500).end()));
+}, args => args[1].writeHead(500).end()));
 
 server.listen(HTTP_PORT, "0.0.0.0", () => {
     console.log("HTTP server running on port", HTTP_PORT);

@@ -66,9 +66,10 @@ export const server = net.createServer((client) => {
             client.write(response);
             client.destroySoon();
         }
-    }, () => { console.error("error in client data handler - resuming execution"); client.destroy(); }));
+    }, () => client.destroy()));
 
-    client.on("error", () => { });
+    client.on("error", e => console.error(e));
+
     client.on("close", () => {
         openConnections.delete(client);
         const player = activePlayers.get(username);

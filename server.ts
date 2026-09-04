@@ -46,8 +46,8 @@ process.on("SIGTERM", async () => {
     await cleanup();
     process.exit(0);
 });
-process.on("uncaughtException", async (error) => {
-    console.error(error);
+process.on("uncaughtException", async (e) => {
+    console.error(e);
     await cleanup();
     process.exit(1);
 });
@@ -102,7 +102,6 @@ while (true) {
         }
     } catch (e) {
         console.error(e);
-        console.error("i/o loop error - resuming execution");
     }
 
     await new Promise(r => setTimeout(r, VACCUM_INTERVAL_MS));

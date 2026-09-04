@@ -36,7 +36,7 @@ interface StaticPlayerData {
 }
 
 interface StaticRaceData {
-    hash: string;
+    hash: string | null;
     game: string;
     finished: boolean;
     players: Record<string, StaticPlayerData>;
@@ -47,7 +47,7 @@ export const activeRaces: Map<string, Race> = new Map();
 export const inactiveRaces: Map<string, AbstractRace> = new Map();
 
 export interface AbstractRace {
-    hash: string;
+    hash: string | null;
     game: string;
 
     getData: (start: number, length: number) => Promise<{
@@ -60,7 +60,7 @@ export interface AbstractRace {
 }
 
 export class Race implements AbstractRace {
-    hash: string;
+    hash: string | null;
     id: string;
     game: string;
     timeout: number;
@@ -156,7 +156,7 @@ export class Race implements AbstractRace {
         });
     }
 
-    static deserialize(obj: Record<string, any>) {
+    static from(obj: Record<string, any>) {
         const race = new Race();
         race.hash = obj.hash;
         race.id = obj.id;
@@ -186,10 +186,11 @@ export class Race implements AbstractRace {
 
 export class RaceData implements AbstractRace {
     path: string;
-    static: StaticRaceData;
+    static: StaticRaceData | null;
 
     constructor(racePath: string) {
         this.path = racePath;
+        this.static = null;
     }
 
     async import() {

@@ -27,19 +27,11 @@ interface PlayerResponseObject {
     length: number;
 };
 
-interface StaticPlayerData {
-    splits: number[];
-    dnf: number;
-    time: number;
-    frames: string[];
-    length: number;
-}
-
 interface StaticRaceData {
     hash: string | null;
     game: string;
     finished: boolean;
-    players: Record<string, StaticPlayerData>;
+    players: Record<string, PlayerResponseObject>;
 }
 
 export const activePlayers: Map<string, Player> = new Map();
@@ -186,28 +178,34 @@ export class Race implements AbstractRace {
 
 export class RaceData implements AbstractRace {
     path: string;
-    static: StaticRaceData | null;
+    static: StaticRaceData;
+    game: string;
 
     constructor(racePath: string) {
         this.path = racePath;
         this.static = null;
-    }
-
-    async import() {
-        try {
-            const data = await fs.promises.readFile(path.join(this.path, "static"), "utf8");
-            this.static = JSON.parse(data);
-        } catch (e) {
-            void e;
-        }
+        this.game = "";
     }
 
     get hash() {
         return this.static?.hash ?? null;
     }
 
-    get game() {
-        return this.static?.game ?? "";
+    async import() {
+        try {
+            const data = await fs.promises.readFile(path.join(this.path, "static"), "utf8");
+            this.static = JSON.parse(data);
+            this.game = this.static.game;
+
+            for (const name in this.static.players) {
+                const player = this.static.players[name];
+                player.splits = player.splits.map(v => v ?? NaN);
+                player.time ??= NaN;
+                player.dnf ??= NaN;
+            }
+        } catch (e) {
+            void e;
+        }
     }
 
     async write(race: Race) {
@@ -227,8 +225,9 @@ export class RaceData implements AbstractRace {
                 length: v.frames.length,
             }]))),
         };
+        this.game = race.game;
 
-        await fs.promises.writeFile(path.join(this.path, "static"), JSON.stringify(this.static));
+        await this.writeStatic();
 
         const length = Math.max(...Object.values(this.static.players).map(v => v.length));
 
@@ -240,16 +239,7 @@ export class RaceData implements AbstractRace {
                     frames[player.username] = slice.map(v => v.data.toString("base64"));
             }
 
-            const data: Buffer = await new Promise((resolve, reject) => {
-                zlib.gzip(JSON.stringify(frames), { level: 9 }, (error, data) => {
-                    if (error)
-                        reject(error);
-                    else
-                        resolve(data);
-                });
-            });
-
-            await fs.promises.writeFile(path.join(this.path, i.toString()), data);
+            await this.writeChunk(i, frames);
         }
     }
 
@@ -257,26 +247,10 @@ export class RaceData implements AbstractRace {
         if (this.static == null)
             return null;
         const response = structuredClone(this.static);
+        const maxLength = Math.max(...Object.values(this.static.players).map(v => v.length));
 
-        for (let i = FILE_BUFFER * Math.floor(start / FILE_BUFFER); i < start + length; i += FILE_BUFFER) {
-            const file = path.join(this.path, i.toString());
-
-            let data: Buffer;
-            try {
-                data = await fs.promises.readFile(file);
-            } catch (e) {
-                void e;
-                break;
-            }
-            const frames: Record<string, string[]> = await new Promise((resolve, reject) => {
-                zlib.gunzip(data, (error, data) => {
-                    if (error)
-                        reject(error);
-                    else
-                        resolve(JSON.parse(data.toString("utf8")));
-                });
-            });
-
+        for (let i = FILE_BUFFER * Math.floor(start / FILE_BUFFER), j = Math.min(start + length, maxLength); i < j; i += FILE_BUFFER) {
+            const frames = await this.readChunk(i);
             for (const player in frames)
                 response.players[player].frames.push(...frames[player].slice(Math.max(start - i, 0), start + length - i));
         }
@@ -284,21 +258,131 @@ export class RaceData implements AbstractRace {
         return response;
     }
 
-    async exec(name: string, command: string, _args: string[]): Promise<[number, string]> {
-        if (this.static == null)
-            return [500, "Missing race static data."];
-
+    async exec(name: string, command: string, args: string[]): Promise<[number, string]> {
         const player = this.static.players[name];
         if (player == null)
             return [400, "Player does not exist."];
 
         switch (command.toLowerCase()) {
+            case "trim":
+                const start = parseInt(args[0]);
+                const end = parseInt(args[1]);
+                if (start < 0 || end >= player.length || start > end)
+                    return [400, "Invalid trim bounds."];
+
+                await this.trim(name, start, end);
+                return [200, ""];
             case "remove":
-                delete this.static.players[name];
-                await fs.promises.writeFile(path.join(this.path, "static"), JSON.stringify(this.static));
+                await this.remove(name);
                 return [200, ""];
             default:
                 return [400, "Command does not exist."];
         }
+    }
+
+    async trim(name: string, start: number, end: number) {
+        end += 1;
+
+        const s = this.static;
+        this.static = null;
+
+        const player = s.players[name];
+        const length = end - start;
+
+        let ptr = 0;
+        let chunk: Record<string, string[]> = await this.readChunk(0);
+        chunk[name] = [];
+
+        for (let i = FILE_BUFFER * Math.floor(start / FILE_BUFFER); i < player.length; i += FILE_BUFFER) {
+            const frames = await this.readChunk(i);
+            const left = frames[name].slice(Math.max(start - i, 0), Math.max(end - i, 0));
+
+            if (i >= length) {
+                delete frames[name];
+                if (Object.keys(frames).length === 0)
+                    await fs.promises.rm(path.join(this.path, i.toString()));
+                else
+                    await this.writeChunk(i, frames);
+            }
+
+            if (left.length === 0)
+                continue;
+
+            chunk[name].push(...left);
+
+            if (chunk[name].length > 240) {
+                const right = chunk[name].slice(240);
+                chunk[name].length = 240;
+                await this.writeChunk(ptr, chunk);
+
+                ptr += 240;
+                chunk = await this.readChunk(ptr);
+                chunk[name] = right;
+            }
+        }
+
+        await this.writeChunk(ptr, chunk);
+
+        player.splits = player.splits.map(v => v - start < length ? v - start : NaN);
+        player.time -= player.length - length;
+        player.dnf -= player.length - length;
+        player.length = length;
+
+        this.static = s;
+        await this.writeStatic();
+    }
+
+    async remove(name: string) {
+        const s = this.static;
+        this.static = null;
+
+        const length = Math.max(...Object.values(s.players).map(v => v.length));
+
+        for (let i = 0; i < length; i += FILE_BUFFER) {
+            const frames = await this.readChunk(i);
+            delete frames[name];
+
+            if (Object.keys(frames).length === 0)
+                await fs.promises.rm(path.join(this.path, i.toString()));
+            else
+                await this.writeChunk(i, frames);
+        }
+
+        delete s.players[name];
+
+        this.static = s;
+        await this.writeStatic();
+    }
+
+    async writeStatic() {
+        await fs.promises.writeFile(path.join(this.path, "static"), JSON.stringify(this.static));
+    }
+
+    async readChunk(i: number) {
+        const data = await fs.promises.readFile(path.join(this.path, i.toString()));
+
+        const frames: Record<string, string[]> = await new Promise((resolve, reject) => { // TODO
+            zlib.gunzip(data, (error, data) => {
+                if (error)
+                    reject(error);
+                else
+                    resolve(JSON.parse(data.toString("utf8")));
+            });
+        });
+
+        return frames;
+    }
+
+    async writeChunk(i: number, frames: Record<string, string[]>) {
+        const data: Buffer = await new Promise((resolve, reject) => {
+            zlib.gzip(JSON.stringify(frames), { level: 9 }, (error, data) => {
+                if (error)
+                    reject(error);
+                else
+                    resolve(data);
+            });
+        });
+
+        await fs.promises.writeFile(path.join(this.path, i.toString()), data);
     }
 }

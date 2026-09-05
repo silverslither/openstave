@@ -70,6 +70,14 @@ async function handleAction(player, action, options) {
         return;
     actionLock = true;
 
+    const args = [];
+    for (const option of options) {
+        if (typeof option === "function")
+            args.push(option());
+        else
+            args.push(option);
+    }
+
     try {
         const response = await fetch(`/exec/${RACE_ID}`, {
             method: "POST",
@@ -77,26 +85,26 @@ async function handleAction(player, action, options) {
                 password: password.value,
                 name: player,
                 command: action,
-                args: options,
+                args,
             }),
         });
 
         if (response.status === 401) {
-            live.parentElement.nextElementSibling = "The entered password is incorrect.";
+            live.parentElement.nextElementSibling.innerText = "The entered password is incorrect.";
             actionLock = false;
             return;
         }
 
         if (response.status === 404) {
-            live.parentElement.nextElementSibling = "uhhhhhhhh TODO?";
+            live.parentElement.nextElementSibling.innerText = "uhhhhhhhh TODO?";
             actionLock = false;
             return;
         }
 
-        live.parentElement.nextElementSibling = response.statusText;
+        live.parentElement.nextElementSibling.innerText = response.statusText;
         actionLock = false;
     } catch (e) {
-        live.parentElement.nextElementSibling = e;
+        live.parentElement.nextElementSibling.innerText = e;
         actionLock = false;
     }
 }
@@ -129,6 +137,8 @@ async function updateLive() {
                     status.innerText = `dnf at frame ${player.dnf}`;
 
                 actions.append(
+                    getActionButton(i, "trim", [() => getInteger("start"), () => getInteger("end")]),
+                    document.createElement("br"),
                     getActionButton(i, "remove", []),
                 );
             } else {
@@ -162,4 +172,12 @@ function getActionButton(player, action, options) {
     button.innerText = action;
     button.addEventListener("click", () => handleAction(player, action, options));
     return button;
+}
+
+function getInteger(message) {
+    const s = prompt(message);
+    const v = parseInt(s);
+    if (v !== v)
+        throw "Invalid input";
+    return s;
 }

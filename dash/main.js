@@ -28,6 +28,8 @@ async function getAuthentication() {
         return;
     authLock = true;
 
+    authentication.lastElementChild.innerText = "";
+
     try {
         const response = await fetch(`/auth/${RACE_ID}`, {
             method: "POST",
@@ -70,15 +72,22 @@ async function handleAction(player, action, options) {
         return;
     actionLock = true;
 
-    const args = [];
-    for (const option of options) {
-        if (typeof option === "function")
-            args.push(option());
-        else
-            args.push(option);
-    }
+    live.parentElement.nextElementSibling.innerText = "";
+    await new Promise(r => setTimeout(r, 0));
 
     try {
+        const args = [];
+        if (typeof options === "function") {
+            args.push(...options());
+        } else {
+            for (const option of options) {
+                if (typeof option === "function")
+                    args.push(option());
+                else
+                    args.push(option);
+            }
+        }
+
         const response = await fetch(`/exec/${RACE_ID}`, {
             method: "POST",
             body: JSON.stringify({
@@ -91,12 +100,6 @@ async function handleAction(player, action, options) {
 
         if (response.status === 401) {
             live.parentElement.nextElementSibling.innerText = "The entered password is incorrect.";
-            actionLock = false;
-            return;
-        }
-
-        if (response.status === 404) {
-            live.parentElement.nextElementSibling.innerText = "uhhhhhhhh TODO?";
             actionLock = false;
             return;
         }
@@ -139,7 +142,11 @@ async function updateLive() {
                 actions.append(
                     getActionButton(i, "trim", [() => getInteger("start"), () => getInteger("end")]),
                     document.createElement("br"),
-                    getActionButton(i, "remove", []),
+                    getActionButton(i, "toggle", []),
+                    document.createElement("br"),
+                    getActionButton(i, "resplit", () => getArray("splits", player.splits.join(", "))),
+                    document.createElement("br"),
+                    getActionButton(i, "remove", () => confirm(`Are you sure you want to delete ${i.slice(0, -8)}?`)),
                 );
             } else {
                 status.innerText =
@@ -174,10 +181,26 @@ function getActionButton(player, action, options) {
     return button;
 }
 
-function getInteger(message) {
-    const s = prompt(message);
+function confirm(message, _default = "") {
+    const s = prompt(`${message} [y/N]`, _default);
+    if (s !== "y")
+        throw "Operation cancelled by user";
+    return [];
+}
+
+function getInteger(message, _default = "") {
+    const s = prompt(message, _default);
+    if (s == null)
+        throw "Operation cancelled by user";
     const v = parseInt(s);
     if (v !== v)
         throw "Invalid input";
     return s;
+}
+
+function getArray(message, _default = "") {
+    const s = prompt(message, _default);
+    if (s == null)
+        throw "Operation cancelled by user";
+    return s.split(",");
 }

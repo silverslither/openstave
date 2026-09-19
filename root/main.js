@@ -24,6 +24,8 @@ async function create() {
         return;
     lock = true;
 
+    error.innerText = "";
+
     try {
         const parsedPlayers = parsePlayers(players.innerText);
         if (parsedPlayers == null) {

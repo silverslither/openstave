@@ -264,18 +264,27 @@ export class RaceData implements AbstractRace {
             return [400, "Player does not exist."];
 
         switch (command.toLowerCase()) {
-            case "trim":
+            case "trim": {
                 const start = parseInt(args[0]);
                 const end = parseInt(args[1]);
-                if (start < 0 || end >= player.length || start > end)
+                if (start !== start || end !== end || start < 0 || end >= player.length || start > end)
                     return [400, "Invalid trim bounds."];
 
                 await this.trim(name, start, end);
                 return [200, ""];
-            case "remove":
+            } case "remove":
                 await this.remove(name);
                 return [200, ""];
-            default:
+            case "toggle":
+                [player.time, player.dnf] = [player.dnf, player.time];
+                await this.writeStatic();
+                return [200, ""];
+            case "resplit": {
+                const splits = args.map(v => parseInt(v));
+                player.splits = splits;
+                await this.writeStatic();
+                return [200, ""];
+            } default:
                 return [400, "Command does not exist."];
         }
     }
@@ -289,11 +298,14 @@ export class RaceData implements AbstractRace {
         const player = s.players[name];
         const length = end - start;
 
-        let ptr = 0;
-        let chunk: Record<string, string[]> = await this.readChunk(0);
-        chunk[name] = [];
+        const _i = start !== 0 ?
+            FILE_BUFFER * Math.floor(Math.min(start, length) / FILE_BUFFER) :
+            FILE_BUFFER * Math.floor(end / FILE_BUFFER);
 
-        for (let i = FILE_BUFFER * Math.floor(start / FILE_BUFFER); i < player.length; i += FILE_BUFFER) {
+        let ptr = start !== 0 ? 0 : _i;
+        let chunk: Record<string, string[]> | null = null;
+
+        for (let i = _i; i < player.length; i += FILE_BUFFER) {
             const frames = await this.readChunk(i);
             const left = frames[name].slice(Math.max(start - i, 0), Math.max(end - i, 0));
 
@@ -308,20 +320,26 @@ export class RaceData implements AbstractRace {
             if (left.length === 0)
                 continue;
 
+            if (chunk == null) {
+                chunk = await this.readChunk(ptr);
+                chunk[name] = [];
+            }
+
             chunk[name].push(...left);
 
-            if (chunk[name].length > 240) {
-                const right = chunk[name].slice(240);
-                chunk[name].length = 240;
+            if (chunk[name].length > FILE_BUFFER) {
+                const right = chunk[name].slice(FILE_BUFFER);
+                chunk[name].length = FILE_BUFFER;
                 await this.writeChunk(ptr, chunk);
 
-                ptr += 240;
+                ptr += FILE_BUFFER;
                 chunk = await this.readChunk(ptr);
                 chunk[name] = right;
             }
         }
 
-        await this.writeChunk(ptr, chunk);
+        if (chunk != null)
+            await this.writeChunk(ptr, chunk);
 
         player.splits = player.splits.map(v => v - start < length ? v - start : NaN);
         player.time -= player.length - length;
@@ -361,7 +379,7 @@ export class RaceData implements AbstractRace {
     async readChunk(i: number) {
         const data = await fs.promises.readFile(path.join(this.path, i.toString()));
 
-        const frames: Record<string, string[]> = await new Promise((resolve, reject) => { // TODO
+        const frames: Record<string, string[]> = await new Promise((resolve, reject) => {
             zlib.gunzip(data, (error, data) => {
                 if (error)
                     reject(error);

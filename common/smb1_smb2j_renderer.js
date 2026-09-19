@@ -595,9 +595,10 @@ export class LeaderboardCanvas extends RendererCanvas {
 
 function getPlacements(players, count) {
     const leaderboard = Object.entries(players).map((v) => {
-        const splits = v[1].splits.slice(0, v[1].splits.findLastIndex(w => w != null && w <= count) + 1);
-        if (v[1].time <= count)
+        let splits = [...v[1].splits];
+        if (v[1].time === v[1].time)
             splits.push(v[1].time);
+        splits = splits.slice(0, splits.findLastIndex(w => w != null && w <= count) + 1);
         splits.unshift(0);
         return [v[0], splits];
     }).sort((a, b) => b[1].length - a[1].length || a[1].at(-1) - b[1].at(-1));

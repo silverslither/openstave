@@ -5,7 +5,7 @@ import { Race, RaceData, activeRaces, inactiveRaces } from "./race.ts";
 import { openConnections, server } from "./tcp.ts";
 import { getKey, setKey } from "./http.ts";
 
-import { CRASH_TIMEOUT_MS, VACCUM_INTERVAL_MS } from "./env.ts";
+import { CRASH_TIMEOUT_MS, VACUUM_INTERVAL_MS } from "./env.ts";
 const CRASH_PATH = path.join(import.meta.dirname, "crash");
 const RACE_PATH = path.join(import.meta.dirname, "races");
 
@@ -95,7 +95,7 @@ while (true) {
         for (const [key, value] of inactiveRaces) {
             if (!(value instanceof Race))
                 continue;
-            console.log("vaccuming race", key);
+            console.log("vacuuming race", key);
             const data = new RaceData(path.join(RACE_PATH, key));
             await data.write(value);
             inactiveRaces.set(key, data);
@@ -104,5 +104,5 @@ while (true) {
         console.error(e);
     }
 
-    await new Promise(r => setTimeout(r, VACCUM_INTERVAL_MS));
+    await new Promise(r => setTimeout(r, VACUUM_INTERVAL_MS));
 }

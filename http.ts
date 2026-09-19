@@ -4,7 +4,7 @@ import * as zlib from "node:zlib";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { Race, activeRaces, inactiveRaces } from "./race.ts";
+import { AbstractRace, Race, activeRaces, inactiveRaces } from "./race.ts";
 import { LowSecurityHasher } from "./security.ts";
 import { tryAsync } from "./wrapper.ts";
 
@@ -143,7 +143,7 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
                 return;
             }
 
-            if (typeof id !== "string" || typeof game !== "string" || !Array.isArray(rawPlayers) || rawPlayers.length === 0 || rawPlayers.some(v => typeof v !== "string")) {
+            if (typeof id !== "string" || typeof game !== "string" || !Array.isArray(rawPlayers) || rawPlayers.length < 1 || rawPlayers.length > 16 || rawPlayers.some(v => typeof v !== "string")) {
                 response.writeHead(400).end("You must fill out all form elements.");
                 return;
             }
@@ -216,10 +216,13 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
                 return;
             }
 
-            const [status, message] = await race.exec(name, command, args);
-            response.writeHead(status).end(message);
-
-            return;
+            let status = 500, message = "";
+            try {
+                [status, message] = await race.exec(name, command, args);
+            } finally {
+                response.writeHead(status).end(message);
+                return;
+            }
         }
 
         const start = requestBody.start;
@@ -238,7 +241,15 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             return;
         }
 
-        const responseBody = await race.getData(start, length);
+        let responseBody: Awaited<ReturnType<AbstractRace["getData"]>>
+        try {
+            responseBody = await race.getData(start, length);
+        } catch (e) {
+            console.error(e);
+            response.writeHead(500).end();
+            return;
+        }
+
         if (responseBody == null) {
             response.writeHead(404).end();
             return;

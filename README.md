@@ -2,6 +2,12 @@
 
 Extensible monolithic server for STA races.
 
+## Tournaments Hosted with OpenStave
+
+October 2025 SMB1 Any% Tournament: https://docs.google.com/spreadsheets/d/13SKRF_WCXOSnoAiJna-57FnWmMC6KQv0MOqgtcfAhYo/edit?usp=sharing
+
+May 2026 SMB3 NWW Tournament: https://docs.google.com/spreadsheets/d/1I9PYm22L_Ki_44LSNeRYWxWiG0bTjsO-Dz6OdvLETSE/edit?usp=sharing
+
 ## Supported games
 
 * Super Mario Bros. 

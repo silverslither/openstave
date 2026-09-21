@@ -48,7 +48,7 @@ export default class Player {
         player.start = obj.start ?? NaN;
         player.end = obj.end ?? NaN;
         player.dnf = obj.dnf ?? NaN;
-        player.splits = obj.splits;
+        player.splits = obj.splits.map((v: number | null) => v ?? NaN);
         player.buffers = obj?.buffers?.map((v: string) => Buffer.from(v, "base64"));
         player.buffer_length = obj.buffer_length;
         player.total_length = obj.total_length;
@@ -91,7 +91,7 @@ export default class Player {
                 }
                 break;
             case "SPLIT":
-                if (this.start === this.start && this.end !== this.end && event.data[0] >= 0 && this.splits[event.data[0]] == null)
+                if (this.start === this.start && this.end !== this.end && event.data[0] >= 0 && (this.splits[event.data[0]] == null || Number.isNaN(this.splits[event.data[0]])))
                     this.splits[event.data[0]] = event.data[1];
                 break;
             case "DNF":

@@ -177,7 +177,7 @@ class RendererCanvas {
         this.context.translate({ left: 0, right: -8, center: -4 }[align] * str.length, 0);
 
         for (let i = 0; i < str.length; i++)
-            if (str[i] in text)
+            if (Object.hasOwn(text, str[i]))
                 this.context.drawImage(text[str[i]], x + 8 * i, y);
 
         this.context.restore();
@@ -402,7 +402,7 @@ export class PlayerCanvas extends RendererCanvas {
         this.fromBuffer();
 
         const map = gAreaId.toString(16).padStart(2, "0");
-        if (map in maps)
+        if (Object.hasOwn(maps, map))
             this.context.drawImage(maps[map], gXOffset, 0);
 
         this.toBuffer();

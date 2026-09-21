@@ -21,12 +21,10 @@ export const server = net.createServer((client) => {
     let authLength = 0;
     const authChunks: Buffer[] = [];
 
-    client.on("connect", () => {
-        setTimeout(() => {
-            if (!client.destroyed && username === "")
-                client.destroy();
-        }, AUTH_WAIT_MS);
-    });
+    const authTimeout = setTimeout(() => {
+        if (!client.destroyed && username === "")
+            client.destroy();
+    }, AUTH_WAIT_MS);
 
     client.on("data", trySync((data: Buffer) => {
         if (username !== "") {
@@ -54,6 +52,7 @@ export const server = net.createServer((client) => {
         const player = authorize(_username, _password);
         const response = Buffer.alloc(5);
         if (player != null) {
+            clearTimeout(authTimeout);
             response.writeUint32LE(player.total_length, 1);
             client.write(response);
             username = _username;
@@ -71,6 +70,7 @@ export const server = net.createServer((client) => {
     client.on("error", e => console.error(e));
 
     client.on("close", () => {
+        clearTimeout(authTimeout);
         openConnections.delete(client);
         const player = activePlayers.get(username);
         if (player != null) {

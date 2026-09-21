@@ -188,7 +188,7 @@ class RendererCanvas {
         this.context.translate({ left: 0, right: -8, center: -4 }[align] * str.length, 0);
 
         for (let i = 0; i < str.length; i++)
-            if (str[i] in text)
+            if (Object.hasOwn(text, str[i]))
                 this.context.drawImage(text[str[i]], x + 8 * i, y);
 
         this.context.restore();
@@ -435,7 +435,7 @@ export class PlayerCanvas extends RendererCanvas {
         const map = gAreaPointer === 0 ?
             `W${gWorldNumber}` :
             `A${A000_PRG_BANK_LOOKUP[gTileset]}${gAreaPointer.toString(16).padStart(4, "0")}`;
-        if (map in maps)
+        if (Object.hasOwn(maps, map))
             this.context.drawImage(maps[map], gXOffset, gYOffset);
 
         this.toBuffer();
@@ -458,7 +458,7 @@ export class PlayerCanvas extends RendererCanvas {
         }
         this.fromBuffer();
 
-        if (gLevelType === 0xa0 && map in maps) {
+        if (gLevelType === 0xa0 && Object.hasOwn(maps, map)) {
             const image = maps[map];
             const yOffset = Math.max(this.yOffset - gTopEdge, 0);
             this.context.drawImage(image, 0, 400, image.width, 32, gXOffset, this.canvas.height - 32 - yOffset, image.width, 32);

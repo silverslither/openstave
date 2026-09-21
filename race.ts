@@ -197,7 +197,7 @@ export class RaceData implements AbstractRace {
             this.static = JSON.parse(data);
             this.game = this.static.game;
 
-            for (const name in this.static.players) {
+            for (const name of Object.keys(this.static.players)) {
                 const player = this.static.players[name];
                 player.splits = player.splits.map(v => v ?? NaN);
                 player.time ??= NaN;
@@ -246,12 +246,16 @@ export class RaceData implements AbstractRace {
     async getData(start: number, length: number) {
         if (this.static == null)
             return null;
-        const response = structuredClone(this.static);
+        const response = structuredClone({
+            game: this.static.game,
+            finished: this.static.finished,
+            players: this.static.players,
+        });
         const maxLength = Math.max(...Object.values(this.static.players).map(v => v.length));
 
         for (let i = FILE_BUFFER * Math.floor(start / FILE_BUFFER), j = Math.min(start + length, maxLength); i < j; i += FILE_BUFFER) {
             const frames = await this.readChunk(i);
-            for (const player in frames)
+            for (const player of Object.keys(frames))
                 response.players[player].frames.push(...frames[player].slice(Math.max(start - i, 0), start + length - i));
         }
 
@@ -259,9 +263,9 @@ export class RaceData implements AbstractRace {
     }
 
     async exec(name: string, command: string, args: string[]): Promise<[number, string]> {
-        const player = this.static.players[name];
-        if (player == null)
+        if (!Object.hasOwn(this.static.players, name))
             return [400, "Player does not exist."];
+        const player = this.static.players[name];
 
         switch (command.toLowerCase()) {
             case "trim": {
@@ -273,9 +277,13 @@ export class RaceData implements AbstractRace {
                 await this.trim(name, start, end);
                 return [200, ""];
             } case "remove":
+                if (Object.keys(this.static.players).length === 1)
+                    return [400, "Cannot remove the last player."];
                 await this.remove(name);
                 return [200, ""];
             case "toggle":
+                if (player.length === 0)
+                    return [400, "Cannot toggle an empty player."];
                 [player.time, player.dnf] = [player.dnf, player.time];
                 await this.writeStatic();
                 return [200, ""];
@@ -373,7 +381,13 @@ export class RaceData implements AbstractRace {
     }
 
     async writeStatic() {
-        await fs.promises.writeFile(path.join(this.path, "static"), JSON.stringify(this.static));
+        const data = this.static;
+        this.static = null;
+        try {
+            await fs.promises.writeFile(path.join(this.path, "static"), JSON.stringify(data));
+        } finally {
+            this.static = data;
+        }
     }
 
     async readChunk(i: number) {

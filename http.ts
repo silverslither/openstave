@@ -4,7 +4,7 @@ import * as zlib from "node:zlib";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { AbstractRace, Race, activeRaces, inactiveRaces } from "./race.ts";
+import { Race, RaceData, activeRaces, inactiveRaces } from "./race.ts";
 import { LowSecurityHasher } from "./security.ts";
 import { tryAsync } from "./wrapper.ts";
 
@@ -16,7 +16,11 @@ const MIME_TYPES: Record<string, string> = {
     ".js": "text/javascript",
     ".png": "image/png",
     ".lua": "application/octet-stream",
+    ".opus": "audio/ogg",
+    ".woff2": "font/woff2",
 };
+
+const PUBLIC_DIRECTORIES = new Set(["root", "dash", "common", "lua", "smb1", "smb2j", "smb3"]);
 
 const MAX_REQUEST_BUFFER_FRAMES = 240;
 
@@ -55,7 +59,9 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
         }
 
         try {
-            if (!file.startsWith(import.meta.dirname) || !(await fs.promises.lstat(file)).isFile()) {
+            file = await fs.promises.realpath(file);
+            const directory = path.relative(import.meta.dirname, file).split(path.sep)[0];
+            if (!PUBLIC_DIRECTORIES.has(directory) || !Object.hasOwn(MIME_TYPES, path.extname(file).toLowerCase()) || !(await fs.promises.stat(file)).isFile()) {
                 response.writeHead(404).end();
                 return;
             }
@@ -202,6 +208,11 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
                 return;
             }
 
+            if (race instanceof RaceData && race.static == null) {
+                response.writeHead(503).end();
+                return;
+            }
+
             if (!LowSecurityHasher.verify(requestBody.password, race.hash)) {
                 response.writeHead(401).end();
                 return;
@@ -219,6 +230,8 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             let status = 500, message = "";
             try {
                 [status, message] = await race.exec(name, command, args);
+            } catch (e) {
+                console.error(e);
             } finally {
                 response.writeHead(status).end(message);
                 return;
@@ -228,7 +241,7 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
         const start = requestBody.start;
         const length = requestBody.length;
 
-        if (typeof start !== "number" || typeof length !== "number" || !Number.isInteger(start) || !Number.isInteger(length) || length > MAX_REQUEST_BUFFER_FRAMES) {
+        if (typeof start !== "number" || typeof length !== "number" || !Number.isSafeInteger(start) || !Number.isSafeInteger(length) || start < 0 || length < 0 || length > MAX_REQUEST_BUFFER_FRAMES || !Number.isSafeInteger(start + length)) {
             response.writeHead(400).end();
             return;
         }
@@ -241,7 +254,7 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             return;
         }
 
-        let responseBody: Awaited<ReturnType<AbstractRace["getData"]>>
+        let responseBody: Awaited<ReturnType<Race["getData"]>> | null;
         try {
             responseBody = await race.getData(start, length);
         } catch (e) {
@@ -251,7 +264,7 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
         }
 
         if (responseBody == null) {
-            response.writeHead(404).end();
+            response.writeHead(503).end();
             return;
         }
 

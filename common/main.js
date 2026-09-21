@@ -10,7 +10,7 @@ let lastFrameMs = 0;
 
 let mixer;
 const canvases = [];
-const players = {};
+const players = Object.create(null);
 const buffered = [];
 let frame = 0;
 let paused = false;
@@ -194,11 +194,10 @@ async function setup() {
             context.putImageData(ss, 0, 0);
             const blob = await canvas.convertToBlob();
 
-            navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-
-            ssLock = false;
+            await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
         } catch (e) {
             console.error(e);
+        } finally {
             ssLock = false;
         }
     });
@@ -222,10 +221,9 @@ async function setup() {
             a.download = `${finished ? Math.min(frame, maxLength - 1) : frame}.png`;
             a.click();
             URL.revokeObjectURL(a.href);
-
-            ssLock = false;
         } catch (e) {
             console.error(e);
+        } finally {
             ssLock = false;
         }
     });
@@ -398,7 +396,7 @@ async function query(start = 0, length = 0, noRecurse = false) {
         finished = data.finished;
         category = data.game.split("_")[1];
 
-        for (let name in data.players) {
+        for (let name of Object.keys(data.players)) {
             const playerData = data.players[name];
             name = name.slice(0, -8);
             players[name] = players[name] ?? {};
@@ -421,7 +419,7 @@ async function query(start = 0, length = 0, noRecurse = false) {
 
             if (!noRecurse && end === end) {
                 lock = false;
-                await query(end - 2, 3, true);
+                await query(Math.max(end - 2, 0), 3, true);
                 lock = true;
             }
         }

@@ -182,8 +182,16 @@ const RAM_OFFSET: Record<string, number> = {
 
 export function bufferHandler(buffer: Buffer, frames: Frame[], game: string) {
     const events: PlayerEvent[] = [];
-    let l: number;
-    while ((l = buffer.readUint32LE(0)) < buffer.length) {
+    while (buffer.length >= 4) {
+        const l = buffer.readUint32LE(0);
+        if (l < 256 || l > 16 * 1024) {
+            events.push({ code: "DNF", data: frames.length - 1 });
+            buffer = Buffer.alloc(0);
+            break;
+        }
+        if (l > buffer.length)
+            break;
+
         const current: Frame = {
             data: buffer.subarray(8, l),
             count: buffer.readUint32LE(4),

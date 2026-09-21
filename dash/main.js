@@ -104,6 +104,12 @@ async function handleAction(player, action, options) {
             return;
         }
 
+        if (response.status === 503) {
+            live.parentElement.nextElementSibling.innerText = "The server is currently busy. Try again later.";
+            actionLock = false;
+            return;
+        }
+
         live.parentElement.nextElementSibling.innerText = response.statusText;
         actionLock = false;
     } catch (e) {
@@ -124,7 +130,7 @@ async function updateLive() {
             }),
         })).json();
 
-        for (const i in data.players) {
+        for (const i of Object.keys(data.players)) {
             const player = data.players[i];
             const row = document.createElement("tr");
             const name = document.createElement("td");

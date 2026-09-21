@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { Race, RaceData, activeRaces, inactiveRaces } from "./race.ts";
+import { Race, RaceData, activePlayers, activeRaces, inactiveRaces } from "./race.ts";
 import { openConnections, server } from "./tcp.ts";
 import { getKey, setKey } from "./http.ts";
 
@@ -88,6 +88,10 @@ while (true) {
         for (const [id, race] of activeRaces) {
             if (!race.finished)
                 continue;
+            for (const player of race.players) {
+                activePlayers.delete(player.username);
+                player.connected = false;
+            }
             activeRaces.delete(id);
             inactiveRaces.set(id, race);
         }

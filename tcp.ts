@@ -6,6 +6,11 @@ import { trySync } from "./wrapper.ts";
 import { AUTH_WAIT_MS, TCP_PORT } from "./env.ts";
 
 export const openConnections: Set<net.Socket> = new Set();
+const playerConnections: Map<string, net.Socket> = new Map();
+
+export const destroyPlayer = (username: string) => {
+    playerConnections.get(username)?.destroy();
+};
 
 const authorize = (username: string, password: string) => {
     const player = activePlayers.get(username);
@@ -55,11 +60,17 @@ export const server = net.createServer((client) => {
             clearTimeout(authTimeout);
             response.writeUint32LE(player.total_length, 1);
             client.write(response);
+
             username = _username;
             player.connected = true;
             player.add(buffer.subarray(64));
             authChunks.length = 0;
             authLength = 0;
+
+            playerConnections.set(username, client);
+
+            if (player.finished)
+                client.destroy();
         } else {
             response.writeUint8(1, 0);
             client.write(response);
@@ -71,7 +82,11 @@ export const server = net.createServer((client) => {
 
     client.on("close", () => {
         clearTimeout(authTimeout);
+
         openConnections.delete(client);
+        if (playerConnections.get(username) === client)
+            playerConnections.delete(username);
+
         const player = activePlayers.get(username);
         if (player != null) {
             if (player.finished)

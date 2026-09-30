@@ -251,6 +251,8 @@ export class RaceData implements AbstractRace {
             finished: this.static.finished,
             players: this.static.players,
         });
+        if (length === 0)
+            return response;
         const maxLength = Math.max(...Object.values(this.static.players).map(v => v.length));
 
         for (let i = FILE_BUFFER * Math.floor(start / FILE_BUFFER), j = Math.min(start + length, maxLength); i < j; i += FILE_BUFFER) {

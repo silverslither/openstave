@@ -69,8 +69,11 @@ async function setup() {
         open("https://github.com/silverslither/openstave?tab=readme-ov-file#using-the-recorder-feature", "_blank").focus();
     });
 
-    query().then(() => {
-        frame = finished ? maxLength - 1 : Math.max(pingLength - 2 * FRAME_BUFFER, 0);
+    (async() => {
+        while (!await query())
+            await new Promise(resolve => setTimeout(resolve, REREQUEST_INTERVAL_MS));
+
+        frame = finished ? Math.max(maxLength - 1, 0) : Math.max(pingLength - 2 * FRAME_BUFFER, 0);
 
         controls.framesLeft.textContent = frame.toString().padStart(7);
         controls.framesRight.textContent = "-0".padEnd(7);
@@ -95,8 +98,7 @@ async function setup() {
         if (componentsInitialized === 2)
             start();
         componentsInitialized++;
-    });
-
+    })();
 
     if (window.__game !== "smb3") {
         mixer_init().then(async () => {
@@ -316,12 +318,21 @@ function draw(timeMs) {
     const dt = (timeMs - lastFrameMs) / FRAME_TIME_MS;
     if (dt > 0.5) {
         if (buffered[frame]) {
-            mixer?.mix(canvases[0].getFollowing(frame), frame, 6);
+            try {
+                mixer?.mix(canvases[0].getFollowing(frame), frame, 6);
+            } catch (e) {
+                console.error(e);
+                mixer.buffer.fill(0);
+            }
             const sinkshot = mixer?.send(frame, cf);
 
-            for (const canvas of canvases)
-                if (canvas.canvas.style.display !== "none")
-                    canvas.render(frame);
+            try {
+                for (const canvas of canvases)
+                    if (canvas.canvas.style.display !== "none")
+                        canvas.render(frame);
+            } catch (e) {
+                console.error(e);
+            }
 
             const df = Math.max(Math.floor(dt), 1);
             cf = (encoder == null) ? Math.min(df, 5) : 1;
@@ -356,12 +367,12 @@ function draw(timeMs) {
 let lock = false;
 async function query(start = 0, length = 0, noRecurse = false) {
     if (lock)
-        return;
+        return false;
     lock = true;
 
     if (finished && start >= maxLength) {
         lock = false;
-        return;
+        return false;
     }
 
     if (length > 0) {
@@ -376,7 +387,7 @@ async function query(start = 0, length = 0, noRecurse = false) {
 
         if (r < l) {
             lock = false;
-            return;
+            return true;
         }
 
         start = l;
@@ -385,13 +396,19 @@ async function query(start = 0, length = 0, noRecurse = false) {
 
     try {
         const pingStart = performance.now();
-        const data = await (await fetch(location.href, {
+        const response = await fetch(location.href, {
             method: "POST",
             body: JSON.stringify({
                 start,
                 length,
             }),
-        })).json();
+        });
+
+        const data = await response.json();
+        if (data.players == null || Object.keys(data.players).length === 0) {
+            lock = false;
+            return false;
+        }
 
         finished = data.finished;
         category = data.game.split("_")[1];
@@ -457,8 +474,10 @@ async function query(start = 0, length = 0, noRecurse = false) {
         controls.framesRight.textContent = (frame >= controls.progress.max ? "-0" : frame - controls.progress.max).toString().padEnd(7);
 
         lock = false;
+        return true;
     } catch (e) {
         console.error(e);
         lock = false;
+        return false;
     }
 }

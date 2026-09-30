@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { Race, RaceData, activePlayers, activeRaces, inactiveRaces } from "./race.ts";
-import { openConnections, server } from "./tcp.ts";
+import { destroyPlayer, openConnections, server } from "./tcp.ts";
 import { getKey, setKey } from "./http.ts";
 
 import { CRASH_TIMEOUT_MS, VACUUM_INTERVAL_MS } from "./env.ts";
@@ -66,6 +66,8 @@ if (!fs.existsSync(RACE_PATH)) {
 } else {
     const keys = fs.readdirSync(RACE_PATH);
     for (const key of keys) {
+        if (activeRaces.has(key))
+            continue;
         const race = new RaceData(path.join(RACE_PATH, key));
         race.import().then(() => {
             inactiveRaces.set(key, race);
@@ -89,6 +91,7 @@ while (true) {
             if (!race.finished)
                 continue;
             for (const player of race.players) {
+                destroyPlayer(player.username);
                 activePlayers.delete(player.username);
                 player.connected = false;
             }

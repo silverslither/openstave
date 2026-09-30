@@ -267,7 +267,9 @@ export class PlayerCanvas extends RendererCanvas {
 
         const following = typeof this.following === "string" ?
             this.following :
-            getPlacements(this.players, Math.max(this.count, 0)).flat()[this.following][0];
+            getPlacements(this.players, Math.max(this.count, 0)).flat()[this.following]?.[0];
+        if (following == null)
+            return true;
 
         if (count < 0) {
             this.clear(following);
@@ -418,8 +420,12 @@ export class PlayerCanvas extends RendererCanvas {
             let dynamic = frame.subarray(38 + 256 + 14);
             while (dynamic.length !== 0) {
                 const opcode = dynamic[0];
-                const count = dynamic[1];
+                const count = dynamic[1] || 0;
+
                 const positions = dynamic.subarray(2, 2 + count * 2);
+                if (positions.length !== count * 2)
+                    break;
+
                 for (let i = 0; i < positions.length; i += 2) {
                     const y = (positions[i] >>> 2) << 3;
                     const p = positions[i] & 3;
@@ -613,6 +619,9 @@ export class LeaderboardCanvas extends RendererCanvas {
     }
 
     getLines(count) {
+        if (Object.keys(this.players).length === 0)
+            return [];
+
         const lines = [];
         const [nodnf, dnf] = getPlacements(this.players, count);
 

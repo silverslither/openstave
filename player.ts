@@ -1,7 +1,7 @@
 import type { Frame, PlayerEvent } from "./types.ts";
 import { bufferHandler } from "./buffer.ts";
 
-import { PLAYER_BUFFER_BYTES } from "./env.ts";
+import { MAX_PLAYER_BYTES } from "./env.ts";
 
 export default class Player {
     connected: boolean;
@@ -14,7 +14,6 @@ export default class Player {
     dnf: number;
     splits: number[];
     buffers: Buffer[];
-    buffer_length: number;
     total_length: number;
 
     get finished(): boolean {
@@ -32,7 +31,6 @@ export default class Player {
         this.dnf = NaN;
         this.splits = [];
         this.buffers = [];
-        this.buffer_length = 0;
         this.total_length = 0;
     }
 
@@ -50,29 +48,28 @@ export default class Player {
         player.dnf = obj.dnf ?? NaN;
         player.splits = obj.splits.map((v: number | null) => v ?? NaN);
         player.buffers = obj?.buffers?.map((v: string) => Buffer.from(v, "base64"));
-        player.buffer_length = obj.buffer_length;
         player.total_length = obj.total_length;
         return player;
     }
 
     add(chunk: Buffer) {
-        if (this.finished)
+        if (this.finished || chunk.length === 0)
             return;
 
-        this.buffers.push(chunk);
-        this.buffer_length += chunk.length;
-        this.total_length += chunk.length;
-        if (this.buffer_length > PLAYER_BUFFER_BYTES) {
-            const buffer: Buffer = Buffer.concat(this.buffers);
-            const { buffer: _buffer, events } = bufferHandler(buffer, this.frames, this.game);
-
-            this.buffers.length = 0;
-            this.buffers.push(_buffer);
-            this.buffer_length = _buffer.length;
-
-            for (const event of events)
-                this.eventHandler(event);
+        if (chunk.length > MAX_PLAYER_BYTES - this.total_length) {
+            this.eventHandler({ code: "DNF", data: null });
+            this.buffers = [];
+            return;
         }
+
+        const buffer = Buffer.concat([...this.buffers, chunk]);
+        this.total_length += chunk.length;
+        const { buffer: remaining, events } = bufferHandler(buffer, this.frames, this.game);
+
+        this.buffers = remaining.length === 0 ? [] : [remaining];
+
+        for (const event of events)
+            this.eventHandler(event);
     }
 
     eventHandler(event: PlayerEvent) {
@@ -113,7 +110,6 @@ export default class Player {
             this.dnf -= this.start;
             this.splits = this.splits.map(v => v - this.start);
             this.buffers = [];
-            this.buffer_length = 0;
             this.total_length = 0;
             this.start = 0;
         }

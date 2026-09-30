@@ -81,24 +81,24 @@ export class Mixer {
                     const opcode = dynamic[0];
 
                     if (opcode >= 0x10) { // skip tile data
-                        dynamic = dynamic.subarray(2 + dynamic[1] * 2);
+                        dynamic = dynamic.subarray((2 + dynamic[1] * 2) || 1);
                         continue;
                     }
 
                     dynamic = dynamic.subarray(1);
 
                     if (opcode & 1) {
-                        channels[0] = [`sq1_${dynamic[0].toString(16).padStart(2, "0")}`, dynamic[1]];
+                        channels[0] = [`sq1_${dynamic[0]?.toString(16).padStart(2, "0")}`, dynamic[1]];
                         dynamic = dynamic.subarray(2);
                     }
 
                     if (opcode & 2) {
-                        channels[1] = [`sq2_${dynamic[0].toString(16).padStart(2, "0")}`, dynamic[1]];
+                        channels[1] = [`sq2_${dynamic[0]?.toString(16).padStart(2, "0")}`, dynamic[1]];
                         dynamic = dynamic.subarray(2);
                     }
 
                     if (opcode & 4) {
-                        channels[2] = [`noise_${dynamic[0].toString(16).padStart(2, "0")}`, dynamic[1]];
+                        channels[2] = [`noise_${dynamic[0]?.toString(16).padStart(2, "0")}`, dynamic[1]];
                         dynamic = dynamic.subarray(2);
                     }
 

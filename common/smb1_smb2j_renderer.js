@@ -212,7 +212,7 @@ export class PlayerCanvas extends RendererCanvas {
     getFollowing(count) {
         return typeof this.following === "string" ?
             this.following :
-            getPlacements(this.players, Math.max(count, 0)).flat()[this.following][0];
+            getPlacements(this.players, Math.max(count, 0)).flat()[this.following]?.[0];
     }
 
     onclick(event) {
@@ -260,6 +260,8 @@ export class PlayerCanvas extends RendererCanvas {
         this.context.fillStyle = "#000000";
 
         const following = this.getFollowing(count);
+        if (following == null)
+            return true;
 
         if (count < 0) {
             this.clear(following);
@@ -387,8 +389,11 @@ export class PlayerCanvas extends RendererCanvas {
                     continue;
                 }
 
-                const count = dynamic[1];
+                const count = dynamic[1] || 0;
                 const positions = dynamic.subarray(2, 2 + count * 2);
+                if (positions.length !== count * 2)
+                    break;
+
                 for (let i = 0; i < positions.length; i += 2) {
                     const y = positions[i] & 0xf8;
                     const p = (positions[i] & 6) >>> 1;
@@ -543,6 +548,9 @@ export class LeaderboardCanvas extends RendererCanvas {
     }
 
     getLines(count) {
+        if (Object.keys(this.players).length === 0)
+            return [];
+
         const lines = [];
         const [nodnf, dnf] = getPlacements(this.players, count);
 

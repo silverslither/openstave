@@ -1,14 +1,16 @@
 import * as crypto from "node:crypto";
-import * as http from "node:http";
-import * as zlib from "node:zlib";
 import * as fs from "node:fs";
+import * as http from "node:http";
 import * as path from "node:path";
+import * as util from "node:util";
+import * as zlib from "node:zlib";
 
-import { Race, RaceData, activeRaces, inactiveRaces } from "./race.ts";
+import { HTTP_PORT, MAX_ACTIVE_RACES, MAX_BODY_SIZE_BYTES, TCP_ADDRESS, TCP_PORT } from "./env.ts";
+import { activeRaces, inactiveRaces, Race, RaceData } from "./race.ts";
 import { LowSecurityHasher } from "./security.ts";
 import { tryAsync } from "./wrapper.ts";
 
-import { HTTP_PORT, MAX_ACTIVE_RACES, MAX_BODY_SIZE_BYTES, TCP_ADDRESS, TCP_PORT } from "./env.ts";
+const zlib_promises_gzip = util.promisify(zlib.gzip);
 
 const MIME_TYPES: Record<string, string> = {
     ".html": "text/html",
@@ -78,18 +80,11 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
         const ext = path.extname(file).toLowerCase();
         const mime = MIME_TYPES[ext] ?? "";
 
-        fs.readFile(file, (error, data) => {
-            if (error) {
-                console.error(error);
-                response.writeHead(500).end();
-                return;
-            }
-            data = Buffer.concat([prepend, data]);
-            response.writeHead(200, {
-                "Content-Length": data.length,
-                "Content-Type": mime,
-            }).end(data);
-        });
+        const data = Buffer.concat([prepend, await fs.promises.readFile(file)]);
+        response.writeHead(200, {
+            "Content-Length": data.length,
+            "Content-Type": mime,
+        }).end(data);
 
         return;
     }
@@ -184,9 +179,13 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
                 return;
             }
 
-            if (!LowSecurityHasher.verify(requestBody.password, race.hash)) {
-                response.writeHead(401).end();
-                return;
+            switch (LowSecurityHasher.verify(requestBody.password, race.hash)) {
+                case 1:
+                    response.writeHead(401).end();
+                    return;
+                case 2:
+                    response.writeHead(429).end();
+                    return;
             }
 
             response.writeHead(200).end(JSON.stringify(
@@ -213,9 +212,13 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
                 return;
             }
 
-            if (!LowSecurityHasher.verify(requestBody.password, race.hash)) {
-                response.writeHead(401).end();
-                return;
+            switch (LowSecurityHasher.verify(requestBody.password, race.hash)) {
+                case 1:
+                    response.writeHead(401).end();
+                    return;
+                case 2:
+                    response.writeHead(429).end();
+                    return;
             }
 
             const name = requestBody.name;
@@ -234,8 +237,9 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
                 console.error(e);
             } finally {
                 response.writeHead(status).end(message);
-                return;
             }
+
+            return;
         }
 
         const start = requestBody.start;
@@ -268,18 +272,12 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             return;
         }
 
-        zlib.gzip(JSON.stringify(responseBody), { level: 1 }, (error, data) => {
-            if (error) {
-                console.error(error);
-                response.writeHead(500).end();
-                return;
-            }
-            response.writeHead(200, {
-                "Content-Encoding": "gzip",
-                "Content-Length": data.length,
-                "Content-Type": "application/json",
-            }).end(data);
-        });
+        const data = await zlib_promises_gzip(JSON.stringify(responseBody), { level: 1 });
+        response.writeHead(200, {
+            "Content-Encoding": "gzip",
+            "Content-Length": data.length,
+            "Content-Type": "application/json",
+        }).end(data);
     }, () => response.writeHead(500).end()));
 }, args => args[1].writeHead(500).end()));
 

@@ -1,7 +1,6 @@
-import type { Frame, PlayerEvent } from "./types.ts";
 import { bufferHandler } from "./buffer.ts";
-
 import { MAX_PLAYER_BYTES } from "./env.ts";
+import type { Frame, PlayerEvent } from "./types.ts";
 
 export default class Player {
     connected: boolean;
@@ -34,21 +33,22 @@ export default class Player {
         this.total_length = 0;
     }
 
-    static from(obj: Record<string, any>) {
+    static from(obj: Record<string, unknown>) {
         const player = new Player();
-        player.username = obj.username;
-        player.password = obj.password;
-        player.game = obj.game;
-        if (typeof obj.frames[0] === "string")
-            player.frames = obj.frames.map((v: any) => ({ data: Buffer.from(v, "base64") }));
-        else
-            player.frames = obj.frames.map((v: any) => ({ data: Buffer.from(v.data, "base64"), count: v.count, ram: Buffer.from(v.ram, "base64") }));
-        player.start = obj.start ?? NaN;
-        player.end = obj.end ?? NaN;
-        player.dnf = obj.dnf ?? NaN;
-        player.splits = obj.splits.map((v: number | null) => v ?? NaN);
-        player.buffers = obj?.buffers?.map((v: string) => Buffer.from(v, "base64"));
-        player.total_length = obj.total_length;
+        player.username = obj.username as string;
+        player.password = obj.password as string;
+        player.game = obj.game as string;
+        player.frames = (obj.frames as Record<string, unknown>[]).map(v => ({
+            data: Buffer.from(v.data as string, "base64"),
+            count: v.count as number,
+            ram: Buffer.from(v.ram as string, "base64"),
+        }));
+        player.start = obj.start as number ?? NaN;
+        player.end = obj.end as number ?? NaN;
+        player.dnf = obj.dnf as number ?? NaN;
+        player.splits = (obj.splits as number[]).map(v => v ?? NaN);
+        player.buffers = (obj.buffers as string[])?.map(v => Buffer.from(v, "base64"));
+        player.total_length = obj.total_length as number;
         return player;
     }
 

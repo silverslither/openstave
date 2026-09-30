@@ -1,8 +1,16 @@
 import globals from "globals";
 import js from "@eslint/js";
+import simpleImportSort from "eslint-plugin-simple-import-sort";
 import tseslint from "typescript-eslint";
 
 import { defineConfig } from "eslint/config";
+
+const unusedVarsOptions = {
+    varsIgnorePattern: "^_",
+    argsIgnorePattern: "^_",
+    caughtErrorsIgnorePattern: "^_",
+    destructuredArrayIgnorePattern: "^_",
+};
 
 const rules = {
     indent: ["error", 4, {
@@ -23,10 +31,19 @@ const rules = {
     "no-shadow": ["warn", {
         "builtinGlobals": true,
     }],
-    "sort-imports": ["warn"],
+    "sort-imports": "off",
 };
 
 export default defineConfig([
+    {
+        files: ["common/buffered_processor.js"],
+        languageOptions: {
+            globals: {
+                AudioWorkletProcessor: "readonly",
+                registerProcessor: "readonly",
+            },
+        },
+    },
     {
         files: ["**/*.js"],
         extends: [js.configs.recommended],
@@ -35,7 +52,16 @@ export default defineConfig([
             ecmaVersion: "latest",
             sourceType: "module",
         },
-        rules,
+        rules: {
+            ...rules,
+            "simple-import-sort/imports": "error",
+            "simple-import-sort/exports": "error",
+            "no-unused-vars": ["error", unusedVarsOptions],
+            "sort-imports": "off",
+        },
+        plugins: {
+            "simple-import-sort": simpleImportSort,
+        },
     },
     {
         files: ["**/*.ts"],
@@ -45,6 +71,16 @@ export default defineConfig([
             ecmaVersion: "latest",
             sourceType: "module",
         },
-        rules,
+        rules: {
+            ...rules,
+            "simple-import-sort/imports": "error",
+            "simple-import-sort/exports": "error",
+            "no-unused-vars": "off",
+            "@typescript-eslint/no-unused-vars": ["error", unusedVarsOptions],
+            "sort-imports": "off",
+        },
+        plugins: {
+            "simple-import-sort": simpleImportSort,
+        },
     },
 ]);

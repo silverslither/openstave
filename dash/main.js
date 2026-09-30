@@ -44,6 +44,12 @@ async function getAuthentication() {
             return;
         }
 
+        if (response.status === 429) {
+            authentication.lastElementChild.innerText = "Password guessing is limited to one try per second.";
+            authLock = false;
+            return;
+        }
+
         if (response.status === 404) {
             authentication.innerText = "The race is no longer active.";
             return;
@@ -100,6 +106,12 @@ async function handleAction(player, action, options) {
 
         if (response.status === 401) {
             live.parentElement.nextElementSibling.innerText = "The entered password is incorrect.";
+            actionLock = false;
+            return;
+        }
+
+        if (response.status === 429) {
+            live.parentElement.nextElementSibling.innerText = "Password guessing is limited to one try per second.";
             actionLock = false;
             return;
         }

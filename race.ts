@@ -1,11 +1,15 @@
 import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import * as util from "node:util";
 import * as zlib from "node:zlib";
 
 import { supportedGames } from "./buffer.ts";
+import { gzipFileCache } from "./cache.ts";
 import Player from "./player.ts";
 import { LowSecurityHasher } from "./security.ts";
+
+const zlib_promises_gzip = util.promisify(zlib.gzip);
 
 const MINUTE = 60 * 1000;
 const TIMEOUTS: Record<string, number> = {
@@ -148,13 +152,13 @@ export class Race implements AbstractRace {
         });
     }
 
-    static from(obj: Record<string, any>) {
+    static from(obj: Record<string, unknown>) {
         const race = new Race();
-        race.hash = obj.hash;
-        race.id = obj.id;
-        race.game = obj.game;
-        race.timeout = obj.timeout ?? -Infinity;
-        race.players = obj.players.map((v: any) => Player.from(v));
+        race.hash = obj.hash as string;
+        race.id = obj.id as string;
+        race.game = obj.game as string;
+        race.timeout = obj.timeout as number ?? -Infinity;
+        race.players = (obj.players as Record<string, unknown>[]).map(v => Player.from(v));
         for (const player of race.players)
             if (player.end !== player.end && player.dnf !== player.dnf)
                 activePlayers.set(player.username, player);
@@ -178,7 +182,7 @@ export class Race implements AbstractRace {
 
 export class RaceData implements AbstractRace {
     path: string;
-    static: StaticRaceData;
+    static: StaticRaceData | null;
     game: string;
 
     constructor(racePath: string) {
@@ -194,7 +198,7 @@ export class RaceData implements AbstractRace {
     async import() {
         try {
             const data = await fs.promises.readFile(path.join(this.path, "static"), "utf8");
-            this.static = JSON.parse(data);
+            this.static = JSON.parse(data) as StaticRaceData;
             this.game = this.static.game;
 
             for (const name of Object.keys(this.static.players)) {
@@ -265,44 +269,51 @@ export class RaceData implements AbstractRace {
     }
 
     async exec(name: string, command: string, args: string[]): Promise<[number, string]> {
-        if (!Object.hasOwn(this.static.players, name))
+        const players = this.static!.players;
+        if (!Object.hasOwn(players, name))
             return [400, "Player does not exist."];
-        const player = this.static.players[name];
+        const player = players[name];
 
-        switch (command.toLowerCase()) {
-            case "trim": {
-                const start = parseInt(args[0]);
-                const end = parseInt(args[1]);
-                if (start !== start || end !== end || start < 0 || end >= player.length || start > end)
-                    return [400, "Invalid trim bounds."];
+        const length = Math.max(...Object.values(players).map(v => v.length));
+        try {
+            switch (command.toLowerCase()) {
+                case "trim": {
+                    const start = parseInt(args[0]);
+                    const end = parseInt(args[1]);
+                    if (start !== start || end !== end || start < 0 || end >= player.length || start > end)
+                        return [400, "Invalid trim bounds."];
 
-                await this.trim(name, start, end);
-                return [200, ""];
-            } case "remove":
-                if (Object.keys(this.static.players).length === 1)
-                    return [400, "Cannot remove the last player."];
-                await this.remove(name);
-                return [200, ""];
-            case "toggle":
-                if (player.length === 0)
-                    return [400, "Cannot toggle an empty player."];
-                [player.time, player.dnf] = [player.dnf, player.time];
-                await this.writeStatic();
-                return [200, ""];
-            case "resplit": {
-                const splits = args.map(v => parseInt(v));
-                player.splits = splits;
-                await this.writeStatic();
-                return [200, ""];
-            } default:
-                return [400, "Command does not exist."];
+                    await this.trim(name, start, end);
+                    return [200, ""];
+                } case "remove":
+                    if (Object.keys(players).length === 1)
+                        return [400, "Cannot remove the last player."];
+                    await this.remove(name);
+                    return [200, ""];
+                case "toggle":
+                    if (player.length === 0)
+                        return [400, "Cannot toggle an empty player."];
+                    [player.time, player.dnf] = [player.dnf, player.time];
+                    await this.writeStatic();
+                    return [200, ""];
+                case "resplit": {
+                    const splits = args.map(v => parseInt(v));
+                    player.splits = splits;
+                    await this.writeStatic();
+                    return [200, ""];
+                } default:
+                    return [400, "Command does not exist."];
+            }
+        } finally {
+            for (let i = 0; i < length; i += FILE_BUFFER)
+                gzipFileCache.evict(path.join(this.path, i.toString()));
         }
     }
 
     async trim(name: string, start: number, end: number) {
         end += 1;
 
-        const s = this.static;
+        const s = this.static!;
         this.static = null;
 
         const player = s.players[name];
@@ -361,7 +372,7 @@ export class RaceData implements AbstractRace {
     }
 
     async remove(name: string) {
-        const s = this.static;
+        const s = this.static!;
         this.static = null;
 
         const length = Math.max(...Object.values(s.players).map(v => v.length));
@@ -383,7 +394,7 @@ export class RaceData implements AbstractRace {
     }
 
     async writeStatic() {
-        const data = this.static;
+        const data = this.static!;
         this.static = null;
         try {
             await fs.promises.writeFile(path.join(this.path, "static"), JSON.stringify(data));
@@ -393,30 +404,11 @@ export class RaceData implements AbstractRace {
     }
 
     async readChunk(i: number) {
-        const data = await fs.promises.readFile(path.join(this.path, i.toString()));
-
-        const frames: Record<string, string[]> = await new Promise((resolve, reject) => {
-            zlib.gunzip(data, (error, data) => {
-                if (error)
-                    reject(error);
-                else
-                    resolve(JSON.parse(data.toString("utf8")));
-            });
-        });
-
-        return frames;
+        return await gzipFileCache.read(path.join(this.path, i.toString())) as Record<string, string[]>;
     }
 
     async writeChunk(i: number, frames: Record<string, string[]>) {
-        const data: Buffer = await new Promise((resolve, reject) => {
-            zlib.gzip(JSON.stringify(frames), { level: 9 }, (error, data) => {
-                if (error)
-                    reject(error);
-                else
-                    resolve(data);
-            });
-        });
-
+        const data = await zlib_promises_gzip(JSON.stringify(frames), { level: 9 });
         await fs.promises.writeFile(path.join(this.path, i.toString()), data);
     }
 }

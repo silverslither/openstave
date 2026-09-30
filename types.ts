@@ -4,7 +4,8 @@ export interface Frame {
     ram: Buffer;
 }
 
-export interface PlayerEvent {
-    code: "START" | "END" | "SPLIT" | "DNF";
-    data: any;
-}
+export type PlayerEvent =
+    | { code: "START"; data: number }
+    | { code: "END"; data: number }
+    | { code: "SPLIT"; data: [index: number, frame: number] }
+    | { code: "DNF"; data: number | null };

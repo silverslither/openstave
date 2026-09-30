@@ -342,9 +342,9 @@ export class PlayerCanvas extends RendererCanvas {
         const drawOrder = [...outlineOrder];
         drawOrder.push(drawOrder.splice(drawOrder.indexOf(following), 1)[0]);
 
-        const above = {};
-        const mask = {};
-        const background = {};
+        const above = Object.create(null);
+        const mask = Object.create(null);
+        const background = Object.create(null);
         this.createBuffer(COMPONENT_NES_COLOURS[gPalette[0]]);
         for (const name of drawOrder) {
             above[name] = [];

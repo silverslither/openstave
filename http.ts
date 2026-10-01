@@ -31,6 +31,7 @@ export const getKey = () => gKey;
 export const setKey = (key: string) => gKey = key;
 
 const queryCache: Map<string, Buffer> = new Map();
+const playerTokens: Map<string, string> = new Map();
 
 const server = http.createServer(tryAsync(async (request: http.IncomingMessage, response: http.ServerResponse) => {
     let url: string;
@@ -192,11 +193,16 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
 
             const auth: string[][] = [];
             for (const player of race.players) {
-                let token = crypto.randomBytes(24).toString("base64url");
-                while (queryCache.has(token))
-                    token = crypto.randomBytes(24).toString("base64url");
+                let token = playerTokens.get(player.username);
+                if (token == null) {
+                    do {
+                        token = crypto.randomBytes(24).toString("base64url");
+                    } while (queryCache.has(token));
 
-                queryCache.set(token, Buffer.from(player.getAuthString(TCP_ADDRESS, TCP_PORT), "utf8"));
+                    queryCache.set(token, Buffer.from(player.getAuthString(TCP_ADDRESS, TCP_PORT), "utf8"));
+                    playerTokens.set(player.username, token);
+                }
+
                 auth.push([
                     player.username,
                     `lua/${race.game.split("_")[0]}.lua?${token}`,

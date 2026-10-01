@@ -30,6 +30,8 @@ let gKey = crypto.randomBytes(24).toString("base64");
 export const getKey = () => gKey;
 export const setKey = (key: string) => gKey = key;
 
+const queryCache: Map<string, Buffer> = new Map();
+
 const server = http.createServer(tryAsync(async (request: http.IncomingMessage, response: http.ServerResponse) => {
     let url: string;
     try {
@@ -73,9 +75,9 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             return;
         }
 
-        let prepend = Buffer.allocUnsafe(0);
+        let prepend: Buffer = Buffer.allocUnsafe(0);
         if (query.length > 1)
-            prepend = Buffer.from(query[1], "base64url");
+            prepend = queryCache.get(query[1]) ?? prepend;
 
         const ext = path.extname(file).toLowerCase();
         const mime = MIME_TYPES[ext] ?? "";
@@ -188,12 +190,20 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
                     return;
             }
 
-            response.writeHead(200).end(JSON.stringify(
-                race.players.map(v => [
-                    v.username,
-                    `lua/${race.game.split("_")[0]}.lua?${Buffer.from(v.getAuthString(TCP_ADDRESS, TCP_PORT)).toString("base64url")}`,
-                ]),
-            ));
+            const auth: string[][] = [];
+            for (const player of race.players) {
+                let token = crypto.randomBytes(24).toString("base64url");
+                while (queryCache.has(token))
+                    token = crypto.randomBytes(24).toString("base64url");
+
+                queryCache.set(token, Buffer.from(player.getAuthString(TCP_ADDRESS, TCP_PORT), "utf8"));
+                auth.push([
+                    player.username,
+                    `lua/${race.game.split("_")[0]}.lua?${token}`,
+                ]);
+            }
+
+            response.writeHead(200).end(JSON.stringify(auth));
 
             return;
         }

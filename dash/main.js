@@ -63,7 +63,7 @@ async function getAuthentication() {
 
         let html = "";
         for (const player of await response.json())
-            html += `Script for ${player[0].slice(0, -8)}: <a href="/${player[1]}">${location.origin}/${player[1]}</a><br/>`;
+            html += `Script for ${player[0].slice(0, -8)}: ||<a href="/${player[1]}">${location.origin}/${player[1]}</a>||<br/>`;
 
         authentication.innerHTML = html;
     } catch (e) {

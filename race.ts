@@ -8,6 +8,9 @@ import { supportedGames } from "./buffer.ts";
 import { gzipFileCache } from "./cache.ts";
 import Player from "./player.ts";
 import { LowSecurityHasher } from "./security.ts";
+import { destroyPlayer } from "./tcp.ts";
+
+const RACE_PATH = path.join(import.meta.dirname, "races");
 
 const zlib_promises_gzip = util.promisify(zlib.gzip);
 
@@ -40,7 +43,7 @@ interface StaticRaceData {
 
 export const activePlayers: Map<string, Player> = new Map();
 export const activeRaces: Map<string, Race> = new Map();
-export const inactiveRaces: Map<string, AbstractRace> = new Map();
+export const inactiveRaces: Map<string, RaceData> = new Map();
 
 export interface AbstractRace {
     hash: string | null;
@@ -56,23 +59,17 @@ export interface AbstractRace {
 }
 
 export class Race implements AbstractRace {
+    vacuumLock: boolean;
+
     hash: string | null;
     id: string;
     game: string;
     timeout: number;
     players: Player[];
 
-    get finished(): boolean {
-        if (Date.now() > this.timeout) {
-            for (const player of this.players)
-                player.eventHandler({ code: "DNF", data: null });
-            this.timeout = Infinity;
-            return true;
-        }
-        return this.players.every(v => v.finished);
-    }
-
     constructor(password: string = "", id: string = "", game: string = "", players: string[] = []) {
+        this.vacuumLock = false;
+
         this.hash = LowSecurityHasher.hash(password);
         this.id = "";
         this.game = game;
@@ -108,7 +105,24 @@ export class Race implements AbstractRace {
         } while (activeRaces.has(this.id) || inactiveRaces.has(this.id));
 
         activeRaces.set(this.id, this);
-        console.log(`created race ${this.id}`);
+    }
+
+    finished() {
+        if (Date.now() > this.timeout) {
+            for (const player of this.players)
+                player.eventHandler({ code: "DNF", data: null });
+            this.timeout = Infinity;
+
+            this.vacuum();
+            return true;
+        }
+
+        if (this.players.every(v => v.finished)) {
+            this.vacuum();
+            return true;
+        }
+
+        return false;
     }
 
     async getData(start: number, length: number) {
@@ -128,7 +142,7 @@ export class Race implements AbstractRace {
             response[player.username] = playerObj;
         }
 
-        return { game: this.game, finished: this.finished, players: response };
+        return { game: this.game, finished: this.finished(), players: response };
     }
 
     minimize() {
@@ -154,6 +168,7 @@ export class Race implements AbstractRace {
 
     static from(obj: Record<string, unknown>) {
         const race = new Race();
+        race.vacuumLock = false;
         race.hash = obj.hash as string;
         race.id = obj.id as string;
         race.game = obj.game as string;
@@ -163,6 +178,32 @@ export class Race implements AbstractRace {
             if (player.end !== player.end && player.dnf !== player.dnf)
                 activePlayers.set(player.username, player);
         return race;
+    }
+
+    async vacuum() {
+        if (this.vacuumLock)
+            return;
+        this.vacuumLock = true;
+
+        try {
+            for (const player of this.players) {
+                destroyPlayer(player.username);
+                activePlayers.delete(player.username);
+                player.connected = false;
+            }
+
+            const data = new RaceData(path.join(RACE_PATH, this.id));
+            await data.write(this);
+
+            activeRaces.delete(this.id);
+            inactiveRaces.set(this.id, data);
+        } catch (e) {
+            console.log(`error vacuuming race ${this.id}`);
+            console.log(e);
+            return;
+        }
+
+        console.log(`vacuumed race ${this.id}`);
     }
 
     async exec(name: string, command: string, _args: string[]): Promise<[number, string]> {

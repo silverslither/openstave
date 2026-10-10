@@ -1,10 +1,11 @@
+import "./http.ts";
+
 import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { CRASH_TIMEOUT_MS, VACUUM_INTERVAL_MS } from "./env.ts";
-import { getKey, setKey } from "./http.ts";
-import { activePlayers, activeRaces, inactiveRaces,Race, RaceData } from "./race.ts";
-import { destroyPlayer, openConnections, server } from "./tcp.ts";
+import { activeRaces, inactiveRaces,Race, RaceData } from "./race.ts";
+import { openConnections, server } from "./tcp.ts";
 
 const CRASH_PATH = path.join(import.meta.dirname, "crash");
 const RACE_PATH = path.join(import.meta.dirname, "races");
@@ -79,37 +80,8 @@ while (true) {
     if (lock)
         break;
 
-    try {
-        try {
-            setKey((await fs.promises.readFile("key", "utf8")).trim());
-        } catch (e) {
-            void e;
-            await fs.promises.writeFile("key", getKey(), "utf8");
-        }
-
-        for (const [id, race] of activeRaces) {
-            if (!race.finished)
-                continue;
-            for (const player of race.players) {
-                destroyPlayer(player.username);
-                activePlayers.delete(player.username);
-                player.connected = false;
-            }
-            activeRaces.delete(id);
-            inactiveRaces.set(id, race);
-        }
-
-        for (const [key, value] of inactiveRaces) {
-            if (!(value instanceof Race))
-                continue;
-            console.log("vacuuming race", key);
-            const data = new RaceData(path.join(RACE_PATH, key));
-            await data.write(value);
-            inactiveRaces.set(key, data);
-        }
-    } catch (e) {
-        console.error(e);
-    }
+    for (const race of activeRaces.values())
+        void race.finished();
 
     await new Promise(r => setTimeout(r, VACUUM_INTERVAL_MS));
 }

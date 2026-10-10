@@ -26,9 +26,15 @@ const PUBLIC_DIRECTORIES = new Set(["root", "dash", "common", "lua", "smb1", "sm
 
 const MAX_REQUEST_BUFFER_FRAMES = 240;
 
-let gKey = crypto.randomBytes(24).toString("base64");
-export const getKey = () => gKey;
-export const setKey = (key: string) => gKey = key;
+const validateKey = async (key: string) => {
+    try {
+        const keys = (await fs.promises.readFile("key", "utf8")).trim().split(/\r?\n/);
+        return keys.includes(key);
+    } catch (e) {
+        void e;
+        await fs.promises.writeFile("key", crypto.randomBytes(24).toString("base64"), "utf8");
+    }
+};
 
 const queryCache: Map<string, Buffer> = new Map();
 const playerTokens: Map<string, string> = new Map();
@@ -137,7 +143,7 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             const game = requestBody.game;
             const rawPlayers = requestBody.players;
 
-            if (key !== gKey) {
+            if (!await validateKey(key as string)) {
                 response.writeHead(400).end("The entered key is incorrect.");
                 return;
             }
@@ -169,7 +175,9 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
                 return;
             }
 
+            console.log(`created race ${race.id} with key ${key}`);
             response.writeHead(200).end(race.id);
+
             return;
         }
 
@@ -210,7 +218,6 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             }
 
             response.writeHead(200).end(JSON.stringify(auth));
-
             return;
         }
 

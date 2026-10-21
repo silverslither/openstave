@@ -6,7 +6,7 @@ import { MAX_CACHE_SIZE_BYTES } from "./env.ts";
 
 const zlib_promises_gunzip = util.promisify(zlib.gunzip);
 
-interface CacheEntry {
+type CacheEntry = {
     index: number;
     qSize: number;
     lastUsed: number;
@@ -19,7 +19,7 @@ let cacheSize = 0;
 
 const concurrent = new Map<string, Promise<unknown>>();
 
-export const gzipFileCache = {
+export const GzipFileCache = {
     async read(path: string): Promise<unknown> {
         const cached = cache.get(path);
         if (cached) {
@@ -30,7 +30,7 @@ export const gzipFileCache = {
         if (concurrent.has(path))
             return concurrent.get(path);
 
-        const promise = gzipFileCache.rawRead(path, () => concurrent.get(path) === promise);
+        const promise = GzipFileCache.rawRead(path, () => concurrent.get(path) === promise);
         concurrent.set(path, promise);
 
         try {
@@ -54,7 +54,7 @@ export const gzipFileCache = {
         while (cacheSize + size > MAX_CACHE_SIZE_BYTES) {
             const i = Math.floor(Math.random() * keys.length);
             const j = Math.floor(Math.random() * keys.length);
-            gzipFileCache.evict(cache.get(keys[i])!.lastUsed <= cache.get(keys[j])!.lastUsed ? keys[i] : keys[j]);
+            GzipFileCache.evict(cache.get(keys[i])!.lastUsed <= cache.get(keys[j])!.lastUsed ? keys[i] : keys[j]);
         }
 
         const entry: CacheEntry = {

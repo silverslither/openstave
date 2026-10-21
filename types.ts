@@ -1,4 +1,4 @@
-export interface Frame {
+export type Frame = {
     data: Buffer;
     count: number;
     ram: Buffer;

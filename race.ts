@@ -5,7 +5,7 @@ import * as util from "node:util";
 import * as zlib from "node:zlib";
 
 import { supportedGames } from "./buffer.ts";
-import { gzipFileCache } from "./cache.ts";
+import { GzipFileCache } from "./cache.ts";
 import Player from "./player.ts";
 import { LowSecurityHasher } from "./security.ts";
 import { destroyPlayer } from "./tcp.ts";
@@ -26,7 +26,7 @@ const TIMEOUTS: Record<string, number> = {
 
 const FILE_BUFFER = 240;
 
-interface PlayerResponseObject {
+type PlayerResponseObject = {
     splits: number[];
     time: number;
     dnf: number;
@@ -34,7 +34,7 @@ interface PlayerResponseObject {
     length: number;
 };
 
-interface StaticRaceData {
+type StaticRaceData = {
     hash: string | null;
     game: string;
     finished: boolean;
@@ -347,7 +347,7 @@ export class RaceData implements AbstractRace {
             }
         } finally {
             for (let i = 0; i < length; i += FILE_BUFFER)
-                gzipFileCache.evict(path.join(this.path, i.toString()));
+                GzipFileCache.evict(path.join(this.path, i.toString()));
         }
     }
 
@@ -445,7 +445,7 @@ export class RaceData implements AbstractRace {
     }
 
     async readChunk(i: number) {
-        return await gzipFileCache.read(path.join(this.path, i.toString())) as Record<string, string[]>;
+        return await GzipFileCache.read(path.join(this.path, i.toString())) as Record<string, string[]>;
     }
 
     async writeChunk(i: number, frames: Record<string, string[]>) {

@@ -20,12 +20,17 @@ type ClampedAffineTransform = {
 
 export type Round = {
     type: Type;
-    finished: boolean;
     expected: number;
-    players: (string | PlayerReference)[];
-    placements: number[];
     points_transform: ClampedAffineTransform;
-}
+} & ({
+    finished: true;
+    players: string[];
+    placements: number[];
+} | {
+    finished: false;
+    players: (string | PlayerReference)[];
+    placements: [];
+})
 
 type DoubleEliminationAfter = {
     w: number;
@@ -41,23 +46,23 @@ type DoubleEliminationRound = Round & {
     after: DoubleEliminationAfter;
 }
 
-function affineTransform(multiplier: number, adder = 0): ClampedAffineTransform {
+function affineTransform(n: number, multiplier: number = 1, adder = 0): ClampedAffineTransform {
     return {
-        multiplier,
-        adder,
+        multiplier: -multiplier,
+        adder: adder + n * multiplier,
         minimum: -Number.MAX_VALUE,
         maximum: Number.MAX_VALUE,
     };
 }
 
-function stepTransform(n: number, advancing: number, other = 0): ClampedAffineTransform {
-    const multiplier = advancing - other;
-    if (multiplier === 0)
-        return affineTransform(0, other);
+function stepTransform(n: number, advancing: number = 1, other = 0): ClampedAffineTransform {
+    const difference = advancing - other;
+    if (difference === 0)
+        return affineTransform(n, 0, other);
 
     return {
-        multiplier,
-        adder: other - multiplier * (n - Math.ceil(0.5 * n)),
+        multiplier: -difference,
+        adder: other + difference * Math.ceil(0.5 * n),
         minimum: Math.min(advancing, other),
         maximum: Math.max(advancing, other),
     };
@@ -103,9 +108,6 @@ export function reduce(seeding: string[], rounds: Round[]) {
         }
 
         switch (round.type) {
-            case Type.ROUND_ROBIN:
-                // unreachable
-                break;
             case Type.SINGLE_ELIM:
                 regenerateSingleElimination(rounds, i);
                 break;
@@ -116,6 +118,34 @@ export function reduce(seeding: string[], rounds: Round[]) {
     }
 
     return rounds;
+}
+
+export function points(rounds: Round[]): Record<string, number> {
+    const scores: Record<string, number> = Object.create(null);
+
+    for (const round of rounds) {
+        if (!round.finished)
+            continue;
+
+        const { multiplier, adder, minimum, maximum } = round.points_transform;
+
+        for (let i = 0; i < round.players.length; i++) {
+            const player = round.players[i];
+
+            const score = Math.min(
+                maximum,
+                Math.max(
+                    minimum,
+                    multiplier * round.placements[i] + adder
+                )
+            );
+
+            scores[player] ??= 0;
+            scores[player] += score;
+        }
+    }
+
+    return scores;
 }
 
 function generateRoundRobin(n: number, c: number = 2 * Math.ceil(Math.log2(n))): Round[] {
@@ -130,7 +160,7 @@ function generateRoundRobin(n: number, c: number = 2 * Math.ceil(Math.log2(n))):
                 { round: -1, placement_range: [0, n] },
             ],
             placements: [],
-            points_transform: affineTransform(1),
+            points_transform: affineTransform(n),
         });
     }
 
@@ -155,7 +185,7 @@ function generateSingleElimination(n: number, rounds: Round[] = []): Round[] {
             expected: n,
             players,
             placements: [],
-            points_transform: next <= 2 ? affineTransform(1) : stepTransform(n, 2, 1),
+            points_transform: next <= 2 ? affineTransform(n) : stepTransform(n, 2, 1),
         });
 
         players = [{ round: i, placement_range: [0, next] }];
@@ -167,7 +197,7 @@ function generateSingleElimination(n: number, rounds: Round[] = []): Round[] {
 
 function regenerateSingleElimination(rounds: Round[], i: number) {
     const round = rounds[i];
-    if (i === rounds.length - 1)
+    if (!round.finished || i === rounds.length - 1)
         return;
 
     const cutoff = Math.ceil(0.5 * round.expected);
@@ -245,7 +275,7 @@ function generateDoubleElimination(w: number, l: number = 0, rounds: DoubleElimi
                 expected: w,
                 players: winners,
                 placements: [],
-                points_transform: affineTransform(0),
+                points_transform: affineTransform(w, 0),
             };
 
             const w_after = Math.ceil(0.5 * w);
@@ -268,7 +298,7 @@ function generateDoubleElimination(w: number, l: number = 0, rounds: DoubleElimi
                 expected: l,
                 players: losers,
                 placements: [],
-                points_transform: affineTransform(0),
+                points_transform: affineTransform(l, 0),
             };
 
             l = Math.ceil(0.5 * l);
@@ -306,7 +336,7 @@ function generateDoubleElimination(w: number, l: number = 0, rounds: DoubleElimi
             expected: 4,
             players,
             placements: [],
-            points_transform: affineTransform(1),
+            points_transform: affineTransform(4),
         });
     }
 
@@ -315,7 +345,7 @@ function generateDoubleElimination(w: number, l: number = 0, rounds: DoubleElimi
 
 function regenerateDoubleElimination(rounds: DoubleEliminationRound[], i: number) {
     const round = rounds[i];
-    if (round.bracket === "F")
+    if (!round.finished || round.bracket === "F")
         return;
 
     const cutoff = Math.ceil(0.5 * round.expected);

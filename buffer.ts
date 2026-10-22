@@ -1,4 +1,14 @@
-import type { Frame, PlayerEvent } from "./types.ts";
+export type Frame = {
+    data: Buffer;
+    count: number;
+    ram: Buffer;
+}
+
+export type PlayerEvent =
+    | { code: "START"; data: number }
+    | { code: "END"; data: number }
+    | { code: "SPLIT"; data: [index: number, frame: number] }
+    | { code: "DNF"; data: number | null };
 
 const SMB1_SMB2J_WARPLESS_SPLITS = [...Array(31).keys()];
 

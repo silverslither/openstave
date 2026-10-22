@@ -136,8 +136,8 @@ export function points(rounds: Round[]): Record<string, number> {
                 maximum,
                 Math.max(
                     minimum,
-                    multiplier * round.placements[i] + adder
-                )
+                    multiplier * round.placements[i] + adder,
+                ),
             );
 
             scores[player] ??= 0;

@@ -76,28 +76,28 @@ export default class Player {
             return;
 
         switch (event.code) {
-            case "START":
+        case "START":
+            if (this.start !== this.start)
+                this.start = event.data;
+            break;
+        case "END":
+            if (this.start === this.start && this.end !== this.end) {
+                this.end = event.data;
+                this.frames.length = this.end + 1;
+            }
+            break;
+        case "SPLIT":
+            if (this.start === this.start && this.end !== this.end && event.data[0] >= 0 && (this.splits[event.data[0]] == null || Number.isNaN(this.splits[event.data[0]])))
+                this.splits[event.data[0]] = event.data[1];
+            break;
+        case "DNF":
+            if (event.data == null || (this.start === this.start && this.end !== this.end)) {
                 if (this.start !== this.start)
-                    this.start = event.data;
-                break;
-            case "END":
-                if (this.start === this.start && this.end !== this.end) {
-                    this.end = event.data;
-                    this.frames.length = this.end + 1;
-                }
-                break;
-            case "SPLIT":
-                if (this.start === this.start && this.end !== this.end && event.data[0] >= 0 && (this.splits[event.data[0]] == null || Number.isNaN(this.splits[event.data[0]])))
-                    this.splits[event.data[0]] = event.data[1];
-                break;
-            case "DNF":
-                if (event.data == null || (this.start === this.start && this.end !== this.end)) {
-                    if (this.start !== this.start)
-                        this.start = this.frames.length;
-                    this.dnf = event.data ?? this.frames.length - 1;
-                    this.frames.length = this.dnf + 1;
-                }
-                break;
+                    this.start = this.frames.length;
+                this.dnf = event.data ?? this.frames.length - 1;
+                this.frames.length = this.dnf + 1;
+            }
+            break;
         }
     }
 

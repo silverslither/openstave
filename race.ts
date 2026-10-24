@@ -39,15 +39,17 @@ type StaticRaceData = {
     game: string;
     finished: boolean;
     players: Record<string, PlayerResponseObject>;
-}
+};
 
-export const activePlayers: Map<string, Player> = new Map();
+export const activePlayers: Map<string, Player | undefined> = new Map();
 export const activeRaces: Map<string, Race> = new Map();
 export const inactiveRaces: Map<string, RaceData> = new Map();
 
 export interface AbstractRace {
     hash: string | null;
     game: string;
+
+    finished: () => boolean;
 
     getData: (start: number, length: number) => Promise<{
         game: string,
@@ -61,16 +63,16 @@ export interface AbstractRace {
 export class Race implements AbstractRace {
     vacuumLock: boolean;
 
-    hash: string | null;
+    hash: string;
     id: string;
     game: string;
     timeout: number;
     players: Player[];
 
-    constructor(password: string = "", id: string = "", game: string = "", players: string[] = []) {
+    constructor(password: string = "", id: string = "", game: string = "", players: string[] = [], raw = false, playerPasswords: string[] = []) {
         this.vacuumLock = false;
 
-        this.hash = LowSecurityHasher.hash(password);
+        this.hash = raw ? password : LowSecurityHasher.hash(password)!;
         this.id = "";
         this.game = game;
         this.timeout = 0;
@@ -83,14 +85,19 @@ export class Race implements AbstractRace {
             return;
         const timeout_ms = TIMEOUTS[game] ?? TIMEOUTS.default;
         this.timeout = Date.now() + timeout_ms;
-        this.players = [];
 
-        for (const player of players) {
+        for (let i = 0; i < players.length; i++) {
+            const player = players[i];
+            if (raw) {
+                this.players.push(new Player(game, player, playerPasswords[i]));
+                continue;
+            }
+
             if (player === "" || player.length > 24)
                 return;
 
             let username = "";
-            while (username.length === 0 || activePlayers.has(username))
+            while (username.length === 0 || activePlayers.get(username) != null)
                 username = player + crypto.randomBytes(6).toString("base64");
             const password = crypto.randomBytes(24).toString("base64");
 
@@ -212,11 +219,11 @@ export class Race implements AbstractRace {
             return [400, "Player does not exist."];
 
         switch (command.toLowerCase()) {
-            case "dnf":
-                player.eventHandler({ code: "DNF", data: null });
-                return [200, ""];
-            default:
-                return [400, "Command does not exist."];
+        case "dnf":
+            player.eventHandler({ code: "DNF", data: null });
+            return [200, ""];
+        default:
+            return [400, "Command does not exist."];
         }
     }
 }
@@ -234,6 +241,10 @@ export class RaceData implements AbstractRace {
 
     get hash() {
         return this.static?.hash ?? null;
+    }
+
+    finished() {
+        return true;
     }
 
     async import() {
@@ -318,32 +329,32 @@ export class RaceData implements AbstractRace {
         const length = Math.max(...Object.values(players).map(v => v.length));
         try {
             switch (command.toLowerCase()) {
-                case "trim": {
-                    const start = parseInt(args[0]);
-                    const end = parseInt(args[1]);
-                    if (start !== start || end !== end || start < 0 || end >= player.length || start > end)
-                        return [400, "Invalid trim bounds."];
+            case "trim": {
+                const start = parseInt(args[0]);
+                const end = parseInt(args[1]);
+                if (start !== start || end !== end || start < 0 || end >= player.length || start > end)
+                    return [400, "Invalid trim bounds."];
 
-                    await this.trim(name, start, end);
-                    return [200, ""];
-                } case "remove":
-                    if (Object.keys(players).length === 1)
-                        return [400, "Cannot remove the last player."];
-                    await this.remove(name);
-                    return [200, ""];
-                case "toggle":
-                    if (player.length === 0)
-                        return [400, "Cannot toggle an empty player."];
-                    [player.time, player.dnf] = [player.dnf, player.time];
-                    await this.writeStatic();
-                    return [200, ""];
-                case "resplit": {
-                    const splits = args.map(v => parseInt(v));
-                    player.splits = splits;
-                    await this.writeStatic();
-                    return [200, ""];
-                } default:
-                    return [400, "Command does not exist."];
+                await this.trim(name, start, end);
+                return [200, ""];
+            } case "remove":
+                if (Object.keys(players).length === 1)
+                    return [400, "Cannot remove the last player."];
+                await this.remove(name);
+                return [200, ""];
+            case "toggle":
+                if (player.length === 0)
+                    return [400, "Cannot toggle an empty player."];
+                [player.time, player.dnf] = [player.dnf, player.time];
+                await this.writeStatic();
+                return [200, ""];
+            case "resplit": {
+                const splits = args.map(v => parseInt(v));
+                player.splits = splits;
+                await this.writeStatic();
+                return [200, ""];
+            } default:
+                return [400, "Command does not exist."];
             }
         } finally {
             for (let i = 0; i < length; i += FILE_BUFFER)

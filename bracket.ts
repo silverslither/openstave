@@ -9,17 +9,18 @@ export type Type = typeof Type[keyof typeof Type];
 type PlayerReference = {
     round: number;
     placement_range: [number, number];
-}
+};
 
 type ClampedAffineTransform = {
     multiplier: number;
     adder: number;
     minimum: number;
     maximum: number;
-}
+};
 
 export type Round = {
     type: Type;
+    id: string;
     expected: number;
     points_transform: ClampedAffineTransform;
 } & ({
@@ -30,7 +31,7 @@ export type Round = {
     finished: false;
     players: (string | PlayerReference)[];
     placements: [];
-})
+});
 
 type DoubleEliminationAfter = {
     w: number;
@@ -38,13 +39,12 @@ type DoubleEliminationAfter = {
     streak: number;
     winners: (string | PlayerReference)[];
     losers: (string | PlayerReference)[];
-}
+};
 
 type DoubleEliminationRound = Round & {
     type: typeof Type.DOUBLE_ELIM;
-    bracket: "W" | "L" | "F";
     after: DoubleEliminationAfter;
-}
+};
 
 function affineTransform(n: number, multiplier: number = 1, adder = 0): ClampedAffineTransform {
     return {
@@ -70,12 +70,12 @@ function stepTransform(n: number, advancing: number = 1, other = 0): ClampedAffi
 
 export function generate(type: Type, players: number, arg?: number) {
     switch (type) {
-        case Type.ROUND_ROBIN:
-            return generateRoundRobin(players, arg);
-        case Type.SINGLE_ELIM:
-            return generateSingleElimination(players);
-        case Type.DOUBLE_ELIM:
-            return generateDoubleElimination(players);
+    case Type.ROUND_ROBIN:
+        return generateRoundRobin(players, arg);
+    case Type.SINGLE_ELIM:
+        return generateSingleElimination(players);
+    case Type.DOUBLE_ELIM:
+        return generateDoubleElimination(players);
     }
 }
 
@@ -108,16 +108,14 @@ export function reduce(seeding: string[], rounds: Round[]) {
         }
 
         switch (round.type) {
-            case Type.SINGLE_ELIM:
-                regenerateSingleElimination(rounds, i);
-                break;
-            case Type.DOUBLE_ELIM:
-                regenerateDoubleElimination(rounds as DoubleEliminationRound[], i);
-                break;
+        case Type.SINGLE_ELIM:
+            regenerateSingleElimination(rounds, i);
+            break;
+        case Type.DOUBLE_ELIM:
+            regenerateDoubleElimination(rounds as DoubleEliminationRound[], i);
+            break;
         }
     }
-
-    return rounds;
 }
 
 export function points(rounds: Round[]): Record<string, number> {
@@ -154,6 +152,7 @@ function generateRoundRobin(n: number, c: number = 2 * Math.ceil(Math.log2(n))):
     for (let i = 0; i < c; i++) {
         rounds.push({
             type: Type.ROUND_ROBIN,
+            id: `R${rounds.length + 1}`,
             finished: false,
             expected: n,
             players: [
@@ -181,6 +180,7 @@ function generateSingleElimination(n: number, rounds: Round[] = []): Round[] {
 
         rounds.push({
             type: Type.SINGLE_ELIM,
+            id: `R${rounds.length + 1}`,
             finished: false,
             expected: n,
             players,
@@ -220,7 +220,7 @@ function generateDoubleElimination(w: number, l: number = 0, rounds: DoubleElimi
 
     if (rounds.length > 0) {
         const node = rounds.at(-1)!;
-        last = node.bracket;
+        last = node.id[0];
         streak = node.after.streak;
         prev = node.players.length;
         winners = node.after.winners;
@@ -268,9 +268,9 @@ function generateDoubleElimination(w: number, l: number = 0, rounds: DoubleElimi
         const i = rounds.length;
 
         if (c === "W") {
-            const round: Record<string, unknown> = {
+            const round: Round = {
                 type: 2,
-                bracket: "W",
+                id: `W${rounds.length + 1}`,
                 finished: false,
                 expected: w,
                 players: winners,
@@ -288,12 +288,12 @@ function generateDoubleElimination(w: number, l: number = 0, rounds: DoubleElimi
             streak = 1;
             last = "W";
 
-            round.after = { w, l, streak, winners, losers };
+            (round as DoubleEliminationRound).after = { w, l, streak, winners, losers };
             rounds.push(round as DoubleEliminationRound);
         } else {
-            const round: Record<string, unknown> = {
+            const round: Round = {
                 type: 2,
-                bracket: "L",
+                id: `L${rounds.length + 1}`,
                 finished: false,
                 expected: l,
                 players: losers,
@@ -306,7 +306,7 @@ function generateDoubleElimination(w: number, l: number = 0, rounds: DoubleElimi
             streak = last === "L" ? Math.min(streak + 1, 2) : 1;
             last = "L";
 
-            round.after = { w, l, streak, winners, losers };
+            (round as DoubleEliminationRound).after = { w, l, streak, winners, losers };
             rounds.push(round as DoubleEliminationRound);
         }
     }
@@ -314,7 +314,7 @@ function generateDoubleElimination(w: number, l: number = 0, rounds: DoubleElimi
     let carry = 1;
     for (let i = rounds.length - 1; i > 0; i--) {
         const round = rounds[i];
-        const losers = round.bracket === "L";
+        const losers = round.id[0] === "L";
         round.points_transform = stepTransform(
             round.expected,
             losers ? 1 : carry,
@@ -330,7 +330,7 @@ function generateDoubleElimination(w: number, l: number = 0, rounds: DoubleElimi
     for (let i = 0; i < 3; i++) {
         rounds.push({
             type: 2,
-            bracket: "F",
+            id: `F${i + 1}`,
             after,
             finished: false,
             expected: 4,
@@ -345,16 +345,16 @@ function generateDoubleElimination(w: number, l: number = 0, rounds: DoubleElimi
 
 function regenerateDoubleElimination(rounds: DoubleEliminationRound[], i: number) {
     const round = rounds[i];
-    if (!round.finished || round.bracket === "F")
+    if (!round.finished || round.id[0] === "F")
         return;
 
     const cutoff = Math.ceil(0.5 * round.expected);
     const actual = round.placements.reduce((a, v) => a + Number(v < cutoff), 0);
-    const extra = actual - (round.bracket === "W" ? round.after.w : round.after.l);
+    const extra = actual - (round.id[0] === "W" ? round.after.w : round.after.l);
     if (extra === 0)
         return;
 
-    if (round.bracket === "W") {
+    if (round.id[0] === "W") {
         round.after.w += extra;
         round.after.l -= extra;
     } else {

@@ -191,12 +191,12 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             }
 
             switch (LowSecurityHasher.verify(requestBody.password, race.hash)) {
-                case 1:
-                    response.writeHead(401).end();
-                    return;
-                case 2:
-                    response.writeHead(429).end();
-                    return;
+            case 1:
+                response.writeHead(401).end();
+                return;
+            case 2:
+                response.writeHead(429).end();
+                return;
             }
 
             const auth: string[][] = [];
@@ -236,12 +236,12 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             }
 
             switch (LowSecurityHasher.verify(requestBody.password, race.hash)) {
-                case 1:
-                    response.writeHead(401).end();
-                    return;
-                case 2:
-                    response.writeHead(429).end();
-                    return;
+            case 1:
+                response.writeHead(401).end();
+                return;
+            case 2:
+                response.writeHead(429).end();
+                return;
             }
 
             const name = requestBody.name;

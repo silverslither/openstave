@@ -2,7 +2,7 @@ export type Frame = {
     data: Buffer;
     count: number;
     ram: Buffer;
-}
+};
 
 export type PlayerEvent =
     | { code: "START"; data: number }

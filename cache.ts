@@ -11,7 +11,7 @@ type CacheEntry = {
     qSize: number;
     lastUsed: number;
     data: unknown;
-}
+};
 
 const cache = new Map<string, CacheEntry>();
 const keys: string[] = [];

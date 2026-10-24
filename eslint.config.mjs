@@ -1,5 +1,6 @@
 import globals from "globals";
 import js from "@eslint/js";
+import stylistic from "@stylistic/eslint-plugin";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
 import tseslint from "typescript-eslint";
 
@@ -13,25 +14,25 @@ const unusedVarsOptions = {
 };
 
 const rules = {
-    indent: ["error", 4, {
-        SwitchCase: 1,
-    }],
-    quotes: ["error", "double"],
-    semi: ["error", "always"],
+    "sort-imports": "off",
     "prefer-template": ["error"],
     "prefer-const": ["error"],
-    "no-trailing-spaces": ["error"],
-    "no-multi-spaces": ["error"],
-    "object-curly-spacing": ["error", "always"],
-    "template-curly-spacing": ["error", "never"],
-    "arrow-parens": ["error", "as-needed", {
-        "requireForBlockBody": true,
-    }],
-    "comma-dangle": ["error", "always-multiline"],
     "no-shadow": ["warn", {
         "builtinGlobals": true,
     }],
-    "sort-imports": "off",
+    "@stylistic/indent": ["error", 4, {
+        SwitchCase: 0,
+    }],
+    "@stylistic/quotes": ["error", "double"],
+    "@stylistic/semi": ["error", "always"],
+    "@stylistic/no-trailing-spaces": ["error"],
+    "@stylistic/no-multi-spaces": ["error"],
+    "@stylistic/object-curly-spacing": ["error", "always"],
+    "@stylistic/template-curly-spacing": ["error", "never"],
+    "@stylistic/arrow-parens": ["error", "as-needed", {
+        "requireForBlockBody": true,
+    }],
+    "@stylistic/comma-dangle": ["error", "always-multiline"],
 };
 
 export default defineConfig([
@@ -60,6 +61,7 @@ export default defineConfig([
             "sort-imports": "off",
         },
         plugins: {
+            "@stylistic": stylistic,
             "simple-import-sort": simpleImportSort,
         },
     },
@@ -80,6 +82,7 @@ export default defineConfig([
             "sort-imports": "off",
         },
         plugins: {
+            "@stylistic": stylistic,
             "simple-import-sort": simpleImportSort,
         },
     },

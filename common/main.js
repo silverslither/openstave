@@ -1,11 +1,12 @@
 import { MultiEncoder, RawAudioEncoder, VP9Encoder } from "/common/encoder.js";
+import { LeaderboardCanvas } from "/common/leaderboard.js";
+import { screenshot } from "/common/renderer_2d.js";
 
-let LeaderboardCanvas, PlayerCanvas, renderer_init, screenshot;
+let PlayerCanvas, renderer_init, LEADERBOARD_COLUMNS, FRAME_TIME_MS;
 let Mixer, mixer_init;
 
 const FRAME_BUFFER = 120;
-const FRAME_TIME_MS = 655171 / 39375;
-const REREQUEST_INTERVAL_MS = 0.5 * FRAME_BUFFER * FRAME_TIME_MS;
+const REREQUEST_INTERVAL_MS = 1000;
 let lastFrameMs = 0;
 
 let mixer;
@@ -27,7 +28,7 @@ addEventListener("DOMContentLoaded", setup);
 const controls = {};
 async function setup() {
     const renderer_path = window.__game === "smb3" ? "/smb3/renderer.js" : "/common/smb1_smb2j_renderer.js";
-    ({ LeaderboardCanvas, PlayerCanvas, renderer_init, screenshot } = await import(renderer_path));
+    ({ PlayerCanvas, renderer_init, LEADERBOARD_COLUMNS, FRAME_TIME_MS } = await import(renderer_path));
     if (window.__game !== "smb3")
         ({ Mixer, mixer_init } = await import("/common/smb1_smb2j_mixer.js"));
 
@@ -117,7 +118,7 @@ async function setup() {
     await renderer_init(window.__game);
     canvases[0] = new PlayerCanvas(0, players);
     canvases[1] = new PlayerCanvas(1, players);
-    canvases[2] = new LeaderboardCanvas(players, canvases[0]);
+    canvases[2] = new LeaderboardCanvas(players, canvases[0], FRAME_TIME_MS, LEADERBOARD_COLUMNS);
     canvases[1].canvas.style.display = "none";
 
     controls.play.addEventListener("click", () => {

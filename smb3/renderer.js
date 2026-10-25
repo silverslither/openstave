@@ -1,6 +1,9 @@
-import { COMPONENT_NES_COLOURS, COMPONENT_OUTLINE_COLOURS, NES_COLOURS, OUTLINE_COLOURS } from "/common/colours.js";
+import { COMPONENT_NES_COLOURS, COMPONENT_OUTLINE_COLOURS, NES_COLOURS } from "../common/colours.js";
+import { formatTime, getPlacements, DEFAULT_COLUMNS } from "../common/leaderboard.js";
+import { Outline, RendererCanvas } from "../common/renderer_2d.js";
 
-const FRAME_TIME_MS = 655171 / 39375;
+export const FRAME_TIME_MS = 655171 / 39375;
+
 const A000_PRG_BANK_LOOKUP = [11, 15, 21, 16, 17, 19, 18, 18, 18, 20, 23, 19, 17, 19, 13, 26, 26, 26, 9];
 
 let TILES;
@@ -10,6 +13,8 @@ const MAPS = ["A13a7fa", "A13aa40", "A13ac58", "A13ad78", "A13ad98", "A13ade7", 
 
 const maps = {};
 const text = {};
+
+export const LEADERBOARD_COLUMNS = DEFAULT_COLUMNS;
 
 export async function renderer_init() {
     const promises = [];
@@ -51,64 +56,30 @@ export async function renderer_init() {
     await Promise.all(promises);
 }
 
-class Outline {
-    constructor() {
-        this.selection = new Set();
-        this.outline = new Set();
-    }
+export class PlayerCanvas extends RendererCanvas {
+    constructor(id, players, following = 0) {
+        super(text);
 
-    reset() {
-        this.selection.clear();
-        this.outline.clear();
-    }
+        this.alt = "";
+        this.id = id;
+        this.players = players;
+        this.following = following;
+        this.count = -1;
 
-    add(x, y) {
-        this.selection.add(this.pair(x, y));
-        this.outline.add(this.pair(x + 1, y));
-        this.outline.add(this.pair(x - 1, y));
-        this.outline.add(this.pair(x, y + 1));
-        this.outline.add(this.pair(x, y - 1));
-    }
+        this.canvas = document.createElement("canvas");
+        this.canvas.id = `player${id}`;
 
-    iterator() {
-        const pixels = [];
-        for (const pair of this.outline) {
-            if (this.selection.has(pair))
-                continue;
-            const x = pair >>> 16;
-            const y = pair & 0xffff;
-            pixels.push([x, y]);
-        }
-        return pixels;
-    }
+        if (this.id === 0)
+            window.addEventListener("resize", () => this.resize().render(this.count));
+        this.resize(192);
 
-    pair(x, y) {
-        return (x << 16) + y;
-    }
-}
+        this.canvas.addEventListener("mousedown", event => this.onclick(event));
+        this.canvas.addEventListener("contextmenu", event => event.preventDefault(), false);
 
-class RendererCanvas {
-    createBuffer(colour_components) {
-        const c = new Uint32Array(new Uint8Array([...colour_components, 255]).buffer);
+        document.getElementById(id === 0 ? "screen" : "renderer").append(this.canvas);
 
-        if (this.buffer?.width === this.canvas.width && this.buffer?.height === this.canvas.height) {
-            new Uint32Array(this.buffer.data.buffer).fill(c);
-            return;
-        }
-
-        this.buffer = new ImageData(
-            new Uint8ClampedArray(new Uint32Array(this.canvas.width * this.canvas.height).fill(c).buffer),
-            this.canvas.width,
-            this.canvas.height,
-        );
-    }
-
-    toBuffer() {
-        this.buffer = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
-    }
-
-    fromBuffer() {
-        this.context.putImageData(this.buffer, 0, 0);
+        this.context = this.canvas.getContext("2d", { alpha: false, willReadFrequently: true });
+        this.outline = new Outline();
     }
 
     getCHRTile(banks, tile, bg = false) {
@@ -157,68 +128,10 @@ class RendererCanvas {
         }
     }
 
-    drawOutline(colour_id, alpha) {
-        if (this.outline == null)
-            return;
-        for (const [x, y] of this.outline.iterator())
-            this.drawPixelToBuffer(x, y, colour_id, alpha);
-    }
-
     drawPixelToBuffer(x, y, colour_id, alpha) {
-        if (x < 0 || x >= this.buffer.width || y < 0 || y >= this.buffer.height || this.outline?.selection?.has(this.outline?.pair(x, y)) || this.mask?.has(this.outline?.pair(x, y)))
+        if (this.outline?.selection?.has(this.outline?.pair(x, y)) || this.mask?.has(this.outline?.pair(x, y)))
             return;
-        this.outline?.add(x, y);
-
-        const invAlpha = 1.0 - alpha;
-        const colour = typeof colour_id === "number" ? COMPONENT_NES_COLOURS[colour_id] : colour_id;
-        const i = 4 * (y * this.buffer.width + x);
-        if (alpha === 1.0) {
-            for (let j = 0; j < 3; j++)
-                this.buffer.data[i + j] = colour[j];
-        } else {
-            for (let j = 0; j < 3; j++)
-                this.buffer.data[i + j] = colour[j] * alpha + this.buffer.data[i + j] * invAlpha + 0.5;
-        }
-    }
-
-    drawText(x, y, str, align = "left") {
-        str = str.toUpperCase().normalize("NFKD").replace(/:/g, ";");
-
-        this.context.save();
-        this.context.translate({ left: 0, right: -8, center: -4 }[align] * str.length, 0);
-
-        for (let i = 0; i < str.length; i++)
-            if (Object.hasOwn(text, str[i]))
-                this.context.drawImage(text[str[i]], x + 8 * i, y);
-
-        this.context.restore();
-    }
-}
-
-export class PlayerCanvas extends RendererCanvas {
-    constructor(id, players, following = 0) {
-        super();
-
-        this.alt = "";
-        this.id = id;
-        this.players = players;
-        this.following = following;
-        this.count = -1;
-
-        this.canvas = document.createElement("canvas");
-        this.canvas.id = `player${id}`;
-
-        if (this.id === 0)
-            window.addEventListener("resize", () => this.resize().render(this.count));
-        this.resize(192);
-
-        this.canvas.addEventListener("mousedown", event => this.onclick(event));
-        this.canvas.addEventListener("contextmenu", event => event.preventDefault(), false);
-
-        document.getElementById(id === 0 ? "screen" : "renderer").append(this.canvas);
-
-        this.context = this.canvas.getContext("2d", { alpha: false, willReadFrequently: true });
-        this.outline = new Outline();
+        super.drawPixelToBuffer(x, y, colour_id, alpha);
     }
 
     onclick(event) {
@@ -522,196 +435,4 @@ export class PlayerCanvas extends RendererCanvas {
             this.drawText(this.canvas.width - 8, this.canvas.height - 16, this.alt, "right");
         }
     }
-}
-
-function formatTime(ms) {
-    ms = Math.round(ms);
-    const s = Math.floor(ms / 1000);
-    const m = Math.floor(s / 60);
-    let t = "";
-    t += `${(m % 60).toString().padStart(2, "0")}:`;
-    t += `${(s % 60).toString().padStart(2, "0")}.`;
-    t += (ms % 1000).toString().padStart(3, "0");
-    return t;
-}
-
-export class LeaderboardCanvas extends RendererCanvas {
-    constructor(players, playerCanvas) {
-        super();
-
-        this.players = players;
-        this.playerCanvas = playerCanvas;
-        this.count = 0;
-
-        this.canvas = document.createElement("canvas");
-        this.canvas.id = "leaderboard";
-
-        this.canvas.width = 328;
-        window.addEventListener("resize", () => this.resize().render(this.count));
-        this.resize(192);
-
-        this.canvas.addEventListener("mousedown", event => this.onclick(event), true);
-        this.canvas.addEventListener("contextmenu", event => event.preventDefault(), false);
-
-        document.getElementById("screen").append(this.canvas);
-        this.context = this.canvas.getContext("2d");
-    }
-
-    onclick(event) {
-        const y = (event.clientY - this.canvas.getBoundingClientRect().top) / this.scale - 16;
-        if (event.button === 1 || event.clientX < 8 || y < 0 || y >= 8 * Object.keys(this.players).length) {
-            this.playerCanvas.onclick(event);
-            return;
-        }
-
-        if (event.button === 2) {
-            this.playerCanvas.following = Math.floor(y / 8);
-        } else {
-            const placements = getPlacements(this.players, this.count).flat();
-            this.playerCanvas.following = placements[Math.floor(y / 8)][0];
-        }
-
-        this.playerCanvas.render(this.playerCanvas.count);
-    }
-
-    resize(height) {
-        this.canvas.height = height ?? this.canvas.height;
-        this.scale = Math.max(Math.min(Math.floor(innerHeight / this.canvas.height), Math.round(innerWidth / 240)), 1);
-        this.canvas.style.width = `${0.5 * this.canvas.width * this.scale}px`;
-        this.canvas.style.height = `${this.canvas.height * this.scale}px`;
-        return this;
-    }
-
-    render(count) {
-        this.count = count;
-
-        const lines = this.getLines(this.count);
-        const outlineOrder = Object.keys(this.players);
-
-        this.context.globalAlpha = 0.7;
-        this.context.fillStyle = "#000000";
-        this.context.clearRect(8, 4, 8 * 40, 16 + 8 * lines.length);
-        this.context.fillRect(8, 4, 8 * 40, 16 + 8 * lines.length);
-        this.context.globalAlpha = 1.0;
-
-        let title = location.pathname.slice(1, -8);
-        if (title[title.length - 1] === "-" || title[title.length - 1] === "_")
-            title = title.slice(0, -1);
-        title = title.slice(0, 42);
-        this.drawText(16, 8, title);
-
-        for (let i = 0; i < lines.length; i++) {
-            const y = 16 + 8 * i;
-            const line = lines[i];
-            const time = `${line[2]}${typeof line[3] === "string" ? line[3] : formatTime(FRAME_TIME_MS * line[3])}`;
-
-            this.drawText(8 * 2, y, line[0]);
-            this.drawText(8 * 5, y, line[1]);
-            this.drawText(8 * (40 - time.length), y, time);
-        }
-
-        for (let i = 0; i < lines.length; i++) {
-            this.context.fillStyle = "#a0a0a0";
-            this.context.fillRect(8 * 4, 16 + 8 * i, 7, 7);
-            this.context.fillStyle = OUTLINE_COLOURS[outlineOrder.indexOf(lines[i][1])];
-            this.context.fillRect(8 * 4 + 2, 17 + 8 * i, 3, 5);
-        }
-    }
-
-    getLines(count) {
-        if (Object.keys(this.players).length === 0)
-            return [];
-
-        const lines = [];
-        const [nodnf, dnf] = getPlacements(this.players, count);
-
-        let comparison = nodnf[0]?.[1];
-        let cumulative = 0;
-        for (const [name, splits] of nodnf) {
-            const line = [name];
-
-            if (this.players[name].time <= count) {
-                line.push("", this.players[name].time);
-            } else if (splits.length === comparison.length) {
-                cumulative += splits.at(-1) - comparison.at(-1);
-                line.push("+", cumulative);
-            } else {
-                cumulative += Math.max(count - comparison.at(-1), splits.at(-1) - comparison[splits.length - 1]);
-                line.push("+", cumulative);
-            }
-
-            comparison = splits;
-            lines.push(line);
-        }
-
-        for (const [name] of dnf) {
-            const line = [];
-            line.push(name, "", "DNF");
-            lines.push(line);
-        }
-
-        let i = 1;
-        let _i = 1;
-        lines[0].unshift(i.toString());
-        for (let j = 1; j < lines.length; j++) {
-            _i += 1;
-            if (lines[j - 1].at(-1) !== lines[j].at(-1))
-                i = _i;
-            lines[j].unshift(i.toString());
-        }
-
-        return lines;
-    }
-}
-
-function getPlacements(players, count) {
-    const leaderboard = Object.entries(players).map((v) => {
-        const splits = v[1].splits.slice(0, v[1].splits.findLastIndex(w => w != null && w <= count) + 1);
-        if (v[1].time <= count)
-            splits.push(v[1].time);
-        splits.unshift(0);
-        return [v[0], splits];
-    }).sort((a, b) => b[1].length - a[1].length || a[1].at(-1) - b[1].at(-1));
-
-    const nodnf = [], dnf = [];
-    for (const entry of leaderboard) {
-        if (players[entry[0]].dnf <= count)
-            dnf.push([entry[0], players[entry[0]].dnf]);
-        else
-            nodnf.push(entry);
-    }
-
-    return [nodnf, dnf.sort((a, b) => b[1] - a[1])];
-}
-
-export function screenshot(pCanvas, lCanvas) {
-    const pBuffer = pCanvas.context.getImageData(0, 0, pCanvas.canvas.width, pCanvas.canvas.height).data;
-    const lBuffer = lCanvas.context.getImageData(0, 0, lCanvas.canvas.width, lCanvas.canvas.height).data;
-    const oBuffer = new Uint8ClampedArray(4 * pBuffer.length);
-
-    let oPixel = 0;
-    for (let y = 0; y < 2 * pCanvas.canvas.height; y++) {
-        const _y = 4 * (y >>> 1);
-        const pOffset = _y * pCanvas.canvas.width;
-        const lOffset = _y * lCanvas.canvas.width;
-
-        for (let x = 0; x < 2 * pCanvas.canvas.width; x++, oPixel += 4) {
-            const pPixel = pOffset + 4 * (x >>> 1);
-            const lPixel = lOffset + 4 * x;
-
-            if (x < lCanvas.canvas.width && lBuffer[lPixel + 3] !== 0) {
-                const alpha = 0.00392156862745098 * lBuffer[lPixel + 3];
-                oBuffer[oPixel + 0] = alpha * lBuffer[lPixel + 0] + (1.0 - alpha) * pBuffer[pPixel + 0];
-                oBuffer[oPixel + 1] = alpha * lBuffer[lPixel + 1] + (1.0 - alpha) * pBuffer[pPixel + 1];
-                oBuffer[oPixel + 2] = alpha * lBuffer[lPixel + 2] + (1.0 - alpha) * pBuffer[pPixel + 2];
-            } else {
-                oBuffer[oPixel + 0] = pBuffer[pPixel + 0];
-                oBuffer[oPixel + 1] = pBuffer[pPixel + 1];
-                oBuffer[oPixel + 2] = pBuffer[pPixel + 2];
-            }
-            oBuffer[oPixel + 3] = 255;
-        }
-    }
-
-    return new ImageData(oBuffer, 2 * pCanvas.canvas.width, 2 * pCanvas.canvas.height);
 }

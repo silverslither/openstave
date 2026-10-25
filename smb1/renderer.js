@@ -1,6 +1,6 @@
-import { COMPONENT_NES_COLOURS, COMPONENT_OUTLINE_COLOURS, NES_COLOURS } from "./colours.js";
-import { formatTime, getPlacements, DEFAULT_COLUMNS } from "./leaderboard.js";
-import { Outline, RendererCanvas } from "./renderer_2d.js";
+import { Outline, RendererCanvas } from "../common/2d_renderer.js";
+import { COMPONENT_NES_COLOURS, COMPONENT_OUTLINE_COLOURS, NES_COLOURS } from "../common/colours.js";
+import { DEFAULT_COLUMNS,formatTime, getPlacements } from "../common/leaderboard.js";
 
 export const FRAME_TIME_MS = 655171 / 39375;
 
@@ -13,7 +13,7 @@ const SMB2J_MAPS = ["00", "01", "02", "03", "04", "05", "06", "07", "20", "21", 
 const maps = {};
 const text = {};
 
-let hide_sprite_zero = false;
+let hideSpriteZero = false;
 
 export const LEADERBOARD_COLUMNS = [
     ...DEFAULT_COLUMNS,
@@ -29,9 +29,9 @@ export const LEADERBOARD_COLUMNS = [
     },
 ];
 
-export async function renderer_init(game) {
+export async function rendererInit(game) {
     if (game === "smb1")
-        hide_sprite_zero = true;
+        hideSpriteZero = true;
 
     const promises = [];
 
@@ -125,6 +125,11 @@ export class PlayerCanvas extends RendererCanvas {
                     this.drawPixelToBuffer(x + i, y + j + 1, palette[0x10 + (p << 2) + tile[o]], alpha);
             }
         }
+    }
+
+    drawPixelToBuffer(x, y, colourId, alpha) {
+        const colour = typeof colourId === "number" ? COMPONENT_NES_COLOURS[colourId] : colourId;
+        super.drawPixelToBuffer(x, y, colour, alpha);
     }
 
     getFollowing(count) {
@@ -223,8 +228,8 @@ export class PlayerCanvas extends RendererCanvas {
             return false;
         }
 
-        const q_gAreaPage = (gPlayerState === 7 ? frame[32 + 256 + 5] : gAreaPage) + (gScreenPixel === 255);
-        const gLeftEdge = (q_gAreaPage << 8) + gAreaPixel - gScreenPixel;
+        const qGAreaPage = (gPlayerState === 7 ? frame[32 + 256 + 5] : gAreaPage) + (gScreenPixel === 255);
+        const gLeftEdge = (qGAreaPage << 8) + gAreaPixel - gScreenPixel;
         const gXOffset = this.xOffset - gLeftEdge;
 
         const outlineOrder = Object.keys(this.players);
@@ -266,8 +271,8 @@ export class PlayerCanvas extends RendererCanvas {
             if (playerState === 0 || areaId !== gAreaId || worldNumber !== gWorldNumber || stageNumber !== gStageNumber)
                 continue;
 
-            const q_areaPage = (playerState === 7 ? frame[32 + 256 + 5] : areaPage) + (screenPixel === 255);
-            const leftEdge = (q_areaPage << 8) + areaPixel - screenPixel;
+            const qAreaPage = (playerState === 7 ? frame[32 + 256 + 5] : areaPage) + (screenPixel === 255);
+            const leftEdge = (qAreaPage << 8) + areaPixel - screenPixel;
             const xOffset = gXOffset + leftEdge;
 
             const alpha = name === following ? 1.0 : 0.6;
@@ -278,7 +283,7 @@ export class PlayerCanvas extends RendererCanvas {
                 const attributes = sprites[i + 2];
                 const x = sprites[i + 3];
 
-                if ((!hide_sprite_zero || tile !== 0xff) && y < 240) {
+                if ((!hideSpriteZero || tile !== 0xff) && y < 240) {
                     if ((attributes >>> 5) & 1)
                         this.renderFGTileToBuffer(xOffset + x, y, tile, attributes, palette, alpha);
                     else

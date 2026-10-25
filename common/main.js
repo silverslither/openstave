@@ -1,9 +1,9 @@
+import { screenshot } from "/common/2d_renderer.js";
 import { MultiEncoder, RawAudioEncoder, VP9Encoder } from "/common/encoder.js";
 import { LeaderboardCanvas } from "/common/leaderboard.js";
-import { screenshot } from "/common/renderer_2d.js";
 
-let PlayerCanvas, renderer_init, LEADERBOARD_COLUMNS, FRAME_TIME_MS;
-let Mixer, mixer_init;
+let PlayerCanvas, rendererInit, LEADERBOARD_COLUMNS, FRAME_TIME_MS;
+let Mixer, mixerInit;
 
 const FRAME_BUFFER = 120;
 const REREQUEST_INTERVAL_MS = 1000;
@@ -27,10 +27,10 @@ addEventListener("DOMContentLoaded", setup);
 
 const controls = {};
 async function setup() {
-    const renderer_path = window.__game === "smb3" ? "/smb3/renderer.js" : "/common/smb1_smb2j_renderer.js";
-    ({ PlayerCanvas, renderer_init, LEADERBOARD_COLUMNS, FRAME_TIME_MS } = await import(renderer_path));
+    const rendererPath = window.__game === "smb3" ? "/smb3/renderer.js" : "/smb1/renderer.js";
+    ({ PlayerCanvas, rendererInit, LEADERBOARD_COLUMNS, FRAME_TIME_MS } = await import(rendererPath));
     if (window.__game !== "smb3")
-        ({ Mixer, mixer_init } = await import("/common/smb1_smb2j_mixer.js"));
+        ({ Mixer, mixerInit } = await import("/smb1/mixer.js"));
 
     let componentsInitialized = 0;
 
@@ -102,7 +102,7 @@ async function setup() {
     })();
 
     if (window.__game !== "smb3") {
-        mixer_init().then(async () => {
+        mixerInit().then(async () => {
             mixer = new Mixer(players, 4800);
             await mixer.bufferedPlayer.initialized;
             mixer.bufferedPlayer.setVolume(0.8);
@@ -115,7 +115,7 @@ async function setup() {
         componentsInitialized++;
     }
 
-    await renderer_init(window.__game);
+    await rendererInit(window.__game);
     canvases[0] = new PlayerCanvas(0, players);
     canvases[1] = new PlayerCanvas(1, players);
     canvases[2] = new LeaderboardCanvas(players, canvases[0], FRAME_TIME_MS, LEADERBOARD_COLUMNS);

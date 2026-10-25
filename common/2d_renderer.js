@@ -1,5 +1,3 @@
-import { COMPONENT_NES_COLOURS } from "./colours.js";
-
 export class Outline {
     constructor() {
         this.selection = new Set();
@@ -41,8 +39,8 @@ export class RendererCanvas {
         this.text = text;
     }
 
-    createBuffer(colour_components) {
-        const c = new Uint32Array(new Uint8Array([...colour_components, 255]).buffer);
+    createBuffer(colourComponents) {
+        const c = new Uint32Array(new Uint8Array([...colourComponents, 255]).buffer);
 
         if (this.buffer?.width === this.canvas.width && this.buffer?.height === this.canvas.height) {
             new Uint32Array(this.buffer.data.buffer).fill(c);
@@ -64,20 +62,19 @@ export class RendererCanvas {
         this.context.putImageData(this.buffer, 0, 0);
     }
 
-    drawOutline(colour_id, alpha) {
+    drawOutline(colourId, alpha) {
         if (this.outline == null)
             return;
         for (const [x, y] of this.outline.iterator())
-            this.drawPixelToBuffer(x, y, colour_id, alpha);
+            this.drawPixelToBuffer(x, y, colourId, alpha);
     }
 
-    drawPixelToBuffer(x, y, colour_id, alpha) {
+    drawPixelToBuffer(x, y, colour, alpha) {
         if (x < 0 || x >= this.buffer.width || y < 0 || y >= this.buffer.height)
             return;
         this.outline?.add(x, y);
 
         const invAlpha = 1.0 - alpha;
-        const colour = typeof colour_id === "number" ? COMPONENT_NES_COLOURS[colour_id] : colour_id;
         const i = 4 * (y * this.buffer.width + x);
         if (alpha === 1.0) {
             for (let j = 0; j < 3; j++)

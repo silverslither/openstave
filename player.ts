@@ -12,7 +12,7 @@ export default class Player {
     dnf: number;
     splits: number[];
     buffers: Buffer[];
-    total_length: number;
+    totalLength: number;
 
     get finished(): boolean {
         return this.end === this.end || this.dnf === this.dnf;
@@ -29,7 +29,7 @@ export default class Player {
         this.dnf = NaN;
         this.splits = [];
         this.buffers = [];
-        this.total_length = 0;
+        this.totalLength = 0;
     }
 
     static from(obj: Record<string, unknown>) {
@@ -47,7 +47,7 @@ export default class Player {
         player.dnf = obj.dnf as number ?? NaN;
         player.splits = (obj.splits as number[]).map(v => v ?? NaN);
         player.buffers = (obj.buffers as string[])?.map(v => Buffer.from(v, "base64"));
-        player.total_length = obj.total_length as number;
+        player.totalLength = obj.totalLength as number;
         return player;
     }
 
@@ -55,14 +55,14 @@ export default class Player {
         if (this.finished || chunk.length === 0)
             return;
 
-        if (chunk.length > MAX_PLAYER_BYTES - this.total_length) {
+        if (chunk.length > MAX_PLAYER_BYTES - this.totalLength) {
             this.eventHandler({ code: "DNF", data: null });
             this.buffers = [];
             return;
         }
 
         const buffer = Buffer.concat([...this.buffers, chunk]);
-        this.total_length += chunk.length;
+        this.totalLength += chunk.length;
         const { buffer: remaining, events } = bufferHandler(buffer, this.frames, this.game);
 
         this.buffers = remaining.length === 0 ? [] : [remaining];
@@ -109,7 +109,7 @@ export default class Player {
             this.dnf -= this.start;
             this.splits = this.splits.map(v => v - this.start);
             this.buffers = [];
-            this.total_length = 0;
+            this.totalLength = 0;
             this.start = 0;
         }
 

@@ -1,6 +1,6 @@
+import { Outline, RendererCanvas } from "../common/2d_renderer.js";
 import { COMPONENT_NES_COLOURS, COMPONENT_OUTLINE_COLOURS, NES_COLOURS } from "../common/colours.js";
-import { formatTime, getPlacements, DEFAULT_COLUMNS } from "../common/leaderboard.js";
-import { Outline, RendererCanvas } from "../common/renderer_2d.js";
+import { DEFAULT_COLUMNS,formatTime, getPlacements } from "../common/leaderboard.js";
 
 export const FRAME_TIME_MS = 655171 / 39375;
 
@@ -16,7 +16,7 @@ const text = {};
 
 export const LEADERBOARD_COLUMNS = DEFAULT_COLUMNS;
 
-export async function renderer_init() {
+export async function rendererInit() {
     const promises = [];
 
     TILES = (await import("/smb3/tiles.js")).default.split(" ");
@@ -128,10 +128,12 @@ export class PlayerCanvas extends RendererCanvas {
         }
     }
 
-    drawPixelToBuffer(x, y, colour_id, alpha) {
+    drawPixelToBuffer(x, y, colourId, alpha) {
         if (this.outline?.selection?.has(this.outline?.pair(x, y)) || this.mask?.has(this.outline?.pair(x, y)))
             return;
-        super.drawPixelToBuffer(x, y, colour_id, alpha);
+
+        const colour = typeof colourId === "number" ? COMPONENT_NES_COLOURS[colourId] : colourId;
+        super.drawPixelToBuffer(x, y, colour, alpha);
     }
 
     onclick(event) {

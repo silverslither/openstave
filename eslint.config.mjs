@@ -14,7 +14,10 @@ const unusedVarsOptions = {
 };
 
 const rules = {
-    "sort-imports": "off",
+    "camelcase": ["error", {
+        allow: ["^zlib_"],
+    }],
+    "sort-imports": ["off"],
     "prefer-template": ["error"],
     "prefer-const": ["error"],
     "no-shadow": ["warn", {
@@ -55,10 +58,10 @@ export default defineConfig([
         },
         rules: {
             ...rules,
-            "simple-import-sort/imports": "error",
-            "simple-import-sort/exports": "error",
+            "simple-import-sort/imports": ["error"],
+            "simple-import-sort/exports": ["error"],
             "no-unused-vars": ["error", unusedVarsOptions],
-            "sort-imports": "off",
+            "sort-imports": ["off"],
         },
         plugins: {
             "@stylistic": stylistic,
@@ -75,11 +78,11 @@ export default defineConfig([
         },
         rules: {
             ...rules,
-            "simple-import-sort/imports": "error",
-            "simple-import-sort/exports": "error",
-            "no-unused-vars": "off",
+            "simple-import-sort/imports": ["error"],
+            "simple-import-sort/exports": ["error"],
+            "no-unused-vars": ["off"],
             "@typescript-eslint/no-unused-vars": ["error", unusedVarsOptions],
-            "sort-imports": "off",
+            "sort-imports": ["off"],
         },
         plugins: {
             "@stylistic": stylistic,

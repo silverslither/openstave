@@ -83,8 +83,8 @@ export class Race implements AbstractRace {
             return;
         if (!supportedGames.has(game))
             return;
-        const timeout_ms = TIMEOUTS[game] ?? TIMEOUTS.default;
-        this.timeout = Date.now() + timeout_ms;
+        const timeoutMs = TIMEOUTS[game] ?? TIMEOUTS.default;
+        this.timeout = Date.now() + timeoutMs;
 
         for (let i = 0; i < players.length; i++) {
             const player = players[i];

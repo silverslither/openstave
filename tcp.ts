@@ -57,7 +57,7 @@ export const server = net.createServer((client) => {
         const response = Buffer.alloc(5);
         if (player != null) {
             clearTimeout(authTimeout);
-            response.writeUint32LE(player.total_length, 1);
+            response.writeUint32LE(player.totalLength, 1);
             client.write(response);
 
             username = _username;

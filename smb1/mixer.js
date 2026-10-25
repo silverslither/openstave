@@ -7,7 +7,7 @@ const SFX = ["sq1_01", "sq1_02", "sq1_04", "sq1_08", "sq1_10", "sq1_20", "sq1_40
 
 const sfx = {};
 
-export async function mixer_init() {
+export async function mixerInit() {
     const promises = [];
 
     const context = new AudioContext({
@@ -16,7 +16,7 @@ export async function mixer_init() {
     });
     for (const i of SFX) {
         promises.push(
-            fetch(`/common/smb1_smb2j_sfx/${i}.opus`)
+            fetch(`/smb1/sfx/${i}.opus`)
                 .then(response => response.arrayBuffer())
                 .then(buffer => context.decodeAudioData(buffer))
                 .then(buffer => sfx[i] = buffer.getChannelData(0)),
@@ -41,8 +41,8 @@ export class Mixer {
 
         let j = 0;
         for (let _ = 0, f = count; _ < length; _++, f++) {
-            const ss_now = SS(count);
-            const ss_fwd = SS(count + 1) - ss_now;
+            const ssNow = SS(count);
+            const ssFwd = SS(count + 1) - ssNow;
 
             const frame = this.players[following].frames[count];
             if (frame == null)
@@ -111,8 +111,8 @@ export class Mixer {
                         if (channel == null)
                             continue;
                         const [id, offset] = channel;
-                        const start = ss_now - SS(count - offset);
-                        const effect = sfx[id]?.subarray(start, start + ss_fwd);
+                        const start = ssNow - SS(count - offset);
+                        const effect = sfx[id]?.subarray(start, start + ssFwd);
                         if (effect == null)
                             continue;
                         const _i = Math.min(effect.length, this.buffer.length - j);
@@ -124,7 +124,7 @@ export class Mixer {
                 }
             }
 
-            j += ss_fwd;
+            j += ssFwd;
             count++;
         }
     }

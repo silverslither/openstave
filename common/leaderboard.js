@@ -1,5 +1,5 @@
+import { RendererCanvas } from "./2d_renderer.js";
 import { OUTLINE_COLOURS } from "./colours.js";
-import { RendererCanvas } from "./renderer_2d.js";
 
 export function formatTime(ms) {
     ms = Math.round(ms);

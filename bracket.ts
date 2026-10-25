@@ -8,7 +8,7 @@ export type Type = typeof Type[keyof typeof Type];
 
 type PlayerReference = {
     round: number;
-    placement_range: [number, number];
+    placementRange: [number, number];
 };
 
 type ClampedAffineTransform = {
@@ -22,7 +22,7 @@ export type Round = {
     type: Type;
     id: string;
     expected: number;
-    points_transform: ClampedAffineTransform;
+    pointsTransform: ClampedAffineTransform;
 } & ({
     finished: true;
     players: string[];
@@ -90,7 +90,7 @@ export function reduce(seeding: string[], rounds: Round[]) {
                 if (typeof player === "string")
                     return player;
 
-                const [minimum, maximum] = player.placement_range;
+                const [minimum, maximum] = player.placementRange;
                 if (player.round === -1)
                     return seeding.slice(minimum, maximum);
 
@@ -125,7 +125,7 @@ export function points(rounds: Round[]): Record<string, number> {
         if (!round.finished)
             continue;
 
-        const { multiplier, adder, minimum, maximum } = round.points_transform;
+        const { multiplier, adder, minimum, maximum } = round.pointsTransform;
 
         for (let i = 0; i < round.players.length; i++) {
             const player = round.players[i];
@@ -156,10 +156,10 @@ function generateRoundRobin(n: number, c: number = 2 * Math.ceil(Math.log2(n))):
             finished: false,
             expected: n,
             players: [
-                { round: -1, placement_range: [0, n] },
+                { round: -1, placementRange: [0, n] },
             ],
             placements: [],
-            points_transform: affineTransform(n),
+            pointsTransform: affineTransform(n),
         });
     }
 
@@ -167,11 +167,11 @@ function generateRoundRobin(n: number, c: number = 2 * Math.ceil(Math.log2(n))):
 }
 
 function generateSingleElimination(n: number, rounds: Round[] = []): Round[] {
-    let players: (string | PlayerReference)[] = [{ round: -1, placement_range: [0, n] }];
+    let players: (string | PlayerReference)[] = [{ round: -1, placementRange: [0, n] }];
 
     if (rounds.length > 0) {
         const previous = rounds.at(-1)!;
-        players = [{ round: rounds.length - 1, placement_range: [0, Math.ceil(0.5 * previous.expected)] }];
+        players = [{ round: rounds.length - 1, placementRange: [0, Math.ceil(0.5 * previous.expected)] }];
     }
 
     while (n > 2) {
@@ -185,10 +185,10 @@ function generateSingleElimination(n: number, rounds: Round[] = []): Round[] {
             expected: n,
             players,
             placements: [],
-            points_transform: next <= 2 ? affineTransform(n) : stepTransform(n, 2, 1),
+            pointsTransform: next <= 2 ? affineTransform(n) : stepTransform(n, 2, 1),
         });
 
-        players = [{ round: i, placement_range: [0, next] }];
+        players = [{ round: i, placementRange: [0, next] }];
         n = next;
     }
 
@@ -215,8 +215,8 @@ function generateDoubleElimination(w: number, l: number = 0, rounds: DoubleElimi
     let last = "L";
     let streak = 0;
     let prev: number | undefined;
-    let winners: (string | PlayerReference)[] = [{ round: -1, placement_range: [0, w] }];
-    let losers: (string | PlayerReference)[] = [{ round: -1, placement_range: [w, w + l] }];
+    let winners: (string | PlayerReference)[] = [{ round: -1, placementRange: [0, w] }];
+    let losers: (string | PlayerReference)[] = [{ round: -1, placementRange: [w, w + l] }];
 
     if (rounds.length > 0) {
         const node = rounds.at(-1)!;
@@ -243,15 +243,15 @@ function generateDoubleElimination(w: number, l: number = 0, rounds: DoubleElimi
         let result: Result = [1n << 127n, ""];
 
         if (w >= 3 && (prev == null || Math.max(prev, w) <= 2 * Math.min(prev, w) + 2)) {
-            const w_after = Math.ceil(0.5 * w);
-            const tail = recurse(w_after, l + w - w_after, "W", 1, w);
+            const wAfter = Math.ceil(0.5 * w);
+            const tail = recurse(wAfter, l + w - wAfter, "W", 1, w);
             const cost = tail[0] + (last === "W" ? 1n << 96n : 0n) + (1n << 64n);
             result = [cost, `W${tail[1]}`];
         }
 
         if (l >= 3 && (prev == null || Math.max(prev, l) <= 2 * Math.min(prev, l) + 2)) {
-            const l_after = Math.ceil(0.5 * l);
-            const tail = recurse(w, l_after, "L", last === "L" ? Math.min(streak + 1, 2) : 1, l);
+            const lAfter = Math.ceil(0.5 * l);
+            const tail = recurse(w, lAfter, "L", last === "L" ? Math.min(streak + 1, 2) : 1, l);
             const cost = tail[0] + (last === "L" && streak >= 2 ? 1n << 96n : 0n)
                 + (1n << 64n) + (BigInt(l) << 40n) + BigInt(l * l);
             if (cost < result[0])
@@ -275,16 +275,16 @@ function generateDoubleElimination(w: number, l: number = 0, rounds: DoubleElimi
                 expected: w,
                 players: winners,
                 placements: [],
-                points_transform: affineTransform(w, 0),
+                pointsTransform: affineTransform(w, 0),
             };
 
-            const w_after = Math.ceil(0.5 * w);
+            const wAfter = Math.ceil(0.5 * w);
 
-            losers = [...losers, { round: i, placement_range: [w_after, w] }];
-            winners = [{ round: i, placement_range: [0, w_after] }];
+            losers = [...losers, { round: i, placementRange: [wAfter, w] }];
+            winners = [{ round: i, placementRange: [0, wAfter] }];
 
-            l += w - w_after;
-            w = w_after;
+            l += w - wAfter;
+            w = wAfter;
             streak = 1;
             last = "W";
 
@@ -298,11 +298,11 @@ function generateDoubleElimination(w: number, l: number = 0, rounds: DoubleElimi
                 expected: l,
                 players: losers,
                 placements: [],
-                points_transform: affineTransform(l, 0),
+                pointsTransform: affineTransform(l, 0),
             };
 
             l = Math.ceil(0.5 * l);
-            losers = [{ round: i, placement_range: [0, l] }];
+            losers = [{ round: i, placementRange: [0, l] }];
             streak = last === "L" ? Math.min(streak + 1, 2) : 1;
             last = "L";
 
@@ -315,7 +315,7 @@ function generateDoubleElimination(w: number, l: number = 0, rounds: DoubleElimi
     for (let i = rounds.length - 1; i > 0; i--) {
         const round = rounds[i];
         const losers = round.id[0] === "L";
-        round.points_transform = stepTransform(
+        round.pointsTransform = stepTransform(
             round.expected,
             losers ? 1 : carry,
             losers ? 0 : -1,
@@ -323,7 +323,7 @@ function generateDoubleElimination(w: number, l: number = 0, rounds: DoubleElimi
         carry = losers ? carry + 1 : 0;
     }
 
-    rounds[0].points_transform = stepTransform(rounds[0].expected, carry + 2, 1);
+    rounds[0].pointsTransform = stepTransform(rounds[0].expected, carry + 2, 1);
 
     const players = [...winners, ...losers];
     const after = { w, l, streak, winners, losers };
@@ -336,7 +336,7 @@ function generateDoubleElimination(w: number, l: number = 0, rounds: DoubleElimi
             expected: 4,
             players,
             placements: [],
-            points_transform: affineTransform(4),
+            pointsTransform: affineTransform(4),
         });
     }
 

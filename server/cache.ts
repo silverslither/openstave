@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as util from "node:util";
 import * as zlib from "node:zlib";
 
-import { MAX_CACHE_SIZE_BYTES } from "./env.ts";
+import { MAX_CACHE_SIZE_BYTES } from "../env.ts";
 
 const zlib_promises_gunzip = util.promisify(zlib.gunzip);
 

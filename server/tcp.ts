@@ -1,6 +1,6 @@
 import * as net from "node:net";
 
-import { AUTH_WAIT_MS, TCP_PORT } from "./env.ts";
+import { AUTH_WAIT_MS, TCP_PORT } from "../env.ts";
 import { activePlayers } from "./race.ts";
 import { trySync } from "./wrapper.ts";
 

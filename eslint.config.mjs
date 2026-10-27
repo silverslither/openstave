@@ -20,6 +20,9 @@ const rules = {
     "sort-imports": ["off"],
     "prefer-template": ["error"],
     "prefer-const": ["error"],
+    "no-empty": ["error", {
+        allowEmptyCatch: true,
+    }],
     "no-shadow": ["warn", {
         "builtinGlobals": true,
     }],
@@ -40,7 +43,7 @@ const rules = {
 
 export default defineConfig([
     {
-        files: ["common/buffered_processor.js"],
+        files: ["web/common/buffered_processor.js"],
         languageOptions: {
             globals: {
                 AudioWorkletProcessor: "readonly",

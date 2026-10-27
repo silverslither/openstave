@@ -9,9 +9,7 @@ export function tryAsync<TArgs extends unknown[], TResult>(
             console.error(e);
             try {
                 callback(args);
-            } catch (e) {
-                void e;
-            }
+            } catch { }
             return [true, e];
         }
     };
@@ -28,9 +26,7 @@ export function trySync<TArgs extends unknown[], TResult>(
             console.error(e);
             try {
                 callback(args);
-            } catch (e) {
-                void e;
-            }
+            } catch { }
             return [true, e];
         }
     };

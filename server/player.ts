@@ -1,5 +1,5 @@
+import { MAX_PLAYER_BYTES } from "../env.ts";
 import { bufferHandler, type Frame, type PlayerEvent } from "./buffer.ts";
-import { MAX_PLAYER_BYTES } from "./env.ts";
 
 export default class Player {
     connected: boolean;

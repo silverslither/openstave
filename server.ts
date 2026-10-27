@@ -1,11 +1,11 @@
-import "./http.ts";
+import "./server/http.ts";
 
 import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { CRASH_TIMEOUT_MS, VACUUM_INTERVAL_MS } from "./env.ts";
-import { activeRaces, inactiveRaces,Race, RaceData } from "./race.ts";
-import { openConnections, server } from "./tcp.ts";
+import { activeRaces, inactiveRaces,Race, RaceData } from "./server/race.ts";
+import { openConnections, server } from "./server/tcp.ts";
 
 const CRASH_PATH = path.join(import.meta.dirname, "crash");
 const RACE_PATH = path.join(import.meta.dirname, "races");

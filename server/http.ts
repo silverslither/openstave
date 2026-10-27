@@ -5,7 +5,7 @@ import * as path from "node:path";
 import * as util from "node:util";
 import * as zlib from "node:zlib";
 
-import { HTTP_PORT, MAX_ACTIVE_RACES, MAX_BODY_SIZE_BYTES, TCP_ADDRESS, TCP_PORT } from "./env.ts";
+import { HTTP_PORT, MAX_ACTIVE_RACES, MAX_BODY_SIZE_BYTES, TCP_ADDRESS, TCP_PORT } from "../env.ts";
 import { activeRaces, inactiveRaces, Race, RaceData } from "./race.ts";
 import { LowSecurityHasher } from "./security.ts";
 import { tryAsync } from "./wrapper.ts";
@@ -22,7 +22,7 @@ const MIME_TYPES: Record<string, string> = {
     ".woff2": "font/woff2",
 };
 
-const PUBLIC_DIRECTORIES = new Set(["root", "dash", "common", "lua", "smb1", "smb2j", "smb3"]);
+const WEB_PATH = path.join(import.meta.dirname, "..", "web");
 
 const MAX_REQUEST_BUFFER_FRAMES = 240;
 
@@ -30,8 +30,7 @@ const validateKey = async (key: string) => {
     try {
         const keys = (await fs.promises.readFile("key", "utf8")).trim().split(/\r?\n/);
         return keys.includes(key);
-    } catch (e) {
-        void e;
+    } catch {
         await fs.promises.writeFile("key", crypto.randomBytes(24).toString("base64"), "utf8");
     }
 };
@@ -43,8 +42,7 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
     let url: string;
     try {
         url = decodeURI(request.url ?? "%");
-    } catch (e) {
-        void e;
+    } catch {
         response.writeHead(400).end();
         return;
     }
@@ -55,39 +53,35 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
 
         let file: string;
         if (parts.length === 0) {
-            file = path.join(import.meta.dirname, "root", "index.html");
+            file = path.join(WEB_PATH, "root", "index.html");
         } else if (parts.length === 1) {
             const race = activeRaces.get(parts[0]) ?? inactiveRaces.get(parts[0]);
             if (race == null) {
                 response.writeHead(404).end();
                 return;
             }
-            file = path.join(import.meta.dirname, race.game.split("_")[0], "index.html");
+            file = path.join(WEB_PATH, race.game.split("_")[0], "index.html");
         } else if (parts[0] === "dash" && (activeRaces.has(parts[1]) || inactiveRaces.has(parts[1]))) {
-            file = path.join(import.meta.dirname, "dash", "index.html");
+            file = path.join(WEB_PATH, "dash", "index.html");
         } else {
-            file = path.join(import.meta.dirname, ...parts);
+            file = path.join(WEB_PATH, ...parts);
         }
 
         try {
             file = await fs.promises.realpath(file);
-            const directory = path.relative(import.meta.dirname, file).split(path.sep)[0];
-            if (!PUBLIC_DIRECTORIES.has(directory) || !Object.hasOwn(MIME_TYPES, path.extname(file).toLowerCase()) || !(await fs.promises.stat(file)).isFile()) {
+            if (!file.startsWith(WEB_PATH + path.sep) || !Object.hasOwn(MIME_TYPES, path.extname(file).toLowerCase()) || !(await fs.promises.stat(file)).isFile()) {
                 response.writeHead(404).end();
                 return;
             }
-        } catch (e) {
-            void e;
+        } catch {
             response.writeHead(404).end();
             return;
         }
 
-        let prepend: Buffer = Buffer.allocUnsafe(0);
-        if (query.length > 1)
-            prepend = queryCache.get(query[1]) ?? prepend;
+        const prepend = queryCache.get(query[1]) ?? Buffer.allocUnsafe(0);
 
         const ext = path.extname(file).toLowerCase();
-        const mime = MIME_TYPES[ext] ?? "";
+        const mime = MIME_TYPES[ext];
 
         const data = Buffer.concat([prepend, await fs.promises.readFile(file)]);
         response.writeHead(200, {
@@ -123,8 +117,7 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
         let requestBody: Record<string, unknown>;
         try {
             requestBody = JSON.parse(Buffer.concat(chunks).toString());
-        } catch (e) {
-            void e;
+        } catch {
             response.writeHead(400).end();
             return;
         }

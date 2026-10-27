@@ -10,7 +10,7 @@ import Player from "./player.ts";
 import { LowSecurityHasher } from "./security.ts";
 import { destroyPlayer } from "./tcp.ts";
 
-const RACE_PATH = path.join(import.meta.dirname, "races");
+const RACE_PATH = path.join(import.meta.dirname, "..", "races");
 
 const zlib_promises_gzip = util.promisify(zlib.gzip);
 
@@ -259,9 +259,7 @@ export class RaceData implements AbstractRace {
                 player.time ??= NaN;
                 player.dnf ??= NaN;
             }
-        } catch (e) {
-            void e;
-        }
+        } catch { }
     }
 
     async write(race: Race) {

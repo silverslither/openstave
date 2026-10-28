@@ -1,6 +1,6 @@
 export function tryAsync<TArgs extends unknown[], TResult>(
     f: (...args: TArgs) => Promise<TResult>,
-    callback: ((args: TArgs) => void) = () => { },
+    callback: ((args: TArgs) => void) = () => {},
 ): (...args: TArgs) => Promise<[false, TResult] | [true, unknown]> {
     return async function(...args: TArgs) {
         try {
@@ -9,7 +9,7 @@ export function tryAsync<TArgs extends unknown[], TResult>(
             console.error(e);
             try {
                 callback(args);
-            } catch { }
+            } catch {}
             return [true, e];
         }
     };
@@ -17,7 +17,7 @@ export function tryAsync<TArgs extends unknown[], TResult>(
 
 export function trySync<TArgs extends unknown[], TResult>(
     f: (...args: TArgs) => TResult,
-    callback: ((args: TArgs) => void) = () => { },
+    callback: ((args: TArgs) => void) = () => {},
 ): (...args: TArgs) => [false, TResult] | [true, unknown] {
     return function(...args: TArgs) {
         try {
@@ -26,7 +26,7 @@ export function trySync<TArgs extends unknown[], TResult>(
             console.error(e);
             try {
                 callback(args);
-            } catch { }
+            } catch {}
             return [true, e];
         }
     };

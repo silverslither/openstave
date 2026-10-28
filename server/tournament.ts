@@ -26,7 +26,7 @@ export class Tournament {
         this.races = [];
 
         id = id.replace(/[^0-9A-Za-z_-]/g, "");
-        if (id.length > 56)
+        if (id.length > 36)
             return;
         if (!supportedGames.has(game))
             return;
@@ -57,18 +57,59 @@ export class Tournament {
         tournaments.set(this.id, this);
     }
 
-    exec(command: string, _args: string[]): [number, string] {
-        const i = this.races.at(-1) ?? "";
-        const last = activeRaces.get(i) ?? inactiveRaces.get(i) ?? null;
+    finished() {
+        if (this.races.length === 0)
+            return false;
 
+        const i = this.races.at(-1)!;
+        const race = activeRaces.get(i) ?? inactiveRaces.get(i)!;
+        const round = this.rounds[this.races.length - 1];
+
+        if (!round.finished && race.finished()) {
+            const data = race.getStatic();
+            if (data == null)
+                return false;
+
+            const finish = (round.players as string[]).map((v) => {
+                const time = data.players[v]?.time;
+                return Number.isFinite(time) ? time : Infinity;
+            }) as number[];
+            const placements = finish.toSorted((a, b) => a - b);
+
+            round.finished = true;
+
+            for (let j = 0; j < finish.length; j++) {
+                if (!Number.isFinite(finish[j]))
+                    round.placements.push(finish.length - 1);
+                else
+                    round.placements.push(placements.indexOf(finish[j]));
+            }
+
+            this.rounds[this.races.length - 1].finished = true;
+        }
+
+        return Boolean(this.rounds.at(-1)?.finished);
+    }
+
+    getData() {
+        return {
+            finished: this.finished(),
+            rounds: this.rounds,
+            races: this.races,
+        };
+    }
+
+    exec(command: string, _args: string[]): [number, string] {
         switch (command.toLowerCase()) {
         case "next": {
-            if (last != null && !last.finished())
+            if (this.races.length > 0 && !this.rounds[this.races.length - 1].finished)
                 return [400, "There is still an ongoing race."];
-            Bracket.reduce(this.players, this.rounds);
-            const players = this.rounds[this.races.length].players as string[];
 
-            const race = new Race(this.hash, "", this.game, players, true, players.map(v => this.playerPasswords.get(v)!));
+            Bracket.reduce(this.players, this.rounds);
+            const round = this.rounds[this.races.length];
+            const players = round.players as string[];
+
+            const race = new Race(this.hash, `${this.id.slice(0, -8)}-${round.id}`, this.game, players, true, players.map(v => this.playerPasswords.get(v)!));
             this.races.push(race.id);
             return [200, ""];
         } case "restart": // TODO

@@ -14,10 +14,6 @@ export default class Player {
     buffers: Buffer[];
     totalLength: number;
 
-    get finished(): boolean {
-        return this.end === this.end || this.dnf === this.dnf;
-    }
-
     constructor(game: string = "", username: string = "", password: string = "") {
         this.connected = false;
         this.username = username;
@@ -30,6 +26,10 @@ export default class Player {
         this.splits = [];
         this.buffers = [];
         this.totalLength = 0;
+    }
+
+    finished(): boolean {
+        return this.end === this.end || this.dnf === this.dnf;
     }
 
     static from(obj: Record<string, unknown>) {
@@ -52,7 +52,7 @@ export default class Player {
     }
 
     add(chunk: Buffer) {
-        if (this.finished || chunk.length === 0)
+        if (this.finished() || chunk.length === 0)
             return;
 
         if (chunk.length > MAX_PLAYER_BYTES - this.totalLength) {
@@ -72,7 +72,7 @@ export default class Player {
     }
 
     eventHandler(event: PlayerEvent) {
-        if (this.finished)
+        if (this.finished())
             return;
 
         switch (event.code) {
@@ -102,7 +102,7 @@ export default class Player {
     }
 
     minimize() {
-        if (this.finished) {
+        if (this.finished()) {
             this.password = "";
             this.frames = this.frames.slice(this.start, (this.end === this.end ? this.end : this.dnf) + 1);
             this.end -= this.start;

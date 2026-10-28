@@ -27,7 +27,7 @@ class IVFWriter {
         view.setUint32(24, 0, true);
         view.setUint32(28, 0, true);
 
-        this.queue = this.queue.then(async () => this.writable.write(header));
+        this.queue = this.queue.then(() => this.writable.write(header));
     }
 
     get idle() {
@@ -158,7 +158,7 @@ export class RawAudioEncoder {
         view.setUint32(36, 0x64617461);
         view.setUint32(40, 0xffffffff, true);
 
-        this.queue = this.queue.then(async () => this.writable.write(header));
+        this.queue = this.queue.then(() => this.writable.write(header));
     }
 
     get idle() {
@@ -205,7 +205,7 @@ export class MultiEncoder {
         return this.encoders.some((v, i) => v.input(data[i]));
     }
 
-    async close() {
+    close() {
         return Promise.all(this.encoders.map(v => v.close()));
     }
 }

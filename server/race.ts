@@ -26,6 +26,8 @@ const TIMEOUTS: Record<string, number> = {
 
 const FILE_BUFFER = 240;
 
+type Awaitable<T> = PromiseLike<T> | T;
+
 type PlayerResponseObject = {
     splits: number[];
     time: number;
@@ -51,13 +53,19 @@ export interface AbstractRace {
 
     finished: () => boolean;
 
-    getData: (start: number, length: number) => Promise<{
+    getStatic: () => {
+        game: string,
+        finished: boolean,
+        players: Record<string, PlayerResponseObject | null>,
+    } | null;
+
+    getData: (start: number, length: number) => Awaitable<{
         game: string,
         finished: boolean,
         players: Record<string, PlayerResponseObject | null>,
     } | null>;
 
-    exec: (name: string, command: string, args: string[]) => Promise<[number, string]>;
+    exec: (name: string, command: string, args: string[]) => Awaitable<[number, string]>;
 }
 
 export class Race implements AbstractRace {
@@ -79,7 +87,7 @@ export class Race implements AbstractRace {
         this.players = [];
 
         id = id.replace(/[^0-9A-Za-z_-]/g, "");
-        if (id.length > 56)
+        if (id.length > 42)
             return;
         if (!supportedGames.has(game))
             return;
@@ -124,7 +132,7 @@ export class Race implements AbstractRace {
             return true;
         }
 
-        if (this.players.every(v => v.finished)) {
+        if (this.players.every(v => v.finished())) {
             this.vacuum();
             return true;
         }
@@ -132,12 +140,17 @@ export class Race implements AbstractRace {
         return false;
     }
 
-    async getData(start: number, length: number) {
+    getStatic() {
+        return this.getData(0, 0);
+    }
+
+    getData(start: number, length: number) {
         const response: Record<string, PlayerResponseObject | null> = {};
 
         for (const player of this.players) {
             if (player.start !== player.start)
                 response[player.username] = null;
+
             const playerObj = {
                 connected: player.connected,
                 splits: player.splits.map(v => v - player.start),
@@ -213,7 +226,7 @@ export class Race implements AbstractRace {
         console.log(`vacuumed race ${this.id}`);
     }
 
-    async exec(name: string, command: string, _args: string[]): Promise<[number, string]> {
+    exec(name: string, command: string, _args: string[]): [number, string] {
         const player = this.players.find(v => v.username === name);
         if (player == null)
             return [400, "Player does not exist."];
@@ -259,7 +272,7 @@ export class RaceData implements AbstractRace {
                 player.time ??= NaN;
                 player.dnf ??= NaN;
             }
-        } catch { }
+        } catch {}
     }
 
     async write(race: Race) {
@@ -297,9 +310,14 @@ export class RaceData implements AbstractRace {
         }
     }
 
+    getStatic() {
+        return this.static;
+    }
+
     async getData(start: number, length: number) {
         if (this.static == null)
             return null;
+
         const response = structuredClone({
             game: this.static.game,
             finished: this.static.finished,
@@ -307,6 +325,7 @@ export class RaceData implements AbstractRace {
         });
         if (length === 0)
             return response;
+
         const maxLength = Math.max(...Object.values(this.static.players).map(v => v.length));
 
         for (let i = FILE_BUFFER * Math.floor(start / FILE_BUFFER), j = Math.min(start + length, maxLength); i < j; i += FILE_BUFFER) {

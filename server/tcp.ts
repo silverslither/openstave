@@ -39,7 +39,7 @@ export const server = net.createServer((client) => {
             }
             player.add(data);
 
-            if (player.finished)
+            if (player.finished())
                 client.destroy();
 
             return;
@@ -68,7 +68,7 @@ export const server = net.createServer((client) => {
 
             playerConnections.set(username, client);
 
-            if (player.finished)
+            if (player.finished())
                 client.destroy();
         } else {
             response.writeUint8(1, 0);
@@ -88,7 +88,7 @@ export const server = net.createServer((client) => {
 
         const player = activePlayers.get(username);
         if (player != null) {
-            if (player.finished)
+            if (player.finished())
                 activePlayers.delete(username);
             player.connected = false;
         }

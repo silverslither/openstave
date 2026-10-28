@@ -32,7 +32,7 @@ export default class {
         this.node.port.postMessage(volume);
     }
 
-    async close() {
+    close() {
         this.ctx.close();
     }
 }

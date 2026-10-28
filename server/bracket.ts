@@ -21,17 +21,12 @@ type ClampedAffineTransform = {
 export type Round = {
     type: Type;
     id: string;
+    finished: boolean;
     expected: number;
-    pointsTransform: ClampedAffineTransform;
-} & ({
-    finished: true;
-    players: string[];
-    placements: number[];
-} | {
-    finished: false;
     players: (string | PlayerReference)[];
-    placements: [];
-});
+    placements: number[];
+    pointsTransform: ClampedAffineTransform;
+};
 
 type DoubleEliminationAfter = {
     w: number;
@@ -138,8 +133,8 @@ export function points(rounds: Round[]): Record<string, number> {
                 ),
             );
 
-            scores[player] ??= 0;
-            scores[player] += score;
+            scores[player as string] ??= 0;
+            scores[player as string] += score;
         }
     }
 

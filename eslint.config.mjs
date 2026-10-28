@@ -26,6 +26,7 @@ const rules = {
     "no-shadow": ["warn", {
         "builtinGlobals": true,
     }],
+    "require-await": ["error"],
     "@stylistic/indent": ["error", 4, {
         SwitchCase: 0,
     }],

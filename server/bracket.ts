@@ -71,6 +71,8 @@ export function generate(type: Type, players: number, arg?: number) {
         return generateSingleElimination(players);
     case Type.DOUBLE_ELIM:
         return generateDoubleElimination(players);
+    default:
+        return null;
     }
 }
 

@@ -16,7 +16,7 @@ export class Tournament {
     rounds: Bracket.Round[];
     races: string[];
 
-    constructor(password: string = "", id: string = "", game: string = "", players: string[] = [], type: Bracket.Type, arg?: number) {
+    constructor(password: string = "", id: string = "", game: string = "", players: string[] = [], type: number, arg?: number) {
         this.hash = LowSecurityHasher.hash(password)!;
         this.id = "";
         this.game = game;
@@ -48,7 +48,11 @@ export class Tournament {
         for (const player of this.players)
             activePlayers.set(player, undefined);
 
-        this.rounds = Bracket.generate(type, players.length, arg);
+        const rounds = Bracket.generate(type as Bracket.Type, players.length, arg);
+        if (rounds == null)
+            return;
+
+        this.rounds = rounds;
 
         do {
             this.id = id + crypto.randomBytes(6).toString("base64url");

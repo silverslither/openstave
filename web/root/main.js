@@ -1,4 +1,7 @@
-let key, showHidePassword, password, id, game, players, submit, error;
+let key, showHidePassword, password, game, raceId, racePlayers, raceSubmit, raceError, tournamentId, tournamentType, tournamentArg, tournamentPlayers, tournamentSubmit, tournamentError;
+
+let lock = false;
+let error;
 
 document.addEventListener("DOMContentLoaded", main);
 
@@ -6,28 +9,38 @@ function main() {
     key = document.getElementById("key");
     showHidePassword = document.getElementById("show-hide-password");
     password = document.getElementById("password");
-    id = document.getElementById("id");
     game = document.getElementById("game");
-    players = document.getElementById("players");
-    submit = document.getElementById("submit");
-    error = document.getElementById("error");
+
+    raceId = document.getElementById("race-id");
+    racePlayers = document.getElementById("race-players");
+    raceSubmit = document.getElementById("race-submit");
+    raceError = document.getElementById("race-error");
+
+    tournamentId = document.getElementById("tournament-id");
+    tournamentType = document.getElementById("tournament-type");
+    tournamentArg = document.getElementById("tournament-arg");
+    tournamentPlayers = document.getElementById("tournament-players");
+    tournamentSubmit = document.getElementById("tournament-submit");
+    tournamentError = document.getElementById("tournament-error");
 
     game.value = "";
 
     showHidePassword.addEventListener("click", () => password.type = password.type === "password" ? "text" : "password");
-    submit.addEventListener("click", create);
+    raceSubmit.addEventListener("click", createRace);
+    tournamentSubmit.addEventListener("click", createTournament);
 }
 
-let lock = false;
-async function create() {
+async function createRace() {
     if (lock)
         return;
     lock = true;
 
-    error.innerText = "";
+    raceError.innerText = "";
+    tournamentError.innerText = "";
+    error = raceError;
 
     try {
-        const parsedPlayers = parsePlayers(players.innerText);
+        const parsedPlayers = parsePlayers(racePlayers.innerText);
         if (parsedPlayers == null) {
             lock = false;
             return;
@@ -36,10 +49,11 @@ async function create() {
         const response = await fetch("/", {
             method: "POST",
             body: JSON.stringify({
-                password: password.value,
-                id: id.value,
+                create: "race",
                 key: key.value,
+                password: password.value,
                 game: game.value,
+                id: raceId.value,
                 players: parsedPlayers,
             }),
         });
@@ -56,13 +70,68 @@ async function create() {
             return;
         }
 
-        id.value = "";
         game.value = "";
-        players.innerText = "";
+        raceId.value = "";
+        racePlayers.innerText = "";
         lock = false;
 
         sessionStorage.setItem("password", password.value);
-        location.pathname = `/dash/${await response.text()}`;
+        location.pathname = `/dashboard/${await response.text()}`;
+    } catch (e) {
+        error.innerText = e;
+        lock = false;
+    }
+}
+
+async function createTournament() {
+    if (lock)
+        return;
+    lock = true;
+
+    tournamentError.innerText = "";
+    raceError.innerText = "";
+    error = tournamentError;
+
+    try {
+        const parsedPlayers = parsePlayers(tournamentPlayers.innerText);
+        if (parsedPlayers == null) {
+            lock = false;
+            return;
+        }
+
+        const response = await fetch("/", {
+            method: "POST",
+            body: JSON.stringify({
+                create: "tournament",
+                key: key.value,
+                password: password.value,
+                game: game.value,
+                id: tournamentId.value,
+                type: Number(tournamentType.value),
+                arg: Number(tournamentArg.value),
+                players: parsedPlayers,
+            }),
+        });
+
+        if (response.status === 400 || response.status === 418) {
+            error.innerText = await response.text();
+            lock = false;
+            return;
+        }
+
+        if (response.status !== 200) {
+            error.innerText = response.statusText;
+            lock = false;
+            return;
+        }
+
+        game.value = "";
+        tournamentId.value = "";
+        tournamentPlayers.innerText = "";
+        lock = false;
+
+        sessionStorage.setItem("password", password.value);
+        location.pathname = `/dashboard/tournament/${await response.text()}`;
     } catch (e) {
         error.innerText = e;
         lock = false;

@@ -9,6 +9,7 @@ import { HTTP_PORT, MAX_ACTIVE_RACES, MAX_BODY_SIZE_BYTES, TCP_ADDRESS, TCP_PORT
 import { activeRaces, inactiveRaces, Race, RaceData } from "./race.ts";
 import { LowSecurityHasher } from "./security.ts";
 import { tryAsync } from "./wrapper.ts";
+import { Tournament, tournaments } from "./tournament.ts";
 
 const zlib_promises_gzip = util.promisify(zlib.gzip);
 
@@ -56,16 +57,19 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             file = path.join(WEB_PATH, "root", "index.html");
         } else if (parts.length === 1) {
             const race = activeRaces.get(parts[0]) ?? inactiveRaces.get(parts[0]);
-            if (race == null) {
-                response.writeHead(404).end();
-                return;
+            if (race != null)
+                file = path.join(WEB_PATH, race.game.split("_")[0], "index.html");
+        } else if (parts.length === 2) {
+            if (parts[0] === "dashboard" && (activeRaces.has(parts[1]) || inactiveRaces.has(parts[1]))) {
+                file = path.join(WEB_PATH, "dashboard", "race", "index.html");
+            } else if (parts[0] === "tournament" && tournaments.has(parts[1])) {
+                file = path.join(WEB_PATH, "tournament", "index.html");
             }
-            file = path.join(WEB_PATH, race.game.split("_")[0], "index.html");
-        } else if (parts[0] === "dash" && (activeRaces.has(parts[1]) || inactiveRaces.has(parts[1]))) {
-            file = path.join(WEB_PATH, "dash", "index.html");
-        } else {
-            file = path.join(WEB_PATH, ...parts);
+        } else if (parts.length === 3 && parts[0] === "dashboard" && parts[1] === "tournament" && tournaments.has(parts[2])) {
+            file = path.join(WEB_PATH, "dashboard", "tournament", "index.html");
         }
+
+        file ??= path.join(WEB_PATH, ...parts);
 
         try {
             file = await fs.promises.realpath(file);
@@ -118,8 +122,7 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
         try {
             requestBody = JSON.parse(Buffer.concat(chunks).toString());
         } catch {
-            response.writeHead(400).end();
-            return;
+            requestBody = {};
         }
 
         if (requestBody == null) {
@@ -129,7 +132,7 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
 
         const parts = url.split("/").filter(v => v !== "");
 
-        if (parts.length === 0) {
+        if (parts.length === 0 && requestBody.create === "race") { // race creation
             const key = requestBody.key;
             const password = requestBody.password;
             const id = requestBody.id;
@@ -174,7 +177,54 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             return;
         }
 
-        if (parts.length === 2 && parts[0] === "auth") {
+        if (parts.length === 0 && requestBody.create === "tournament") { // tournament creation
+            const key = requestBody.key;
+            const password = requestBody.password;
+            const id = requestBody.id;
+            const game = requestBody.game;
+            const type = requestBody.type;
+            const arg = requestBody.arg ?? undefined;
+            const rawPlayers = requestBody.players;
+
+            if (!await validateKey(key as string)) {
+                response.writeHead(400).end("The entered key is incorrect.");
+                return;
+            }
+
+            if (typeof password !== "string" || password.length < 8 || password.length > 64) {
+                response.writeHead(400).end("Dashboard password must be at least 8 characters long.");
+                return;
+            }
+
+            if (typeof id !== "string" || typeof game !== "string" || !Array.isArray(rawPlayers) || rawPlayers.length < 1 || rawPlayers.length > 16 || rawPlayers.some(v => typeof v !== "string") || typeof type !== "number" || (arg != null && typeof arg !== "number")) {
+                response.writeHead(400).end("You must fill out all form elements.");
+                return;
+            }
+
+            const players = (rawPlayers as string[]).map(v => v.replace(/[^0-9A-Za-z_-]/g, ""));
+            if (new Set(players).size !== players.length) {
+                response.writeHead(400).end("All players must have unique names.");
+                return;
+            }
+
+            if (activeRaces.size >= MAX_ACTIVE_RACES) {
+                response.writeHead(418).end("The server is currently busy. Try again later.");
+                return;
+            }
+
+            const tournament = new Tournament(password, id, game, players, type, arg);
+            if (!tournaments.has(tournament.id)) {
+                response.writeHead(400).end("Check that all inputs are valid and contain only basic characters.");
+                return;
+            }
+
+            console.log(`created tournament ${tournament.id} with key ${key}`);
+            response.writeHead(200).end(tournament.id);
+
+            return;
+        }
+
+        if (parts.length === 2 && parts[0] === "auth") { // get race authentication
             const id = parts[1];
             const race = activeRaces.get(id);
 
@@ -214,7 +264,7 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             return;
         }
 
-        if (parts.length === 2 && parts[0] === "exec") {
+        if (parts.length === 2 && parts[0] === "exec") { // exec command on race
             const id = parts[1];
             const race = activeRaces.get(id) ?? inactiveRaces.get(id);
 
@@ -258,6 +308,61 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             return;
         }
 
+        if (parts.length === 3 && parts[0] === "exec" && parts[1] === "tournament") { // exec command on tournament
+            const id = parts[2];
+            const tournament = tournaments.get(id);
+
+            if (tournament == null) {
+                response.writeHead(404).end();
+                return;
+            }
+
+            switch (LowSecurityHasher.verify(requestBody.password, tournament.hash)) {
+            case 1:
+                response.writeHead(401).end();
+                return;
+            case 2:
+                response.writeHead(429).end();
+                return;
+            }
+
+            const name = requestBody.name;
+            const command = requestBody.command;
+            const args = requestBody.args;
+
+            if (typeof name !== "string" || typeof command !== "string" || !Array.isArray(args) || args.some(v => typeof v !== "string")) {
+                response.writeHead(400).end("Invalid request.");
+                return;
+            }
+
+            let status = 500, message = "";
+            try {
+                [status, message] = tournament.exec(command, args);
+            } catch (e) {
+                console.error(e);
+            } finally {
+                response.writeHead(status).end(message);
+            }
+
+            return;
+        }
+
+        if (parts.length === 2 && parts[0] === "tournament") { // get tournament data
+            const id = parts[1];
+            const tournament = tournaments.get(id);
+
+            if (tournament == null) {
+                response.writeHead(404).end();
+                return;
+            }
+
+            const data = tournament.getData();
+            response.writeHead(200).end(JSON.stringify(data));
+
+            return;
+        }
+
+        // get race data
         const start = requestBody.start;
         const length = requestBody.length;
 

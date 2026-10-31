@@ -31,10 +31,10 @@ body {
 
 h1 {
     font-size: 28px;
-    margin: 12px 0px 0px 0px;
+    margin: 18px 0px 6px 0px;
 }
 
-#create-race {
+#create {
     width: 720px;
     max-width: 90vw;
     display: flex;
@@ -44,7 +44,7 @@ h1 {
 
 h2 {
     font-size: 22px;
-    margin: 12px 0px 0px 0px;
+    margin: 24px 0px 0px 0px;
 }
 
 input, select, button, .textbox {

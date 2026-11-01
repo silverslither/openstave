@@ -1,3 +1,5 @@
+import { INVALID_CHARACTERS, MAX_PASSWORD_LENGTH, MAX_PLAYERS, MAX_RACE_ID_LENGTH, MAX_ROUND_ROBIN_ROUNDS, MAX_TOURNAMENT_ID_LENGTH } from "/common/limits.js";
+
 let key, showHidePassword, password, game, raceId, racePlayers, raceSubmit, raceError, tournamentId, tournamentType, tournamentArg, tournamentPlayers, tournamentSubmit, tournamentError;
 
 let lock = false;
@@ -8,18 +10,34 @@ document.addEventListener("DOMContentLoaded", main);
 function main() {
     key = document.getElementById("key");
     showHidePassword = document.getElementById("show-hide-password");
+
     password = document.getElementById("password");
+    password.maxLength = MAX_PASSWORD_LENGTH;
+
     game = document.getElementById("game");
 
     raceId = document.getElementById("race-id");
+    raceId.maxLength = MAX_RACE_ID_LENGTH;
+
     racePlayers = document.getElementById("race-players");
+    racePlayers.previousElementSibling.innerText = `Players (1–${MAX_PLAYERS}, one name per line)`;
+
     raceSubmit = document.getElementById("race-submit");
     raceError = document.getElementById("race-error");
 
     tournamentId = document.getElementById("tournament-id");
+    tournamentId.maxLength = MAX_TOURNAMENT_ID_LENGTH;
+
     tournamentType = document.getElementById("tournament-type");
+
     tournamentArg = document.getElementById("tournament-arg");
+    tournamentArg.min = "1";
+    tournamentArg.max = String(MAX_ROUND_ROBIN_ROUNDS);
+    tournamentArg.step = "1";
+
     tournamentPlayers = document.getElementById("tournament-players");
+    tournamentPlayers.previousElementSibling.innerText = `Players (1–${MAX_PLAYERS}, one name per line)`;
+
     tournamentSubmit = document.getElementById("tournament-submit");
     tournamentError = document.getElementById("tournament-error");
 
@@ -28,6 +46,22 @@ function main() {
     showHidePassword.addEventListener("click", () => password.type = password.type === "password" ? "text" : "password");
     raceSubmit.addEventListener("click", createRace);
     tournamentSubmit.addEventListener("click", createTournament);
+
+    for (const input of [raceId, tournamentId, racePlayers, tournamentPlayers]) {
+        input.addEventListener("beforeinput", (event) => {
+            if (event.inputType !== "insertFromPaste" && event.data != null && event.data.split("\n").some(line => INVALID_CHARACTERS.test(line)))
+                event.preventDefault();
+        });
+        input.addEventListener("input", () => {
+            const property = input.isContentEditable ? "innerText" : "value";
+            const lines = input[property].split("\n");
+            if (!lines.some(line => INVALID_CHARACTERS.test(line)))
+                return;
+
+            const invalid = new RegExp(INVALID_CHARACTERS, "g");
+            input[property] = lines.map(line => line.replace(invalid, "")).join(input.isContentEditable ? "\n" : "");
+        });
+    }
 }
 
 async function createRace() {
@@ -40,12 +74,6 @@ async function createRace() {
     error = raceError;
 
     try {
-        const parsedPlayers = parsePlayers(racePlayers.innerText);
-        if (parsedPlayers == null) {
-            lock = false;
-            return;
-        }
-
         const response = await fetch("/", {
             method: "POST",
             body: JSON.stringify({
@@ -54,11 +82,11 @@ async function createRace() {
                 password: password.value,
                 game: game.value,
                 id: raceId.value,
-                players: parsedPlayers,
+                players: racePlayers.innerText.split("\n").filter(v => v !== ""),
             }),
         });
 
-        if (response.status === 400 || response.status === 418) {
+        if (response.status === 400) {
             error.innerText = await response.text();
             lock = false;
             return;
@@ -93,12 +121,6 @@ async function createTournament() {
     error = tournamentError;
 
     try {
-        const parsedPlayers = parsePlayers(tournamentPlayers.innerText);
-        if (parsedPlayers == null) {
-            lock = false;
-            return;
-        }
-
         const response = await fetch("/", {
             method: "POST",
             body: JSON.stringify({
@@ -108,12 +130,12 @@ async function createTournament() {
                 game: game.value,
                 id: tournamentId.value,
                 type: Number(tournamentType.value),
-                arg: Number(tournamentArg.value),
-                players: parsedPlayers,
+                arg: tournamentArg.value === "" ? undefined : Number(tournamentArg.value),
+                players: tournamentPlayers.innerText.split("\n").filter(v => v !== ""),
             }),
         });
 
-        if (response.status === 400 || response.status === 418) {
+        if (response.status === 400) {
             error.innerText = await response.text();
             lock = false;
             return;
@@ -136,28 +158,4 @@ async function createTournament() {
         error.innerText = e;
         lock = false;
     }
-}
-
-function parsePlayers(str) {
-    const players = str.split("\n").map(v => v.trim()).filter(v => v !== "");
-    if (players.length < 2 || players.length > 16) {
-        error.innerText = "The number of players must be between 2 and 16, inclusive.";
-        return null;
-    }
-
-    for (let i = 0; i < players.length; i++) {
-        const player = players[i].replace(/[^0-9A-Za-z_-]/g, "");
-
-        if (player.length > 24) {
-            error.innerText = `The player name ${players[i]} is too long; the maximum allowed length is 24 characters.`;
-            return null;
-        }
-
-        if (player === "") {
-            error.innerText = `The player name ${players[i]} contains only forbidden characters.`;
-            return null;
-        }
-    }
-
-    return players;
 }

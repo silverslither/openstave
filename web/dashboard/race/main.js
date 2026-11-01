@@ -1,3 +1,5 @@
+import { MAX_PASSWORD_LENGTH, SUFFIX_LENGTH } from "/common/limits.js";
+
 const RACE_ID = location.pathname.split("/")[2];
 
 let link, password, live, authentication;
@@ -6,7 +8,10 @@ document.addEventListener("DOMContentLoaded", main);
 
 function main() {
     link = document.getElementById("link");
+
     password = document.getElementById("password");
+    password.maxLength = MAX_PASSWORD_LENGTH;
+
     live = document.getElementById("live");
     authentication = document.getElementById("authentication");
 
@@ -63,7 +68,7 @@ async function getAuthentication() {
 
         let html = "";
         for (const player of await response.json())
-            html += `Script for ${player[0].slice(0, -8)}: ||<a href="/${player[1]}">${location.origin}/${player[1]}</a>||<br/>`;
+            html += `Script for ${player[0].slice(0, -SUFFIX_LENGTH)}: ||<a href="/${player[1]}">${location.origin}/${player[1]}</a>||<br/>`;
 
         authentication.innerHTML = html;
     } catch (e) {
@@ -149,7 +154,7 @@ async function updateLive() {
             const status = document.createElement("td");
             const actions = document.createElement("td");
 
-            name.innerText = i.slice(0, -8);
+            name.innerText = i.slice(0, -SUFFIX_LENGTH);
 
             if (data.finished) {
                 if (player.time != null)
@@ -164,7 +169,7 @@ async function updateLive() {
                     document.createElement("br"),
                     getActionButton(i, "resplit", () => getArray("splits", player.splits.join(", "))),
                     document.createElement("br"),
-                    getActionButton(i, "remove", () => confirm(`Are you sure you want to delete ${i.slice(0, -8)}?`)),
+                    getActionButton(i, "remove", () => confirm(`Are you sure you want to delete ${i.slice(0, -SUFFIX_LENGTH)}?`)),
                 );
             } else {
                 status.innerText =

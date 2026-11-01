@@ -5,11 +5,11 @@ import * as path from "node:path";
 import * as util from "node:util";
 import * as zlib from "node:zlib";
 
-import { HTTP_PORT, MAX_ACTIVE_RACES, MAX_BODY_SIZE_BYTES, TCP_ADDRESS, TCP_PORT } from "../env.ts";
+import { HTTP_PORT, MAX_BODY_SIZE_BYTES, TCP_ADDRESS, TCP_PORT } from "../env.ts";
 import { activeRaces, inactiveRaces, Race, RaceData } from "./race.ts";
 import { LowSecurityHasher } from "./security.ts";
-import { tryAsync } from "./wrapper.ts";
 import { Tournament, tournaments } from "./tournament.ts";
+import { tryAsync, ValidationError } from "./wrapper.ts";
 
 const zlib_promises_gzip = util.promisify(zlib.gzip);
 
@@ -24,8 +24,6 @@ const MIME_TYPES: Record<string, string> = {
 };
 
 const WEB_PATH = path.join(import.meta.dirname, "..", "web");
-
-const MAX_REQUEST_BUFFER_FRAMES = 240;
 
 const validateKey = async (key: string) => {
     try {
@@ -120,106 +118,60 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
 
         let requestBody: Record<string, unknown>;
         try {
-            requestBody = JSON.parse(Buffer.concat(chunks).toString());
+            const body = Buffer.concat(chunks).toString();
+            requestBody = body.length === 0 ? {} : JSON.parse(body);
         } catch {
-            requestBody = {};
+            response.writeHead(400).end("Invalid input.");
+            return;
         }
 
         if (requestBody == null) {
-            response.writeHead(400).end();
+            response.writeHead(400).end("Invalid input.");
             return;
         }
 
         const parts = url.split("/").filter(v => v !== "");
 
-        if (parts.length === 0 && requestBody.create === "race") { // race creation
-            const key = requestBody.key;
-            const password = requestBody.password;
-            const id = requestBody.id;
-            const game = requestBody.game;
-            const rawPlayers = requestBody.players;
-
-            if (!await validateKey(key as string)) {
-                response.writeHead(400).end("The entered key is incorrect.");
-                return;
-            }
-
-            if (typeof password !== "string" || password.length < 8 || password.length > 64) {
-                response.writeHead(400).end("Dashboard password must be at least 8 characters long.");
-                return;
-            }
-
-            if (typeof id !== "string" || typeof game !== "string" || !Array.isArray(rawPlayers) || rawPlayers.length < 1 || rawPlayers.length > 16 || rawPlayers.some(v => typeof v !== "string")) {
-                response.writeHead(400).end("You must fill out all form elements.");
-                return;
-            }
-
-            const players = (rawPlayers as string[]).map(v => v.replace(/[^0-9A-Za-z_-]/g, ""));
-            if (new Set(players).size !== players.length) {
-                response.writeHead(400).end("All players must have unique names.");
-                return;
-            }
-
-            if (activeRaces.size >= MAX_ACTIVE_RACES) {
-                response.writeHead(418).end("The server is currently busy. Try again later.");
-                return;
-            }
-
-            const race = new Race(password, id, game, players);
-            if (!activeRaces.has(race.id)) {
-                response.writeHead(400).end("Check that all inputs are valid and contain only basic characters.");
-                return;
-            }
-
-            console.log(`created race ${race.id} with key ${key}`);
-            response.writeHead(200).end(race.id);
-
-            return;
-        }
-
-        if (parts.length === 0 && requestBody.create === "tournament") { // tournament creation
+        if (parts.length === 0 && (requestBody.create === "race" || requestBody.create === "tournament")) { // create
             const key = requestBody.key;
             const password = requestBody.password;
             const id = requestBody.id;
             const game = requestBody.game;
             const type = requestBody.type;
-            const arg = requestBody.arg ?? undefined;
-            const rawPlayers = requestBody.players;
+            const arg = requestBody.arg;
+            const players = requestBody.players;
 
-            if (!await validateKey(key as string)) {
+            if (typeof key !== "string" ||
+                typeof password !== "string" ||
+                typeof id !== "string" ||
+                typeof game !== "string" ||
+                !Array.isArray(players) ||
+                players.some(v => typeof v !== "string")
+                || (requestBody.create === "tournament" &&
+                    (typeof type !== "number" ||
+                    (arg !== undefined && typeof arg !== "number"))))
+            {
+                response.writeHead(400).end("Invalid input.");
+                return;
+            }
+
+            if (!await validateKey(key)) {
                 response.writeHead(400).end("The entered key is incorrect.");
                 return;
             }
 
-            if (typeof password !== "string" || password.length < 8 || password.length > 64) {
-                response.writeHead(400).end("Dashboard password must be at least 8 characters long.");
-                return;
-            }
+            try {
+                const created = requestBody.create === "race" ?
+                    new Race(password, id, game, players) :
+                    new Tournament(password, id, game, players, type as number, arg as (number | undefined));
 
-            if (typeof id !== "string" || typeof game !== "string" || !Array.isArray(rawPlayers) || rawPlayers.length < 1 || rawPlayers.length > 16 || rawPlayers.some(v => typeof v !== "string") || typeof type !== "number" || (arg != null && typeof arg !== "number")) {
-                response.writeHead(400).end("You must fill out all form elements.");
-                return;
+                console.log(`created ${requestBody.create} ${created.id} with key ${key}`);
+                response.writeHead(200).end(created.id);
+            } catch (e) {
+                if (!(e instanceof ValidationError))
+                    throw e;
+                response.writeHead(e.status).end(e.message);
             }
-
-            const players = (rawPlayers as string[]).map(v => v.replace(/[^0-9A-Za-z_-]/g, ""));
-            if (new Set(players).size !== players.length) {
-                response.writeHead(400).end("All players must have unique names.");
-                return;
-            }
-
-            if (activeRaces.size >= MAX_ACTIVE_RACES) {
-                response.writeHead(418).end("The server is currently busy. Try again later.");
-                return;
-            }
-
-            const tournament = new Tournament(password, id, game, players, type, arg);
-            if (!tournaments.has(tournament.id)) {
-                response.writeHead(400).end("Check that all inputs are valid and contain only basic characters.");
-                return;
-            }
-
-            console.log(`created tournament ${tournament.id} with key ${key}`);
-            response.writeHead(200).end(tournament.id);
 
             return;
         }
@@ -230,6 +182,11 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
 
             if (race == null) {
                 response.writeHead(404).end();
+                return;
+            }
+
+            if (typeof requestBody.password !== "string") {
+                response.writeHead(400).end("Invalid input.");
                 return;
             }
 
@@ -278,6 +235,11 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
                 return;
             }
 
+            if (typeof requestBody.password !== "string") {
+                response.writeHead(400).end("Invalid input.");
+                return;
+            }
+
             switch (LowSecurityHasher.verify(requestBody.password, race.hash)) {
             case 1:
                 response.writeHead(401).end();
@@ -292,17 +254,17 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             const args = requestBody.args;
 
             if (typeof name !== "string" || typeof command !== "string" || !Array.isArray(args) || args.some(v => typeof v !== "string")) {
-                response.writeHead(400).end("Invalid request.");
+                response.writeHead(400).end("Invalid input.");
                 return;
             }
 
-            let status = 500, message = "";
             try {
-                [status, message] = await race.exec(name, command, args);
+                await race.exec(name, command, args);
+                response.writeHead(200).end();
             } catch (e) {
-                console.error(e);
-            } finally {
-                response.writeHead(status).end(message);
+                if (!(e instanceof ValidationError))
+                    throw e;
+                response.writeHead(e.status).end(e.message);
             }
 
             return;
@@ -317,6 +279,11 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
                 return;
             }
 
+            if (typeof requestBody.password !== "string") {
+                response.writeHead(400).end("Invalid input.");
+                return;
+            }
+
             switch (LowSecurityHasher.verify(requestBody.password, tournament.hash)) {
             case 1:
                 response.writeHead(401).end();
@@ -326,22 +293,21 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
                 return;
             }
 
-            const name = requestBody.name;
             const command = requestBody.command;
             const args = requestBody.args;
 
-            if (typeof name !== "string" || typeof command !== "string" || !Array.isArray(args) || args.some(v => typeof v !== "string")) {
-                response.writeHead(400).end("Invalid request.");
+            if (typeof command !== "string" || !Array.isArray(args) || args.some(v => typeof v !== "string")) {
+                response.writeHead(400).end("Invalid input.");
                 return;
             }
 
-            let status = 500, message = "";
             try {
-                [status, message] = tournament.exec(command, args);
+                tournament.exec(command, args);
+                response.writeHead(200).end();
             } catch (e) {
-                console.error(e);
-            } finally {
-                response.writeHead(status).end(message);
+                if (!(e instanceof ValidationError))
+                    throw e;
+                response.writeHead(e.status).end(e.message);
             }
 
             return;
@@ -366,8 +332,8 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
         const start = requestBody.start;
         const length = requestBody.length;
 
-        if (typeof start !== "number" || typeof length !== "number" || !Number.isSafeInteger(start) || !Number.isSafeInteger(length) || start < 0 || length < 0 || length > MAX_REQUEST_BUFFER_FRAMES || !Number.isSafeInteger(start + length)) {
-            response.writeHead(400).end();
+        if (typeof start !== "number" || typeof length !== "number") {
+            response.writeHead(400).end("Invalid input.");
             return;
         }
 
@@ -383,8 +349,9 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
         try {
             responseBody = await race.getData(start, length);
         } catch (e) {
-            console.error(e);
-            response.writeHead(500).end();
+            if (!(e instanceof ValidationError))
+                throw e;
+            response.writeHead(e.status).end(e.message);
             return;
         }
 

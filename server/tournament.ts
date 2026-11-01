@@ -1,9 +1,12 @@
 import * as crypto from "node:crypto";
 
+import { AUTH_FIELD_LENGTH, INVALID_CHARACTERS, MAX_TOURNAMENT_ID_LENGTH, SUFFIX_LENGTH } from "../web/common/limits.js";
 import * as Bracket from "./bracket.ts";
 import { supportedGames } from "./buffer.ts";
+import Player from "./player.ts";
 import { activePlayers, activeRaces, inactiveRaces, Race } from "./race.ts";
 import { LowSecurityHasher } from "./security.ts";
+import { ValidationError } from "./wrapper.ts";
 
 export const tournaments: Map<string, Tournament> = new Map();
 
@@ -16,7 +19,7 @@ export class Tournament {
     rounds: Bracket.Round[];
     races: string[];
 
-    constructor(password: string = "", id: string = "", game: string = "", players: string[] = [], type: number, arg?: number) {
+    constructor(password: string, id: string, game: string, players: string[], type: number, arg?: number) {
         this.hash = LowSecurityHasher.hash(password)!;
         this.id = "";
         this.game = game;
@@ -25,37 +28,35 @@ export class Tournament {
         this.rounds = [];
         this.races = [];
 
-        id = id.replace(/[^0-9A-Za-z_-]/g, "");
-        if (id.length > 36)
-            return;
+        if (id.length > MAX_TOURNAMENT_ID_LENGTH || INVALID_CHARACTERS.test(id))
+            throw new ValidationError(`Tournament ID must contain at most ${MAX_TOURNAMENT_ID_LENGTH} characters, and contain only numbers, letters, hyphens, or underscores.`);
         if (!supportedGames.has(game))
-            return;
+            throw new ValidationError("Unsupported category.");
+
+        Player.validateNames(players);
+
+        if (new Set(players).size !== players.length)
+            throw new ValidationError("All players must have unique names.");
 
         for (let i = 0; i < players.length; i++) {
             const player = players[i];
-            if (player === "" || player.length > 24)
-                return;
-
             let username = "";
-            while (username.length === 0 || activePlayers.get(username) != null)
-                username = player + crypto.randomBytes(6).toString("base64");
-            const password = crypto.randomBytes(24).toString("base64");
+            while (username.length === 0 || activePlayers.has(username))
+                username = player + crypto.randomBytes(0.75 * SUFFIX_LENGTH).toString("base64");
+            const password = crypto.randomBytes(0.75 * AUTH_FIELD_LENGTH).toString("base64");
 
             this.players.push(username);
             this.playerPasswords.set(username, password);
         }
 
+        const rounds = Bracket.generate(type, players.length, arg);
+        this.rounds = rounds;
+
         for (const player of this.players)
             activePlayers.set(player, undefined);
 
-        const rounds = Bracket.generate(type as Bracket.Type, players.length, arg);
-        if (rounds == null)
-            return;
-
-        this.rounds = rounds;
-
         do {
-            this.id = id + crypto.randomBytes(6).toString("base64url");
+            this.id = id + crypto.randomBytes(0.75 * SUFFIX_LENGTH).toString("base64url");
         } while (tournaments.has(this.id));
 
         tournaments.set(this.id, this);
@@ -103,22 +104,22 @@ export class Tournament {
         };
     }
 
-    exec(command: string, _args: string[]): [number, string] {
+    exec(command: string, _args: string[]) {
         switch (command.toLowerCase()) {
         case "next": {
             if (this.races.length > 0 && !this.rounds[this.races.length - 1].finished)
-                return [400, "There is still an ongoing race."];
+                throw new ValidationError("There is still an ongoing race.");
 
             Bracket.reduce(this.players, this.rounds);
             const round = this.rounds[this.races.length];
             const players = round.players as string[];
-
-            const race = new Race(this.hash, `${this.id.slice(0, -8)}-${round.id}`, this.game, players, true, players.map(v => this.playerPasswords.get(v)!));
+            const race = new Race(this.hash, `${this.id.slice(0, -SUFFIX_LENGTH)}-${round.id}`, this.game, players, true, players.map(v => this.playerPasswords.get(v)!));
             this.races.push(race.id);
-            return [200, ""];
+            return;
         } case "restart": // TODO
+            return;
         default:
-            return [400, "Command does not exist."];
+            throw new ValidationError("Command does not exist.");
         }
     }
 }

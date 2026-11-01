@@ -1,5 +1,6 @@
 import { RendererCanvas } from "./2d_renderer.js";
 import { OUTLINE_COLOURS } from "./colours.js";
+import { SUFFIX_LENGTH } from "./limits.js";
 
 export function formatTime(ms) {
     ms = Math.round(ms);
@@ -48,7 +49,7 @@ export class LeaderboardCanvas extends RendererCanvas {
         this.playerCanvas = playerCanvas;
         this.frameTimeMs = frameTimeMs;
         this.columns = columns;
-        this.title = location.pathname.slice(1, -8).replace(/[-_]$/, "");
+        this.title = location.pathname.slice(1, -SUFFIX_LENGTH).replace(/[-_]$/, "");
         this.count = 0;
 
         this.canvas = document.createElement("canvas");

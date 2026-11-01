@@ -1,11 +1,12 @@
 import { screenshot } from "/common/2d_renderer.js";
 import { MultiEncoder, RawAudioEncoder, VP9Encoder } from "/common/encoder.js";
 import { LeaderboardCanvas } from "/common/leaderboard.js";
+import { MAX_REQUEST_BUFFER_FRAMES, SUFFIX_LENGTH } from "/common/limits.js";
 
 let PlayerCanvas, rendererInit, LEADERBOARD_COLUMNS, FRAME_TIME_MS;
 let Mixer, mixerInit;
 
-const FRAME_BUFFER = 120;
+const FRAME_BUFFER = 0.5 * MAX_REQUEST_BUFFER_FRAMES;
 const REREQUEST_INTERVAL_MS = 1000;
 let lastFrameMs = 0;
 
@@ -416,7 +417,7 @@ async function query(start = 0, length = 0, noRecurse = false) {
 
         for (let name of Object.keys(data.players)) {
             const playerData = data.players[name];
-            name = name.slice(0, -8);
+            name = name.slice(0, -SUFFIX_LENGTH);
             players[name] = players[name] ?? {};
 
             players[name].dnf = parseInt(playerData.dnf);

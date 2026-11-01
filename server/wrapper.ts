@@ -1,3 +1,11 @@
+export class ValidationError extends Error {
+    status: number;
+    constructor(message: string, status = 400) {
+        super(message);
+        this.status = status;
+    }
+}
+
 export function tryAsync<TArgs extends unknown[], TResult>(
     f: (...args: TArgs) => Promise<TResult>,
     callback: ((args: TArgs) => void) = () => {},

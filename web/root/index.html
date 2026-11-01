@@ -14,12 +14,13 @@
         <h1>OpenStave v0.4.1-beta</h1>
     </div>
     <div id="create">
+        <h2>General</h2>
         <label for="key">Key (ask the server administrator)</label>
         <input id="key" type="password">
         <label for="password">
             Dashboard Password (<button id="show-hide-password" class="textbtn">show/hide</button>)
         </label>
-        <input id="password" type="password" maxlength="64">
+        <input id="password" type="password">
         <label for="game">Category</label>
         <select id="game">
             <option value="smb1_any%">Super Mario Bros. Any%</option>
@@ -30,14 +31,14 @@
         </select>
         <h2>Create Race</h2>
         <label for="race-id">Race ID</label>
-        <input id="race-id" type="text" maxlength="42">
-        <label for="race-players">Players (up to 16, one name per line)</label>
+        <input id="race-id" type="text">
+        <label for="race-players">Players (one name per line)</label>
         <span class="textbox" id="race-players" role="textbox" contenteditable></span>
         <button id="race-submit">Submit</button>
         <span id="race-error"></span>
         <h2>Create Tournament</h2>
         <label for="tournament-id">Tournament ID</label>
-        <input id="tournament-id" type="text" maxlength="36">
+        <input id="tournament-id" type="text">
         <label for="tournament-type">Format</label>
         <select id="tournament-type">
             <option value="0">Round Robin</option>
@@ -46,7 +47,7 @@
         </select>
         <label for="tournament-arg" hidden></label>
         <input id="tournament-arg" type="number" hidden>
-        <label for="tournament-players">Players (up to 16, one name per line)</label>
+        <label for="tournament-players">Players (one name per line)</label>
         <span class="textbox" id="tournament-players" role="textbox" contenteditable></span>
         <button id="tournament-submit">Submit</button>
         <span id="tournament-error"></span>

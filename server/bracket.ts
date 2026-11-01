@@ -1,3 +1,6 @@
+import { MAX_PLAYERS, MAX_ROUND_ROBIN_ROUNDS } from "../web/common/limits.js";
+import { ValidationError } from "./wrapper.ts";
+
 export const Type = {
     ROUND_ROBIN: 0,
     SINGLE_ELIM: 1,
@@ -63,16 +66,27 @@ function stepTransform(n: number, advancing: number = 1, other = 0): ClampedAffi
     };
 }
 
-export function generate(type: Type, players: number, arg?: number) {
+export function generate(type: number, players: number, arg?: number) {
     switch (type) {
     case Type.ROUND_ROBIN:
+        if (players < 2 || players > MAX_PLAYERS)
+            throw new ValidationError(`Round robin requires between 2 and ${MAX_PLAYERS} players.`);
+        if (arg != null && (!Number.isInteger(arg) || arg < 1 || arg > MAX_ROUND_ROBIN_ROUNDS))
+            throw new ValidationError(`Round robin requires an integer round count between 1 and ${MAX_ROUND_ROBIN_ROUNDS}.`);
+
         return generateRoundRobin(players, arg);
     case Type.SINGLE_ELIM:
+        if (players < 3 || players > MAX_PLAYERS)
+            throw new ValidationError(`Single elimination requires between 3 and ${MAX_PLAYERS} players.`);
+
         return generateSingleElimination(players);
     case Type.DOUBLE_ELIM:
+        if (players < 6 || players > MAX_PLAYERS)
+            throw new ValidationError(`Double elimination requires between 6 and ${MAX_PLAYERS} players.`);
+
         return generateDoubleElimination(players);
     default:
-        return null;
+        throw new ValidationError("Unsupported tournament format.");
     }
 }
 

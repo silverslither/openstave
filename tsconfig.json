@@ -6,6 +6,7 @@
         "lib": [ "esnext" ],
         "types": [ "node" ],
         "allowImportingTsExtensions": true,
+        "allowJs": true,
         "strictNullChecks": true,
         "noEmit": true
     }

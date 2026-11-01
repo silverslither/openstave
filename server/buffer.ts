@@ -1,3 +1,5 @@
+import { MAX_FRAME_BYTES } from "../web/common/limits.js";
+
 export type Frame = {
     data: Buffer;
     count: number;
@@ -194,7 +196,7 @@ export function bufferHandler(buffer: Buffer, frames: Frame[], game: string) {
     const events: PlayerEvent[] = [];
     while (buffer.length >= 4) {
         const l = buffer.readUint32LE(0);
-        if (l < 256 || l > 16 * 1024) {
+        if (l < 256 || l > MAX_FRAME_BYTES) {
             events.push({ code: "DNF", data: frames.length - 1 });
             buffer = Buffer.alloc(0);
             break;

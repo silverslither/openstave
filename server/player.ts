@@ -1,5 +1,7 @@
 import { MAX_PLAYER_BYTES } from "../env.ts";
+import { INVALID_CHARACTERS, MAX_PLAYER_NAME_LENGTH } from "../web/common/limits.js";
 import { bufferHandler, type Frame, type PlayerEvent } from "./buffer.ts";
+import { ValidationError } from "./wrapper.ts";
 
 export default class Player {
     connected: boolean;
@@ -30,6 +32,17 @@ export default class Player {
 
     finished(): boolean {
         return this.end === this.end || this.dnf === this.dnf;
+    }
+
+    static validateNames(names: string[]) {
+        for (const name of names) {
+            if (name.length === 0)
+                throw new ValidationError("Player names cannot be empty.");
+            if (name.length > MAX_PLAYER_NAME_LENGTH)
+                throw new ValidationError(`The player name ${name} is too long; the maximum allowed length is ${MAX_PLAYER_NAME_LENGTH} characters.`);
+            if (INVALID_CHARACTERS.test(name))
+                throw new ValidationError(`The player name ${name} contains forbidden characters (allowed characters are numbers, letters, hyphens, and underscores).`);
+        }
     }
 
     static from(obj: Record<string, unknown>) {
@@ -81,20 +94,20 @@ export default class Player {
                 this.start = event.data;
             break;
         case "END":
-            if (this.start === this.start && this.end !== this.end) {
+            if (this.start === this.start) {
                 this.end = event.data;
                 this.frames.length = this.end + 1;
             }
             break;
         case "SPLIT":
-            if (this.start === this.start && this.end !== this.end && event.data[0] >= 0 && (this.splits[event.data[0]] == null || Number.isNaN(this.splits[event.data[0]])))
+            if (this.start === this.start && event.data[0] >= 0 && (this.splits[event.data[0]] == null || Number.isNaN(this.splits[event.data[0]])))
                 this.splits[event.data[0]] = event.data[1];
             break;
         case "DNF":
-            if (event.data == null || (this.start === this.start && this.end !== this.end)) {
-                if (this.start !== this.start)
-                    this.start = this.frames.length;
+            if (event.data == null || this.start === this.start) {
                 this.dnf = event.data ?? this.frames.length - 1;
+                if (!(this.start <= this.dnf))
+                    this.start = this.dnf + 1;
                 this.frames.length = this.dnf + 1;
             }
             break;

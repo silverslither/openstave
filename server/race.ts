@@ -4,27 +4,18 @@ import * as path from "node:path";
 import * as util from "node:util";
 import * as zlib from "node:zlib";
 
+import { MAX_ACTIVE_RACES, TIMEOUTS } from "../env.ts";
+import { AUTH_FIELD_LENGTH, FILE_BUFFER, INVALID_CHARACTERS, MAX_PLAYERS, MAX_RACE_ID_LENGTH, MAX_REQUEST_BUFFER_FRAMES, SUFFIX_LENGTH } from "../web/common/limits.js";
 import { supportedGames } from "./buffer.ts";
 import { GzipFileCache } from "./cache.ts";
 import Player from "./player.ts";
 import { LowSecurityHasher } from "./security.ts";
 import { destroyPlayer } from "./tcp.ts";
+import { ValidationError } from "./wrapper.ts";
 
 const RACE_PATH = path.join(import.meta.dirname, "..", "races");
 
 const zlib_promises_gzip = util.promisify(zlib.gzip);
-
-const MINUTE = 60 * 1000;
-const TIMEOUTS: Record<string, number> = {
-    "default": 30 * MINUTE,
-    "smb1_any%": 15 * MINUTE,
-    "smb1_warpless": 45 * MINUTE,
-    "smb2j_any%": 20 * MINUTE,
-    "smb2j_warpless": 50 * MINUTE,
-    "smb3_any%nww": 25 * MINUTE,
-};
-
-const FILE_BUFFER = 240;
 
 type Awaitable<T> = PromiseLike<T> | T;
 
@@ -56,16 +47,16 @@ export interface AbstractRace {
     getStatic: () => {
         game: string,
         finished: boolean,
-        players: Record<string, PlayerResponseObject | null>,
+        players: Record<string, PlayerResponseObject>,
     } | null;
 
     getData: (start: number, length: number) => Awaitable<{
         game: string,
         finished: boolean,
-        players: Record<string, PlayerResponseObject | null>,
+        players: Record<string, PlayerResponseObject>,
     } | null>;
 
-    exec: (name: string, command: string, args: string[]) => Awaitable<[number, string]>;
+    exec: (name: string, command: string, args: string[]) => Awaitable<void>;
 }
 
 export class Race implements AbstractRace {
@@ -77,7 +68,7 @@ export class Race implements AbstractRace {
     timeout: number;
     players: Player[];
 
-    constructor(password: string = "", id: string = "", game: string = "", players: string[] = [], raw = false, playerPasswords: string[] = []) {
+    constructor(password: string, id: string, game: string, players: string[], raw = false, playerPasswords: string[] = []) {
         this.vacuumLock = false;
 
         this.hash = raw ? password : LowSecurityHasher.hash(password)!;
@@ -86,11 +77,24 @@ export class Race implements AbstractRace {
         this.timeout = 0;
         this.players = [];
 
-        id = id.replace(/[^0-9A-Za-z_-]/g, "");
-        if (id.length > 42)
-            return;
-        if (!supportedGames.has(game))
-            return;
+        if (!raw) {
+            if (id.length > MAX_RACE_ID_LENGTH || INVALID_CHARACTERS.test(id))
+                throw new ValidationError(`Race ID must contain at most ${MAX_RACE_ID_LENGTH} characters, and contain only numbers, letters, hyphens, or underscores.`);
+            if (!supportedGames.has(game))
+                throw new ValidationError("Unsupported category.");
+            if (players.length < 1 || players.length > MAX_PLAYERS)
+                throw new ValidationError(`The number of players must be between 1 and ${MAX_PLAYERS}.`);
+            if (new Set(players).size !== players.length)
+                throw new ValidationError("All players must have unique names.");
+
+            Player.validateNames(players);
+        }
+
+        // TODO: make tournaments "reserve" one race slot
+
+        if (activeRaces.size >= MAX_ACTIVE_RACES)
+            throw new ValidationError("The server is currently busy. Try again later.");
+
         const timeoutMs = TIMEOUTS[game] ?? TIMEOUTS.default;
         this.timeout = Date.now() + timeoutMs;
 
@@ -101,13 +105,10 @@ export class Race implements AbstractRace {
                 continue;
             }
 
-            if (player === "" || player.length > 24)
-                return;
-
             let username = "";
-            while (username.length === 0 || activePlayers.get(username) != null)
-                username = player + crypto.randomBytes(6).toString("base64");
-            const password = crypto.randomBytes(24).toString("base64");
+            while (username.length === 0 || activePlayers.has(username))
+                username = player + crypto.randomBytes(0.75 * SUFFIX_LENGTH).toString("base64");
+            const password = crypto.randomBytes(0.75 * AUTH_FIELD_LENGTH).toString("base64");
 
             this.players.push(new Player(game, username, password));
         }
@@ -116,7 +117,7 @@ export class Race implements AbstractRace {
             activePlayers.set(player.username, player);
 
         do {
-            this.id = id + crypto.randomBytes(6).toString("base64url");
+            this.id = id + crypto.randomBytes(0.75 * SUFFIX_LENGTH).toString("base64url");
         } while (activeRaces.has(this.id) || inactiveRaces.has(this.id));
 
         activeRaces.set(this.id, this);
@@ -145,12 +146,14 @@ export class Race implements AbstractRace {
     }
 
     getData(start: number, length: number) {
-        const response: Record<string, PlayerResponseObject | null> = {};
+        if (start < 0 || length < 0)
+            throw new ValidationError("Start index and length for requested frames must both be nonnegative.");
+        if (length > MAX_REQUEST_BUFFER_FRAMES)
+            throw new ValidationError(`It is forbidden to request more than ${MAX_REQUEST_BUFFER_FRAMES} frames.`);
+
+        const response: Record<string, PlayerResponseObject> = {};
 
         for (const player of this.players) {
-            if (player.start !== player.start)
-                response[player.username] = null;
-
             const playerObj = {
                 connected: player.connected,
                 splits: player.splits.map(v => v - player.start),
@@ -187,7 +190,7 @@ export class Race implements AbstractRace {
     }
 
     static from(obj: Record<string, unknown>) {
-        const race = new Race();
+        const race = Object.create(Race.prototype) as Race;
         race.vacuumLock = false;
         race.hash = obj.hash as string;
         race.id = obj.id as string;
@@ -226,17 +229,17 @@ export class Race implements AbstractRace {
         console.log(`vacuumed race ${this.id}`);
     }
 
-    exec(name: string, command: string, _args: string[]): [number, string] {
+    exec(name: string, command: string, _args: string[]): void {
         const player = this.players.find(v => v.username === name);
         if (player == null)
-            return [400, "Player does not exist."];
+            throw new ValidationError("Player does not exist.");
 
         switch (command.toLowerCase()) {
         case "dnf":
             player.eventHandler({ code: "DNF", data: null });
-            return [200, ""];
+            return;
         default:
-            return [400, "Command does not exist."];
+            throw new ValidationError("Command does not exist.");
         }
     }
 }
@@ -315,6 +318,10 @@ export class RaceData implements AbstractRace {
     }
 
     async getData(start: number, length: number) {
+        if (start < 0 || length < 0)
+            throw new ValidationError("Start index and length for requested frames must both be nonnegative.");
+        if (length > MAX_REQUEST_BUFFER_FRAMES)
+            throw new ValidationError(`It is forbidden to request more than ${MAX_REQUEST_BUFFER_FRAMES} frames.`);
         if (this.static == null)
             return null;
 
@@ -337,10 +344,10 @@ export class RaceData implements AbstractRace {
         return response;
     }
 
-    async exec(name: string, command: string, args: string[]): Promise<[number, string]> {
+    async exec(name: string, command: string, args: string[]): Promise<void> {
         const players = this.static!.players;
         if (!Object.hasOwn(players, name))
-            return [400, "Player does not exist."];
+            throw new ValidationError("Player does not exist.");
         const player = players[name];
 
         const length = Math.max(...Object.values(players).map(v => v.length));
@@ -350,28 +357,28 @@ export class RaceData implements AbstractRace {
                 const start = parseInt(args[0]);
                 const end = parseInt(args[1]);
                 if (start !== start || end !== end || start < 0 || end >= player.length || start > end)
-                    return [400, "Invalid trim bounds."];
+                    throw new ValidationError("Invalid trim bounds.");
 
                 await this.trim(name, start, end);
-                return [200, ""];
+                return;
             } case "remove":
                 if (Object.keys(players).length === 1)
-                    return [400, "Cannot remove the last player."];
+                    throw new ValidationError("Cannot remove the last player.");
                 await this.remove(name);
-                return [200, ""];
+                return;
             case "toggle":
                 if (player.length === 0)
-                    return [400, "Cannot toggle an empty player."];
+                    throw new ValidationError("Cannot toggle an empty player.");
                 [player.time, player.dnf] = [player.dnf, player.time];
                 await this.writeStatic();
-                return [200, ""];
+                return;
             case "resplit": {
                 const splits = args.map(v => parseInt(v));
                 player.splits = splits;
                 await this.writeStatic();
-                return [200, ""];
+                return;
             } default:
-                return [400, "Command does not exist."];
+                throw new ValidationError("Command does not exist.");
             }
         } finally {
             for (let i = 0; i < length; i += FILE_BUFFER)

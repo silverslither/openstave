@@ -1,3 +1,5 @@
+import { MAX_PASSWORD_LENGTH } from "/common/limits.js";
+
 const TOURNAMENT_ID = location.pathname.split("/")[3];
 
 let link, password, live;
@@ -6,7 +8,10 @@ document.addEventListener("DOMContentLoaded", main);
 
 function main() {
     link = document.getElementById("link");
+
     password = document.getElementById("password");
+    password.maxLength = MAX_PASSWORD_LENGTH;
+
     live = document.getElementById("live");
 
     link.href = `/tournament/${TOURNAMENT_ID}`;
@@ -20,12 +25,10 @@ function main() {
     updateLive();
 }
 
-let authLock = false;
-
 async function updateLive() {
     try {
         const data = await (await fetch(`/tournament/${TOURNAMENT_ID}`, { method: "POST" })).json();
-        live.innerText = data;
+        live.innerText = JSON.stringify(data);
     } catch (e) {
         console.error(e);
     }

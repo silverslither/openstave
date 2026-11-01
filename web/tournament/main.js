@@ -12,8 +12,6 @@ function main() {
     updateRounds();
 }
 
-let authLock = false;
-
 async function updateRounds() {
     try {
         const data = await (await fetch(`/tournament/${TOURNAMENT_ID}`, { method: "POST" })).json();

@@ -1,6 +1,7 @@
 import * as net from "node:net";
 
 import { AUTH_WAIT_MS, TCP_PORT } from "../env.ts";
+import { AUTH_FIELD_LENGTH } from "../web/common/limits.js";
 import { activePlayers } from "./race.ts";
 import { trySync } from "./wrapper.ts";
 
@@ -47,12 +48,12 @@ export const server = net.createServer((client) => {
 
         authChunks.push(data);
         authLength += data.byteLength;
-        if (authLength < 64)
+        if (authLength < 2 * AUTH_FIELD_LENGTH)
             return;
 
         const buffer = Buffer.concat(authChunks);
-        const _username = buffer.subarray(0, 32).toString().trim();
-        const _password = buffer.subarray(32, 64).toString().trim();
+        const _username = buffer.subarray(0, AUTH_FIELD_LENGTH).toString().trim();
+        const _password = buffer.subarray(AUTH_FIELD_LENGTH, 2 * AUTH_FIELD_LENGTH).toString().trim();
         const player = authorize(_username, _password);
         const response = Buffer.alloc(5);
         if (player != null) {
@@ -62,7 +63,7 @@ export const server = net.createServer((client) => {
 
             username = _username;
             player.connected = true;
-            player.add(buffer.subarray(64));
+            player.add(buffer.subarray(2 * AUTH_FIELD_LENGTH));
             authChunks.length = 0;
             authLength = 0;
 

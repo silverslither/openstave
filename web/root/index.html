@@ -5,15 +5,15 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>OpenStave v0.4.1-beta</title>
-    <link rel="stylesheet" href="/root/style.css">
+    <link rel="stylesheet" href="/common/ui.css">
     <script type="module" src="/root/main.js"></script>
 </head>
 
 <body>
-    <div id="header">
+    <header>
         <h1>OpenStave v0.4.1-beta</h1>
-    </div>
-    <div id="create">
+    </header>
+    <main id="container">
         <h2>General</h2>
         <label for="key">Key (ask the server administrator)</label>
         <input id="key" type="password">
@@ -51,7 +51,7 @@
         <span class="textbox" id="tournament-players" role="textbox" contenteditable></span>
         <button id="tournament-submit">Submit</button>
         <span id="tournament-error"></span>
-    </div>
+    </main>
 </body>
 
 </html>

@@ -1,13 +1,13 @@
 const TOURNAMENT_ID = location.pathname.split("/")[2];
 
-let rounds;
+let live;
 
 document.addEventListener("DOMContentLoaded", main);
 
 function main() {
-    rounds = document.getElementById("rounds");
+    live = document.getElementById("live");
 
-    rounds.innerHTML = "";
+    live.innerHTML = "";
 
     updateRounds();
 }
@@ -15,7 +15,7 @@ function main() {
 async function updateRounds() {
     try {
         const data = await (await fetch(`/tournament/${TOURNAMENT_ID}`, { method: "POST" })).json();
-        rounds.innerText = JSON.stringify(data);
+        live.innerText = JSON.stringify(data);
     } catch (e) {
         console.error(e);
     }

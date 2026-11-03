@@ -66,11 +66,15 @@ export class Tournament {
         if (this.races.length === 0)
             return false;
 
-        const i = this.races.at(-1)!;
-        const race = activeRaces.get(i) ?? inactiveRaces.get(i)!;
-        const round = this.rounds[this.races.length - 1];
+        return this.calculatePlacements(this.races.length - 1) && Boolean(this.rounds.at(-1)?.finished);
+    }
 
-        if (!round.finished && race.finished()) {
+    calculatePlacements(i: number, force = false) {
+        const name = this.races[i];
+        const race = activeRaces.get(name) ?? inactiveRaces.get(name)!;
+        const round = this.rounds[i];
+
+        if ((force || !round.finished) && race.finished()) {
             const data = race.getStatic();
             if (data == null)
                 return false;
@@ -81,8 +85,6 @@ export class Tournament {
             }) as number[];
             const placements = finish.toSorted((a, b) => a - b);
 
-            round.finished = true;
-
             for (let j = 0; j < finish.length; j++) {
                 if (!Number.isFinite(finish[j]))
                     round.placements.push(finish.length - 1);
@@ -90,10 +92,10 @@ export class Tournament {
                     round.placements.push(placements.indexOf(finish[j]));
             }
 
-            this.rounds[this.races.length - 1].finished = true;
+            round.finished = true;
         }
 
-        return Boolean(this.rounds.at(-1)?.finished);
+        return true;
     }
 
     getData() {
@@ -106,7 +108,18 @@ export class Tournament {
 
     exec(command: string, _args: string[]) {
         switch (command.toLowerCase()) {
-        case "next": {
+        case "restart": {// TODO
+            if (this.races.length === 0)
+                throw new ValidationError("No race has been started yet.");
+
+            const round = this.rounds[this.races.length - 1]
+            if (!round.finished)
+                throw new ValidationError("There is still an ongoing race.");
+
+            round.finished = false;
+            round.placements = [];
+            this.races.pop();
+        } case "next": { // FALLTHROUGH
             if (this.races.length > 0 && !this.rounds[this.races.length - 1].finished)
                 throw new ValidationError("There is still an ongoing race.");
 
@@ -116,8 +129,9 @@ export class Tournament {
             const race = new Race(this.hash, `${this.id.slice(0, -SUFFIX_LENGTH)}-${round.id}`, this.game, players, true, players.map(v => this.playerPasswords.get(v)!));
             this.races.push(race.id);
             return;
-        } case "restart": // TODO
-            return;
+        } case "reload":
+            for (let i = 0; i < this.races.length; i++)
+                this.calculatePlacements(i, true);
         default:
             throw new ValidationError("Command does not exist.");
         }

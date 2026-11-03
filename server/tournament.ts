@@ -101,6 +101,7 @@ export class Tournament {
     getData() {
         return {
             finished: this.finished(),
+            points: Bracket.points(this.players, this.rounds),
             rounds: this.rounds,
             races: this.races,
         };
@@ -108,18 +109,19 @@ export class Tournament {
 
     exec(command: string, _args: string[]) {
         switch (command.toLowerCase()) {
-        case "restart": {// TODO
+        case "restart": {
             if (this.races.length === 0)
                 throw new ValidationError("No race has been started yet.");
 
-            const round = this.rounds[this.races.length - 1]
+            const round = this.rounds[this.races.length - 1];
             if (!round.finished)
                 throw new ValidationError("There is still an ongoing race.");
 
             round.finished = false;
             round.placements = [];
             this.races.pop();
-        } case "next": { // FALLTHROUGH
+            // fallthrough
+        } case "next": {
             if (this.races.length > 0 && !this.rounds[this.races.length - 1].finished)
                 throw new ValidationError("There is still an ongoing race.");
 
@@ -132,6 +134,7 @@ export class Tournament {
         } case "reload":
             for (let i = 0; i < this.races.length; i++)
                 this.calculatePlacements(i, true);
+            return;
         default:
             throw new ValidationError("Command does not exist.");
         }

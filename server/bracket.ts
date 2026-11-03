@@ -129,8 +129,11 @@ export function reduce(seeding: string[], rounds: Round[]) {
     }
 }
 
-export function points(rounds: Round[]): Record<string, number> {
+export function points(seeding: string[], rounds: Round[]): Record<string, number> {
     const scores: Record<string, number> = Object.create(null);
+
+    for (const player of seeding)
+        scores[player] = 0;
 
     for (const round of rounds) {
         if (!round.finished)
@@ -149,7 +152,6 @@ export function points(rounds: Round[]): Record<string, number> {
                 ),
             );
 
-            scores[player as string] ??= 0;
             scores[player as string] += score;
         }
     }

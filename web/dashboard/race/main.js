@@ -43,25 +43,8 @@ async function getAuthentication() {
             }),
         });
 
-        if (response.status === 401) {
-            authentication.lastElementChild.innerText = "The entered password is incorrect.";
-            authLock = false;
-            return;
-        }
-
-        if (response.status === 429) {
-            authentication.lastElementChild.innerText = "Password guessing is limited to one try per second.";
-            authLock = false;
-            return;
-        }
-
-        if (response.status === 404) {
-            authentication.innerText = "The race is no longer active.";
-            return;
-        }
-
-        if (response.status !== 200) {
-            authentication.lastElementChild.innerText = response.statusText;
+        if (!response.ok) {
+            authentication.lastElementChild.innerText = await response.text() || response.statusText;
             authLock = false;
             return;
         }
@@ -109,28 +92,10 @@ async function handleAction(player, action, options) {
             }),
         });
 
-        if (response.status === 401) {
-            live.parentElement.nextElementSibling.innerText = "The entered password is incorrect.";
-            actionLock = false;
-            return;
-        }
-
-        if (response.status === 429) {
-            live.parentElement.nextElementSibling.innerText = "Password guessing is limited to one try per second.";
-            actionLock = false;
-            return;
-        }
-
-        if (response.status === 503) {
-            live.parentElement.nextElementSibling.innerText = "The server is currently busy. Try again later.";
-            actionLock = false;
-            return;
-        }
-
-        live.parentElement.nextElementSibling.innerText = response.statusText;
+        live.parentElement.nextElementSibling.innerText = await response.text() || response.statusText;
         actionLock = false;
     } catch (e) {
-        live.parentElement.nextElementSibling.innerText = e;
+        live.parentElement.nextElementSibling.innerText = e instanceof Error ? e.message : e;
         actionLock = false;
     }
 }
@@ -207,23 +172,23 @@ function getActionButton(player, action, options) {
 function confirm(message, _default = "") {
     const s = prompt(`${message} [y/N]`, _default);
     if (s !== "y")
-        throw "Operation cancelled by user";
+        throw new Error("Operation cancelled.");
     return [];
 }
 
 function getInteger(message, _default = "") {
     const s = prompt(message, _default);
     if (s == null)
-        throw "Operation cancelled by user";
+        throw new Error("Operation cancelled.");
     const v = parseInt(s);
     if (v !== v)
-        throw "Invalid input";
+        throw new Error("Enter a valid integer.");
     return s;
 }
 
 function getArray(message, _default = "") {
     const s = prompt(message, _default);
     if (s == null)
-        throw "Operation cancelled by user";
+        throw new Error("Operation cancelled.");
     return s.split(",");
 }

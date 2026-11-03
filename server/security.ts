@@ -3,6 +3,14 @@ import * as crypto from "node:crypto";
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "../web/common/limits.js";
 import { ValidationError } from "./wrapper.ts";
 
+export const VerificationResult = {
+    CORRECT: 0,
+    INCORRECT: 1,
+    RATE_LIMITED: 2,
+} as const;
+
+export type VerificationResult = typeof VerificationResult[keyof typeof VerificationResult];
+
 const timeout: Map<string, number> = new Map();
 
 export const LowSecurityHasher = {
@@ -14,19 +22,19 @@ export const LowSecurityHasher = {
         const hash = crypto.createHash("sha3-384").update(password + salt).digest("base64");
         return hash + salt;
     },
-    verify(password: string, hash: string | null) {
+    verify(password: string, hash: string | null): VerificationResult {
         if (hash == null)
-            return 1;
+            return VerificationResult.INCORRECT;
         if (Number(timeout.get(hash)) > Date.now() - 1000)
-            return 2;
+            return VerificationResult.RATE_LIMITED;
 
         const salt = hash.slice(64);
         const h = crypto.createHash("sha3-384").update(password + salt).digest("base64");
 
         if (h === hash.slice(0, 64))
-            return 0;
+            return VerificationResult.CORRECT;
 
         timeout.set(hash, Date.now());
-        return 1;
+        return VerificationResult.INCORRECT;
     },
 };

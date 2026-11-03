@@ -7,7 +7,7 @@ import * as zlib from "node:zlib";
 
 import { HTTP_PORT, MAX_BODY_SIZE_BYTES, TCP_ADDRESS, TCP_PORT } from "../env.ts";
 import { activeRaces, inactiveRaces, Race, RaceData } from "./race.ts";
-import { LowSecurityHasher } from "./security.ts";
+import { LowSecurityHasher, VerificationResult } from "./security.ts";
 import { Tournament, tournaments } from "./tournament.ts";
 import { tryAsync, ValidationError } from "./wrapper.ts";
 
@@ -22,6 +22,30 @@ const MIME_TYPES: Record<string, string> = {
     ".opus": "audio/ogg",
     ".woff2": "font/woff2",
 };
+
+const HTTP_RESPONSE_MESSAGES: Record<number, string> = {
+    200: "The requested operation completed successfully.",
+    400: "Invalid input.",
+    401: "The entered password is incorrect.",
+    404: "The requested resource was not found.",
+    413: "Request body exceeds the maximum allowed size.",
+    429: "Password guessing is limited to one try per second.",
+    500: "An unexpected server error occurred.",
+    503: "The server is currently busy. Try again later.",
+};
+
+const PASSWORD_VERIFICATION_STATUS: Record<VerificationResult, number> = {
+    [VerificationResult.CORRECT]: 200,
+    [VerificationResult.INCORRECT]: 401,
+    [VerificationResult.RATE_LIMITED]: 429,
+};
+
+const sendResponse = (
+    response: http.ServerResponse,
+    status: number,
+    message = HTTP_RESPONSE_MESSAGES[status] ?? "",
+    contentType = "text/plain; charset=utf-8",
+) => response.writeHead(status, { "Content-Type": contentType }).end(message);
 
 const WEB_PATH = path.join(import.meta.dirname, "..", "web");
 
@@ -42,7 +66,7 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
     try {
         url = decodeURI(request.url ?? "%");
     } catch {
-        response.writeHead(400).end();
+        sendResponse(response, 400);
         return;
     }
 
@@ -72,11 +96,11 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
         try {
             file = await fs.promises.realpath(file);
             if (!file.startsWith(WEB_PATH + path.sep) || !Object.hasOwn(MIME_TYPES, path.extname(file).toLowerCase()) || !(await fs.promises.stat(file)).isFile()) {
-                response.writeHead(404).end();
+                sendResponse(response, 404);
                 return;
             }
         } catch {
-            response.writeHead(404).end();
+            sendResponse(response, 404);
             return;
         }
 
@@ -95,7 +119,7 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
     }
 
     if (request.method !== "POST") {
-        response.writeHead(404).end();
+        sendResponse(response, 404);
         return;
     }
 
@@ -109,7 +133,7 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
         bytesReceived += data.length;
 
         if (bytesReceived > MAX_BODY_SIZE_BYTES)
-            response.writeHead(413).end();
+            sendResponse(response, 413);
     });
 
     request.on("end", tryAsync(async () => {
@@ -121,12 +145,12 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             const body = Buffer.concat(chunks).toString();
             requestBody = body.length === 0 ? {} : JSON.parse(body);
         } catch {
-            response.writeHead(400).end("Invalid input.");
+            sendResponse(response, 400);
             return;
         }
 
         if (requestBody == null) {
-            response.writeHead(400).end("Invalid input.");
+            sendResponse(response, 400);
             return;
         }
 
@@ -151,12 +175,12 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
                     (typeof type !== "number" ||
                     (arg !== undefined && typeof arg !== "number"))))
             {
-                response.writeHead(400).end("Invalid input.");
+                sendResponse(response, 400);
                 return;
             }
 
             if (!await validateKey(key)) {
-                response.writeHead(400).end("The entered key is incorrect.");
+                sendResponse(response, 400, "The entered key is incorrect.");
                 return;
             }
 
@@ -166,11 +190,11 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
                     new Tournament(password, id, game, players, type as number, arg as (number | undefined));
 
                 console.log(`created ${requestBody.create} ${created.id} with key ${key}`);
-                response.writeHead(200).end(created.id);
+                sendResponse(response, 200, created.id);
             } catch (e) {
                 if (!(e instanceof ValidationError))
                     throw e;
-                response.writeHead(e.status).end(e.message);
+                sendResponse(response, e.status, e.message);
             }
 
             return;
@@ -181,21 +205,18 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             const race = activeRaces.get(id);
 
             if (race == null) {
-                response.writeHead(404).end();
+                sendResponse(response, 404, "The race is no longer active.");
                 return;
             }
 
             if (typeof requestBody.password !== "string") {
-                response.writeHead(400).end("Invalid input.");
+                sendResponse(response, 400);
                 return;
             }
 
-            switch (LowSecurityHasher.verify(requestBody.password, race.hash)) {
-            case 1:
-                response.writeHead(401).end();
-                return;
-            case 2:
-                response.writeHead(429).end();
+            const result = LowSecurityHasher.verify(requestBody.password, race.hash);
+            if (result !== VerificationResult.CORRECT) {
+                sendResponse(response, PASSWORD_VERIFICATION_STATUS[result]);
                 return;
             }
 
@@ -217,7 +238,7 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
                 ]);
             }
 
-            response.writeHead(200).end(JSON.stringify(auth));
+            sendResponse(response, 200, JSON.stringify(auth), "application/json; charset=utf-8");
             return;
         }
 
@@ -226,26 +247,23 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             const race = activeRaces.get(id) ?? inactiveRaces.get(id);
 
             if (race == null) {
-                response.writeHead(404).end();
+                sendResponse(response, 404);
                 return;
             }
 
             if (race instanceof RaceData && race.static == null) {
-                response.writeHead(503).end();
+                sendResponse(response, 503);
                 return;
             }
 
             if (typeof requestBody.password !== "string") {
-                response.writeHead(400).end("Invalid input.");
+                sendResponse(response, 400);
                 return;
             }
 
-            switch (LowSecurityHasher.verify(requestBody.password, race.hash)) {
-            case 1:
-                response.writeHead(401).end();
-                return;
-            case 2:
-                response.writeHead(429).end();
+            const result = LowSecurityHasher.verify(requestBody.password, race.hash);
+            if (result !== VerificationResult.CORRECT) {
+                sendResponse(response, PASSWORD_VERIFICATION_STATUS[result]);
                 return;
             }
 
@@ -254,17 +272,17 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             const args = requestBody.args;
 
             if (typeof name !== "string" || typeof command !== "string" || !Array.isArray(args) || args.some(v => typeof v !== "string")) {
-                response.writeHead(400).end("Invalid input.");
+                sendResponse(response, 400);
                 return;
             }
 
             try {
                 await race.exec(name, command, args);
-                response.writeHead(200).end();
+                sendResponse(response, 200);
             } catch (e) {
                 if (!(e instanceof ValidationError))
                     throw e;
-                response.writeHead(e.status).end(e.message);
+                sendResponse(response, e.status, e.message);
             }
 
             return;
@@ -275,21 +293,18 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             const tournament = tournaments.get(id);
 
             if (tournament == null) {
-                response.writeHead(404).end();
+                sendResponse(response, 404);
                 return;
             }
 
             if (typeof requestBody.password !== "string") {
-                response.writeHead(400).end("Invalid input.");
+                sendResponse(response, 400);
                 return;
             }
 
-            switch (LowSecurityHasher.verify(requestBody.password, tournament.hash)) {
-            case 1:
-                response.writeHead(401).end();
-                return;
-            case 2:
-                response.writeHead(429).end();
+            const result = LowSecurityHasher.verify(requestBody.password, tournament.hash);
+            if (result !== VerificationResult.CORRECT) {
+                sendResponse(response, PASSWORD_VERIFICATION_STATUS[result]);
                 return;
             }
 
@@ -297,17 +312,17 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             const args = requestBody.args;
 
             if (typeof command !== "string" || !Array.isArray(args) || args.some(v => typeof v !== "string")) {
-                response.writeHead(400).end("Invalid input.");
+                sendResponse(response, 400);
                 return;
             }
 
             try {
                 tournament.exec(command, args);
-                response.writeHead(200).end();
+                sendResponse(response, 200);
             } catch (e) {
                 if (!(e instanceof ValidationError))
                     throw e;
-                response.writeHead(e.status).end(e.message);
+                sendResponse(response, e.status, e.message);
             }
 
             return;
@@ -318,12 +333,12 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             const tournament = tournaments.get(id);
 
             if (tournament == null) {
-                response.writeHead(404).end();
+                sendResponse(response, 404);
                 return;
             }
 
             const data = tournament.getData();
-            response.writeHead(200).end(JSON.stringify(data));
+            sendResponse(response, 200, JSON.stringify(data), "application/json; charset=utf-8");
 
             return;
         }
@@ -333,7 +348,7 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
         const length = requestBody.length;
 
         if (typeof start !== "number" || typeof length !== "number") {
-            response.writeHead(400).end("Invalid input.");
+            sendResponse(response, 400);
             return;
         }
 
@@ -341,7 +356,7 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
         const race = activeRaces.get(id) ?? inactiveRaces.get(id);
 
         if (race == null) {
-            response.writeHead(404).end();
+            sendResponse(response, 404);
             return;
         }
 
@@ -351,12 +366,12 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
         } catch (e) {
             if (!(e instanceof ValidationError))
                 throw e;
-            response.writeHead(e.status).end(e.message);
+            sendResponse(response, e.status, e.message);
             return;
         }
 
         if (responseBody == null) {
-            response.writeHead(503).end();
+            sendResponse(response, 503);
             return;
         }
 
@@ -366,8 +381,8 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             "Content-Length": data.length,
             "Content-Type": "application/json",
         }).end(data);
-    }, () => response.writeHead(500).end()));
-}, args => args[1].writeHead(500).end()));
+    }, () => sendResponse(response, 500)));
+}, args => sendResponse(args[1], 500)));
 
 server.listen(HTTP_PORT, "0.0.0.0", () => {
     console.log("HTTP server running on port", HTTP_PORT);

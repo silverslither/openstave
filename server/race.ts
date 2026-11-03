@@ -264,18 +264,16 @@ export class RaceData implements AbstractRace {
     }
 
     async import() {
-        try {
-            const data = await fs.promises.readFile(path.join(this.path, "static"), "utf8");
-            this.static = JSON.parse(data) as StaticRaceData;
-            this.game = this.static.game;
+        const data = await fs.promises.readFile(path.join(this.path, "static"), "utf8");
+        this.static = JSON.parse(data) as StaticRaceData;
+        this.game = this.static.game;
 
-            for (const name of Object.keys(this.static.players)) {
-                const player = this.static.players[name];
-                player.splits = player.splits.map(v => v ?? NaN);
-                player.time ??= NaN;
-                player.dnf ??= NaN;
-            }
-        } catch {}
+        for (const name of Object.keys(this.static.players)) {
+            const player = this.static.players[name];
+            player.splits = player.splits.map(v => v ?? NaN);
+            player.time ??= NaN;
+            player.dnf ??= NaN;
+        }
     }
 
     async write(race: Race) {

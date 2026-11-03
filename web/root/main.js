@@ -86,14 +86,8 @@ async function createRace() {
             }),
         });
 
-        if (response.status === 400) {
-            error.innerText = await response.text();
-            lock = false;
-            return;
-        }
-
-        if (response.status !== 200) {
-            error.innerText = response.statusText;
+        if (!response.ok) {
+            error.innerText = await response.text() || response.statusText;
             lock = false;
             return;
         }
@@ -135,14 +129,8 @@ async function createTournament() {
             }),
         });
 
-        if (response.status === 400) {
-            error.innerText = await response.text();
-            lock = false;
-            return;
-        }
-
-        if (response.status !== 200) {
-            error.innerText = response.statusText;
+        if (!response.ok) {
+            error.innerText = await response.text() || response.statusText;
             lock = false;
             return;
         }

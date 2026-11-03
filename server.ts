@@ -72,7 +72,7 @@ if (!fs.existsSync(RACE_PATH)) {
         const race = new RaceData(path.join(RACE_PATH, key));
         race.import().then(() => {
             inactiveRaces.set(key, race);
-        });
+        }).catch(e => console.error(e));
     }
 }
 

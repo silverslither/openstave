@@ -2,7 +2,7 @@ import { MAX_PASSWORD_LENGTH } from "/common/limits.js";
 
 const TOURNAMENT_ID = location.pathname.split("/")[3];
 
-let link, password, reload, restart, next, actionError, rounds;
+let link, password, reload, revert, next, actionError, rounds;
 
 document.addEventListener("DOMContentLoaded", main);
 
@@ -13,7 +13,7 @@ function main() {
     password.maxLength = MAX_PASSWORD_LENGTH;
 
     reload = document.getElementById("reload");
-    restart = document.getElementById("restart");
+    revert = document.getElementById("revert");
     next = document.getElementById("next");
     rounds = document.getElementById("rounds");
     actionError = reload.parentElement.nextElementSibling;
@@ -28,8 +28,8 @@ function main() {
 
     reload.addEventListener("click", () =>
         handleAction("reload", confirm("Are you sure you want to recalculate points for all rounds?")));
-    restart.addEventListener("click", () =>
-        handleAction("restart", confirm("Are you sure you want to restart the last round?")));
+    revert.addEventListener("click", () =>
+        handleAction("revert", confirm("Are you sure you want to revert the last round?")));
     next.addEventListener("click", () => handleAction("next", []));
 
     updateLive();

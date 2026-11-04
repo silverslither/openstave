@@ -15,6 +15,7 @@ export class Tournament {
     hash: string;
     id: string;
     game: string;
+    timeout: number;
     players: string[];
     playerPasswords: Map<string, string>;
     rounds: Bracket.Round[];
@@ -24,6 +25,7 @@ export class Tournament {
         this.hash = LowSecurityHasher.hash(password)!;
         this.id = "";
         this.game = game;
+        this.timeout = Date.now() + 24 * 3600 * 1000;
         this.players = [];
         this.playerPasswords = new Map();
         this.rounds = [];
@@ -66,6 +68,9 @@ export class Tournament {
     }
 
     finished() {
+        if (Date.now() > this.timeout && !activeRaces.has(this.races.at(-1)!))
+            Slots.deregister(this.id, SlotType.TOURNAMENT);
+
         if (this.races.length === 0)
             return false;
 
@@ -85,7 +90,7 @@ export class Tournament {
             if (data == null)
                 return false;
 
-            const finish = (round.players as string[]).map((v) => {
+            const finish = round.players.map((v) => {
                 const time = data.players[v]?.time;
                 return Number.isFinite(time) ? time : Infinity;
             }) as number[];
@@ -116,7 +121,7 @@ export class Tournament {
 
     exec(command: string, _args: string[]) {
         switch (command.toLowerCase()) {
-        case "restart": {
+        case "revert": {
             if (this.races.length === 0)
                 throw new ValidationError("No race has been started yet.");
 
@@ -124,25 +129,30 @@ export class Tournament {
             if (!round.finished)
                 throw new ValidationError("There is still an ongoing race.");
 
-            Slots.register(this.id, SlotType.TOURNAMENT);
-
             round.finished = false;
+            round.players = [];
             round.placements = [];
             this.races.pop();
-            // fallthrough
+            return;
         } case "next": {
             if (this.races.length > 0 && !this.rounds[this.races.length - 1].finished)
                 throw new ValidationError("There is still an ongoing race.");
 
+            Slots.register(this.id, SlotType.TOURNAMENT);
+
             Bracket.reduce(this.players, this.rounds);
             const round = this.rounds[this.races.length];
-            const players = round.players as string[];
+            if (round == null)
+                throw new ValidationError("There are no more rounds.");
+
+            const players = round.players;
             const race = new Race(this.hash, `${this.id.slice(0, -SUFFIX_LENGTH)}-${round.id}`, this.game, players, true, players.map(v => this.playerPasswords.get(v)!));
             this.races.push(race.id);
             return;
         } case "reload":
             for (let i = 0; i < this.races.length; i++)
-                this.calculatePlacements(i, true);
+                if (!this.calculatePlacements(i, true))
+                    throw new ValidationError("Race data is currently unavailable. Try again later.", 503);
             return;
         default:
             throw new ValidationError("Command does not exist.");

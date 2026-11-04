@@ -43,7 +43,7 @@ function main() {
     tournamentError = document.getElementById("tournament-error");
 
     game.value = "";
-    tournamentType.value = "";
+    tournamentType.value = -1;
 
     showHidePassword.addEventListener("click", () => password.type = password.type === "password" ? "text" : "password");
     raceSubmit.addEventListener("click", createRace);
@@ -102,7 +102,7 @@ async function createRace() {
         racePlayers.innerText = "";
         tournamentId.value = "";
         tournamentArg.value = "";
-        tournamentType.value = "";
+        tournamentType.value = -1;
         lock = false;
 
         sessionStorage.setItem("password", password.value);

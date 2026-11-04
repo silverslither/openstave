@@ -31,9 +31,10 @@ function main() {
     tournamentType = document.getElementById("tournament-type");
 
     tournamentArg = document.getElementById("tournament-arg");
-    tournamentArg.min = "1";
-    tournamentArg.max = String(MAX_ROUND_ROBIN_ROUNDS);
-    tournamentArg.step = "1";
+    tournamentArg.min = 1;
+    tournamentArg.max = MAX_ROUND_ROBIN_ROUNDS;
+    tournamentArg.step = 1;
+    tournamentArg.previousElementSibling.innerText = "Number of Rounds";
 
     tournamentPlayers = document.getElementById("tournament-players");
     tournamentPlayers.previousElementSibling.innerText = `Players (1–${MAX_PLAYERS}, one name per line)`;
@@ -42,10 +43,14 @@ function main() {
     tournamentError = document.getElementById("tournament-error");
 
     game.value = "";
+    tournamentType.value = "";
 
     showHidePassword.addEventListener("click", () => password.type = password.type === "password" ? "text" : "password");
     raceSubmit.addEventListener("click", createRace);
     tournamentSubmit.addEventListener("click", createTournament);
+
+    tournamentType.addEventListener("change", () =>
+        tournamentArg.hidden = tournamentArg.previousElementSibling.hidden = tournamentType.value !== "0");
 
     for (const input of [raceId, tournamentId, racePlayers, tournamentPlayers]) {
         input.addEventListener("beforeinput", (event) => {
@@ -95,6 +100,9 @@ async function createRace() {
         game.value = "";
         raceId.value = "";
         racePlayers.innerText = "";
+        tournamentId.value = "";
+        tournamentArg.value = "";
+        tournamentType.value = "";
         lock = false;
 
         sessionStorage.setItem("password", password.value);

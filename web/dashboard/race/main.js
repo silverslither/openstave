@@ -2,7 +2,7 @@ import { MAX_PASSWORD_LENGTH, SUFFIX_LENGTH } from "/common/limits.js";
 
 const RACE_ID = location.pathname.split("/")[2];
 
-let link, password, live, authentication;
+let link, password, live, actionError, authentication;
 
 document.addEventListener("DOMContentLoaded", main);
 
@@ -13,6 +13,7 @@ function main() {
     password.maxLength = MAX_PASSWORD_LENGTH;
 
     live = document.getElementById("live");
+    actionError = live.parentElement.nextElementSibling;
     authentication = document.getElementById("authentication");
 
     link.href = `/${RACE_ID}`;
@@ -66,7 +67,7 @@ async function handleAction(player, action, options) {
         return;
     actionLock = true;
 
-    live.parentElement.nextElementSibling.innerText = "";
+    actionError.innerText = "";
     await new Promise(r => setTimeout(r, 0));
 
     try {
@@ -92,17 +93,15 @@ async function handleAction(player, action, options) {
             }),
         });
 
-        live.parentElement.nextElementSibling.innerText = await response.text() || response.statusText;
+        actionError.innerText = await response.text() || response.statusText;
         actionLock = false;
     } catch (e) {
-        live.parentElement.nextElementSibling.innerText = e instanceof Error ? e.message : e;
+        actionError.innerText = e instanceof Error ? e.message : e;
         actionLock = false;
     }
 }
 
 async function updateLive() {
-    const rows = [];
-
     try {
         const data = await (await fetch(`/${RACE_ID}`, {
             method: "POST",
@@ -111,6 +110,8 @@ async function updateLive() {
                 length: 0,
             }),
         })).json();
+
+        const rows = [];
 
         for (const i of Object.keys(data.players)) {
             const player = data.players[i];

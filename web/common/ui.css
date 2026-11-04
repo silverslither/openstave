@@ -47,6 +47,10 @@ h2 {
     margin: 24px 0px 0px 0px;
 }
 
+#container h2:first-child {
+    margin-top: 12px;
+}
+
 input, select, button, .textbox {
     padding: 4px;
     border: 1px solid black;

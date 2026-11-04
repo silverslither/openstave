@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", main);
 
 function main() {
     document.querySelector("h1").innerText = TOURNAMENT_ID.slice(0, -SUFFIX_LENGTH);
-    leaderboard = document.getElementById("rankings");
+    leaderboard = document.getElementById("leaderboard");
     rounds = document.getElementById("rounds");
 
     leaderboard.innerHTML = "";
@@ -44,7 +44,7 @@ async function updateLive() {
             const points = document.createElement("td");
 
             placement.innerText = cPlacement;
-            name.innerText = player;
+            name.innerText = player.slice(0, -SUFFIX_LENGTH);
             points.innerText = score;
 
             row.append(placement, name, points);
@@ -58,30 +58,31 @@ async function updateLive() {
         for (let i = 0; i < data.rounds.length; i++) {
             const round = data.rounds[i];
             const race = data.races?.[i];
-            const column = document.createElement("td");
-            column.width = "50%";
-            column.innerHTML = race == null ?
-                `${round.id} [${round.expected}]` :
-                `<a href="/${race}">${round.id}</a> [${round.expected}]`;
+
+            const id = document.createElement("td");
+            id.width = "50%";
+            id.innerHTML = `${round.id} [${round.expected}]`;
+            if (race != null)
+                id.innerHTML += ` (<a href="/${race}">view race</a>)`
 
             switch (round.id[0]) {
             case "L":
                 if (columns.length === 0)
-                    columns.push(document.createElement("td"), column);
+                    columns.push(document.createElement("td"), id);
                 else
-                    columns.push(column);
+                    columns.push(id);
                 break;
             case "W":
                 if (columns.length === 1) {
                     columns.push(document.createElement("td"));
                     i--;
                 } else {
-                    columns.push(column);
+                    columns.push(id);
                 }
                 break;
             default:
-                column.colSpan = 2;
-                columns.push(column, undefined);
+                id.colSpan = 2;
+                columns.push(id, undefined);
             }
 
             if (columns.length >= 2) {

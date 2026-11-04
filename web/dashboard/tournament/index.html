@@ -5,8 +5,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>OpenStave Tournament Dashboard</title>
+    <script defer type="module" src="/dashboard/tournament/main.js"></script>
     <link rel="stylesheet" href="/common/ui.css">
-    <script type="module" src="/dashboard/tournament/main.js"></script>
 </head>
 
 <body>
@@ -18,7 +18,21 @@
         <a id="link"></a>
         <label for="password">Dashboard Password</label>
         <input id="password" type="password">
-        <div id="live"></div>
+        <h2>Actions</h2>
+        <span>
+            <button id="reload" class="textbtn">reload</button><br/>
+            <button id="restart" class="textbtn">restart</button><br/>
+            <button id="next" class="textbtn">next</button><br/>
+        </span>
+        <span></span>
+        <h2>Rounds</h2>
+        <div>
+            <table>
+                <tbody id="rounds">
+                </tbody>
+            </table>
+            <span></span>
+        </div>
     </main>
 </body>
 

@@ -4,8 +4,9 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { CRASH_TIMEOUT_MS, VACUUM_INTERVAL_MS } from "./env.ts";
-import { activeRaces, inactiveRaces,Race, RaceData } from "./server/race.ts";
+import { activeRaces, inactiveRaces, Race, RaceData } from "./server/race.ts";
 import { openConnections, server } from "./server/tcp.ts";
+import { tournaments } from "./server/tournament.ts";
 
 const CRASH_PATH = path.join(import.meta.dirname, "crash");
 const RACE_PATH = path.join(import.meta.dirname, "races");
@@ -82,6 +83,9 @@ while (true) {
 
     for (const race of activeRaces.values())
         void race.finished();
+
+    for (const tournament of tournaments.values())
+        void tournament.finished();
 
     await new Promise(r => setTimeout(r, VACUUM_INTERVAL_MS));
 }

@@ -63,7 +63,7 @@ async function updateLive() {
             id.width = "50%";
             id.innerHTML = `${round.id} [${round.expected}]`;
             if (race != null)
-                id.innerHTML += ` (<a href="/${race}">view race</a>)`
+                id.innerHTML += ` (<a href="/${race}">view race</a>)`;
 
             switch (round.id[0]) {
             case "L":

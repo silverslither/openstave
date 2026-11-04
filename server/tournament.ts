@@ -6,6 +6,7 @@ import { supportedGames } from "./buffer.ts";
 import Player from "./player.ts";
 import { activePlayers, activeRaces, inactiveRaces, Race } from "./race.ts";
 import { LowSecurityHasher } from "./security.ts";
+import { Slots, SlotType } from "./slots.ts";
 import { ValidationError } from "./wrapper.ts";
 
 export const tournaments: Map<string, Tournament> = new Map();
@@ -52,12 +53,14 @@ export class Tournament {
         const rounds = Bracket.generate(type, players.length, arg);
         this.rounds = rounds;
 
-        for (const player of this.players)
-            activePlayers.set(player, undefined);
-
         do {
             this.id = id + crypto.randomBytes(0.75 * SUFFIX_LENGTH).toString("base64url");
         } while (tournaments.has(this.id));
+
+        Slots.register(this.id, SlotType.TOURNAMENT);
+
+        for (const player of this.players)
+            activePlayers.set(player, undefined);
 
         tournaments.set(this.id, this);
     }
@@ -66,7 +69,10 @@ export class Tournament {
         if (this.races.length === 0)
             return false;
 
-        return this.calculatePlacements(this.races.length - 1) && Boolean(this.rounds.at(-1)?.finished);
+        const finished = this.calculatePlacements(this.races.length - 1) && Boolean(this.rounds.at(-1)?.finished);
+        if (finished)
+            Slots.deregister(this.id, SlotType.TOURNAMENT);
+        return finished;
     }
 
     calculatePlacements(i: number, force = false) {
@@ -85,6 +91,7 @@ export class Tournament {
             }) as number[];
             const placements = finish.toSorted((a, b) => a - b);
 
+            round.placements = [];
             for (let j = 0; j < finish.length; j++) {
                 if (!Number.isFinite(finish[j]))
                     round.placements.push(finish.length - 1);
@@ -116,6 +123,8 @@ export class Tournament {
             const round = this.rounds[this.races.length - 1];
             if (!round.finished)
                 throw new ValidationError("There is still an ongoing race.");
+
+            Slots.register(this.id, SlotType.TOURNAMENT);
 
             round.finished = false;
             round.placements = [];

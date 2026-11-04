@@ -89,7 +89,7 @@ async function updateLive() {
             id.width = "50%";
             id.innerHTML = `${round.id} [${round.expected}]`;
             if (race != null)
-                id.innerHTML += ` (<a href="/dashboard/${race}">view dashboard</a>)`
+                id.innerHTML += ` (<a href="/dashboard/${race}">view dashboard</a>)`;
 
             switch (round.id[0]) {
             case "L":
@@ -133,21 +133,4 @@ function confirm(message, _default = "") {
     if (s !== "y")
         throw new Error("Operation cancelled.");
     return [];
-}
-
-function getInteger(message, _default = "") {
-    const s = prompt(message, _default);
-    if (s == null)
-        throw new Error("Operation cancelled.");
-    const v = parseInt(s);
-    if (v !== v)
-        throw new Error("Enter a valid integer.");
-    return s;
-}
-
-function getArray(message, _default = "") {
-    const s = prompt(message, _default);
-    if (s == null)
-        throw new Error("Operation cancelled.");
-    return s.split(",");
 }

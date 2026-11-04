@@ -4,12 +4,13 @@ import * as path from "node:path";
 import * as util from "node:util";
 import * as zlib from "node:zlib";
 
-import { MAX_ACTIVE_RACES, TIMEOUTS } from "../env.ts";
+import { TIMEOUTS } from "../env.ts";
 import { AUTH_FIELD_LENGTH, FILE_BUFFER, INVALID_CHARACTERS, MAX_PLAYERS, MAX_RACE_ID_LENGTH, MAX_REQUEST_BUFFER_FRAMES, SUFFIX_LENGTH } from "../web/common/limits.js";
 import { supportedGames } from "./buffer.ts";
 import { GzipFileCache } from "./cache.ts";
 import Player from "./player.ts";
 import { LowSecurityHasher } from "./security.ts";
+import { Slots, SlotType } from "./slots.ts";
 import { destroyPlayer } from "./tcp.ts";
 import { ValidationError } from "./wrapper.ts";
 
@@ -90,11 +91,6 @@ export class Race implements AbstractRace {
             Player.validateNames(players);
         }
 
-        // TODO: make tournaments "reserve" one race slot
-
-        if (activeRaces.size >= MAX_ACTIVE_RACES)
-            throw new ValidationError("The server is currently busy. Try again later.");
-
         const timeoutMs = TIMEOUTS[game] ?? TIMEOUTS.default;
         this.timeout = Date.now() + timeoutMs;
 
@@ -113,12 +109,15 @@ export class Race implements AbstractRace {
             this.players.push(new Player(game, username, password));
         }
 
-        for (const player of this.players)
-            activePlayers.set(player.username, player);
-
         do {
             this.id = id + crypto.randomBytes(0.75 * SUFFIX_LENGTH).toString("base64url");
         } while (activeRaces.has(this.id) || inactiveRaces.has(this.id));
+
+        if (!raw)
+            Slots.register(this.id, SlotType.RACE);
+
+        for (const player of this.players)
+            activePlayers.set(player.username, player);
 
         activeRaces.set(this.id, this);
     }
@@ -129,11 +128,13 @@ export class Race implements AbstractRace {
                 player.eventHandler({ code: "DNF", data: null });
             this.timeout = Infinity;
 
+            Slots.deregister(this.id, SlotType.RACE);
             this.vacuum();
             return true;
         }
 
         if (this.players.every(v => v.finished())) {
+            Slots.deregister(this.id, SlotType.RACE);
             this.vacuum();
             return true;
         }
@@ -197,6 +198,9 @@ export class Race implements AbstractRace {
         race.game = obj.game as string;
         race.timeout = obj.timeout as number ?? -Infinity;
         race.players = (obj.players as Record<string, unknown>[]).map(v => Player.from(v));
+
+        Slots.register(race.id, SlotType.RACE, true);
+
         for (const player of race.players)
             if (player.end !== player.end && player.dnf !== player.dnf)
                 activePlayers.set(player.username, player);

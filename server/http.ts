@@ -5,7 +5,7 @@ import * as path from "node:path";
 import * as util from "node:util";
 import * as zlib from "node:zlib";
 
-import { HTTP_PORT, MAX_BODY_SIZE_BYTES, TCP_ADDRESS, TCP_PORT } from "../env.ts";
+import { MAX_BODY_SIZE_BYTES, TCP_ADDRESS, TCP_PORT } from "../env.ts";
 import { activeRaces, inactiveRaces, Race, RaceData } from "./race.ts";
 import { LowSecurityHasher, VerificationResult } from "./security.ts";
 import { Tournament, tournaments } from "./tournament.ts";
@@ -61,7 +61,7 @@ const validateKey = async (key: string) => {
 const queryCache: Map<string, Buffer> = new Map();
 const playerTokens: Map<string, string> = new Map();
 
-const server = http.createServer(tryAsync(async (request: http.IncomingMessage, response: http.ServerResponse) => {
+export const httpServer = http.createServer(tryAsync(async (request: http.IncomingMessage, response: http.ServerResponse) => {
     let url: string;
     try {
         url = decodeURI(request.url ?? "%");
@@ -137,6 +137,9 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
     });
 
     request.on("end", tryAsync(async () => {
+        if (!httpServer.listening)
+            return;
+
         if (bytesReceived > MAX_BODY_SIZE_BYTES)
             return;
 
@@ -183,6 +186,9 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
                 sendResponse(response, 400, "The entered key is incorrect.");
                 return;
             }
+
+            if (!httpServer.listening)
+                return;
 
             try {
                 const created = requestBody.create === "race" ?
@@ -317,7 +323,7 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
             }
 
             try {
-                tournament.exec(command, args);
+                await tournament.exec(command, args);
                 sendResponse(response, 200);
             } catch (e) {
                 if (!(e instanceof ValidationError))
@@ -383,7 +389,3 @@ const server = http.createServer(tryAsync(async (request: http.IncomingMessage, 
         }).end(data);
     }, () => sendResponse(response, 500)));
 }, args => sendResponse(args[1], 500)));
-
-server.listen(HTTP_PORT, "0.0.0.0", () => {
-    console.log("HTTP server running on port", HTTP_PORT);
-});

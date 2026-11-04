@@ -1,4 +1,6 @@
 import * as crypto from "node:crypto";
+import * as fs from "node:fs";
+import * as path from "node:path";
 
 import { AUTH_FIELD_LENGTH, INVALID_CHARACTERS, MAX_TOURNAMENT_ID_LENGTH, SUFFIX_LENGTH } from "../web/common/limits.js";
 import * as Bracket from "./bracket.ts";
@@ -9,9 +11,13 @@ import { LowSecurityHasher } from "./security.ts";
 import { Slots, SlotType } from "./slots.ts";
 import { ValidationError } from "./wrapper.ts";
 
+export const TOURNAMENT_PATH = path.join(import.meta.dirname, "..", "tournaments");
+
 export const tournaments: Map<string, Tournament> = new Map();
 
 export class Tournament {
+    path: string;
+    queue: Promise<void>;
     hash: string;
     id: string;
     game: string;
@@ -22,6 +28,8 @@ export class Tournament {
     races: string[];
 
     constructor(password: string, id: string, game: string, players: string[], type: number, arg?: number) {
+        this.path = "";
+        this.queue = Promise.resolve();
         this.hash = LowSecurityHasher.hash(password)!;
         this.id = "";
         this.game = game;
@@ -61,6 +69,9 @@ export class Tournament {
 
         Slots.register(this.id, SlotType.TOURNAMENT);
 
+        this.path = path.join(TOURNAMENT_PATH, this.id);
+        this.write();
+
         for (const player of this.players)
             activePlayers.set(player, undefined);
 
@@ -74,10 +85,49 @@ export class Tournament {
         if (this.races.length === 0)
             return false;
 
+        const last = this.rounds[this.races.length - 1];
+        const before = last.finished;
         const finished = this.calculatePlacements(this.races.length - 1) && Boolean(this.rounds.at(-1)?.finished);
+
+        if (!before && last.finished)
+            this.write();
+
         if (finished)
             Slots.deregister(this.id, SlotType.TOURNAMENT);
+
         return finished;
+    }
+
+    serialize() {
+        return JSON.stringify(this, (_, v) => v instanceof Map ? [...v] : v);
+    }
+
+    static from(obj: Record<string, unknown>) {
+        const tournament = Object.create(Tournament.prototype) as Tournament;
+        tournament.queue = Promise.resolve();
+        tournament.hash = obj.hash as string;
+        tournament.id = obj.id as string;
+        tournament.path = path.join(TOURNAMENT_PATH, tournament.id);
+        tournament.game = obj.game as string;
+        tournament.timeout = obj.timeout as number;
+        tournament.players = obj.players as string[];
+        tournament.playerPasswords = new Map(obj.playerPasswords as [string, string][]);
+        tournament.rounds = obj.rounds as Bracket.Round[];
+        tournament.races = obj.races as string[];
+
+        Slots.register(tournament.id, SlotType.TOURNAMENT, true);
+        for (const id of tournament.races)
+            Slots.deregister(id, SlotType.RACE);
+
+        for (const player of tournament.players)
+            if (!activePlayers.has(player))
+                activePlayers.set(player, undefined);
+
+        return tournament;
+    }
+
+    write() {
+        return this.queue = this.queue.then(() => fs.promises.writeFile(this.path, this.serialize()));
     }
 
     calculatePlacements(i: number, force = false) {
@@ -133,7 +183,7 @@ export class Tournament {
             round.players = [];
             round.placements = [];
             this.races.pop();
-            return;
+            break;
         } case "next": {
             if (this.races.length > 0 && !this.rounds[this.races.length - 1].finished)
                 throw new ValidationError("There is still an ongoing race.");
@@ -142,20 +192,24 @@ export class Tournament {
 
             Bracket.reduce(this.players, this.rounds);
             const round = this.rounds[this.races.length];
-            if (round == null)
+            if (round == null) {
+                this.write();
                 throw new ValidationError("There are no more rounds.");
+            }
 
             const players = round.players;
             const race = new Race(this.hash, `${this.id.slice(0, -SUFFIX_LENGTH)}-${round.id}`, this.game, players, true, players.map(v => this.playerPasswords.get(v)!));
             this.races.push(race.id);
-            return;
+            break;
         } case "reload":
             for (let i = 0; i < this.races.length; i++)
                 if (!this.calculatePlacements(i, true))
                     throw new ValidationError("Race data is currently unavailable. Try again later.", 503);
-            return;
+            break;
         default:
             throw new ValidationError("Command does not exist.");
         }
+
+        return this.write();
     }
 }

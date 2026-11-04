@@ -14,7 +14,7 @@ import { Slots, SlotType } from "./slots.ts";
 import { destroyPlayer } from "./tcp.ts";
 import { ValidationError } from "./wrapper.ts";
 
-const RACE_PATH = path.join(import.meta.dirname, "..", "races");
+export const RACE_PATH = path.join(import.meta.dirname, "..", "races");
 
 const zlib_promises_gzip = util.promisify(zlib.gzip);
 
@@ -214,8 +214,10 @@ export class Race implements AbstractRace {
 
         try {
             for (const player of this.players) {
-                destroyPlayer(player.username);
-                activePlayers.delete(player.username);
+                if (activePlayers.get(player.username) === player) {
+                    destroyPlayer(player.username);
+                    activePlayers.delete(player.username);
+                }
                 player.connected = false;
             }
 

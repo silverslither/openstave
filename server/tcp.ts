@@ -1,6 +1,6 @@
 import * as net from "node:net";
 
-import { AUTH_WAIT_MS, TCP_PORT } from "../env.ts";
+import { AUTH_WAIT_MS } from "../env.ts";
 import { AUTH_FIELD_LENGTH } from "../web/common/limits.js";
 import { activePlayers } from "./race.ts";
 import { trySync } from "./wrapper.ts";
@@ -19,7 +19,7 @@ const authorize = (username: string, password: string) => {
     return (password === player.password) ? player : null;
 };
 
-export const server = net.createServer((client) => {
+export const tcpServer = net.createServer((client) => {
     openConnections.add(client);
 
     let username = "";
@@ -84,8 +84,9 @@ export const server = net.createServer((client) => {
         clearTimeout(authTimeout);
 
         openConnections.delete(client);
-        if (playerConnections.get(username) === client)
-            playerConnections.delete(username);
+        if (playerConnections.get(username) !== client)
+            return;
+        playerConnections.delete(username);
 
         const player = activePlayers.get(username);
         if (player != null) {
@@ -94,8 +95,4 @@ export const server = net.createServer((client) => {
             player.connected = false;
         }
     });
-});
-
-server.listen(TCP_PORT, "0.0.0.0", () => {
-    console.log("TCP server running on port", TCP_PORT);
 });

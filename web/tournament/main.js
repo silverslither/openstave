@@ -93,6 +93,13 @@ async function updateLive() {
             }
         }
 
+        if (columns.length > 0) {
+            const row = document.createElement("tr");
+            row.append(...columns.filter(v => v != null));
+            rows.push(row);
+            columns.length = 0;
+        }
+
         rounds.innerHTML = "";
         rounds.append(...rows);
     } catch (e) {

@@ -46,6 +46,7 @@ async function getAuthentication() {
 
         if (!response.ok) {
             authentication.lastElementChild.innerText = await response.text() || response.statusText;
+            authentication.lastElementChild.focus();
             authLock = false;
             return;
         }
@@ -57,6 +58,7 @@ async function getAuthentication() {
         authentication.innerHTML = html;
     } catch (e) {
         authentication.lastElementChild.innerText = e;
+        authentication.lastElementChild.focus();
         authLock = false;
     }
 }
@@ -94,9 +96,11 @@ async function handleAction(player, action, options) {
         });
 
         actionError.innerText = await response.text() || response.statusText;
+        actionError.focus();
         actionLock = false;
     } catch (e) {
         actionError.innerText = e instanceof Error ? e.message : e;
+        actionError.focus();
         actionLock = false;
     }
 }

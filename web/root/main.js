@@ -93,6 +93,7 @@ async function createRace() {
 
         if (!response.ok) {
             error.innerText = await response.text() || response.statusText;
+            error.focus();
             lock = false;
             return;
         }
@@ -109,6 +110,7 @@ async function createRace() {
         location.pathname = `/dashboard/${await response.text()}`;
     } catch (e) {
         error.innerText = e;
+        error.focus();
         lock = false;
     }
 }
@@ -139,6 +141,7 @@ async function createTournament() {
 
         if (!response.ok) {
             error.innerText = await response.text() || response.statusText;
+            error.focus();
             lock = false;
             return;
         }
@@ -152,6 +155,7 @@ async function createTournament() {
         location.pathname = `/dashboard/tournament/${await response.text()}`;
     } catch (e) {
         error.innerText = e;
+        error.focus();
         lock = false;
     }
 }

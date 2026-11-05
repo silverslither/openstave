@@ -29,12 +29,7 @@ header {
     max-width: 90vw;
 }
 
-h1 {
-    font-size: 28px;
-    margin: 0px;
-}
-
-#container {
+main {
     width: 720px;
     max-width: 90vw;
     display: flex;
@@ -42,12 +37,22 @@ h1 {
     gap: 2px;
 }
 
+footer {
+    min-height: 72px;
+}
+
+h1 {
+    font-size: 28px;
+    margin: 0px;
+}
+
+
 h2 {
     font-size: 22px;
     margin: 24px 0px 0px 0px;
 }
 
-#container h2:first-child {
+main h2:first-child {
     margin-top: 12px;
 }
 
@@ -80,7 +85,7 @@ button {
     font-size: inherit;
 }
 
-#container > button {
+main > button {
     margin-top: 12px;
 }
 

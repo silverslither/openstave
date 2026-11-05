@@ -27,9 +27,9 @@ function main() {
     password.addEventListener("input", () => sessionStorage.setItem("password", password.value));
 
     reload.addEventListener("click", () =>
-        handleAction("reload", confirm("Are you sure you want to recalculate points for all rounds?")));
+        handleAction("reload", () => confirm("Are you sure you want to recalculate points for all rounds?")));
     revert.addEventListener("click", () =>
-        handleAction("revert", confirm("Are you sure you want to revert the last round?")));
+        handleAction("revert", () => confirm("Are you sure you want to revert the last round?")));
     next.addEventListener("click", () => handleAction("next", []));
 
     updateLive();
@@ -67,9 +67,11 @@ async function handleAction(action, options) {
         });
 
         actionError.innerText = await response.text() || response.statusText;
+        actionError.focus();
         actionLock = false;
     } catch (e) {
         actionError.innerText = e instanceof Error ? e.message : e;
+        actionError.focus();
         actionLock = false;
     }
 }
@@ -117,6 +119,13 @@ async function updateLive() {
                 rows.push(row);
                 columns.length = 0;
             }
+        }
+
+        if (columns.length > 0) {
+            const row = document.createElement("tr");
+            row.append(...columns.filter(v => v != null));
+            rows.push(row);
+            columns.length = 0;
         }
 
         rounds.innerHTML = "";

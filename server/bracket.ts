@@ -91,17 +91,26 @@ export function generate(type: number, players: number, arg?: number) {
     }
 }
 
-export function reduce(seeding: string[], rounds: Round[]) {
+export function regenerate(rounds: Round[], force = false) {
     const i = rounds.findLastIndex(round => round.finished);
 
     switch (rounds[i]?.type) {
+    case Type.ROUND_ROBIN:
+        regenerateRoundRobin(rounds, i, force);
+        break;
     case Type.SINGLE_ELIM:
-        regenerateSingleElimination(rounds, i);
+        regenerateSingleElimination(rounds, i, force);
         break;
     case Type.DOUBLE_ELIM:
-        regenerateDoubleElimination(rounds as DoubleEliminationRound[], i);
+        regenerateDoubleElimination(rounds as DoubleEliminationRound[], i, force);
         break;
     }
+
+    return i;
+}
+
+export function reduce(seeding: string[], rounds: Round[]) {
+    const i = regenerate(rounds);
 
     const round = rounds[i + 1];
     if (round == null)
@@ -150,10 +159,8 @@ export function points(seeding: string[], rounds: Round[]): Record<string, numbe
     return scores;
 }
 
-function generateRoundRobin(n: number, c: number = 2 * Math.ceil(Math.log2(n))): Round[] {
-    const rounds: Round[] = [];
-
-    for (let i = 0; i < c; i++) {
+function generateRoundRobin(n: number, c: number = 2 * Math.ceil(Math.log2(n)), rounds: Round[] = []): Round[] {
+    for (let i = rounds.length; i < c; i++) {
         rounds.push({
             type: Type.ROUND_ROBIN,
             id: `R${rounds.length + 1}`,
@@ -167,6 +174,15 @@ function generateRoundRobin(n: number, c: number = 2 * Math.ceil(Math.log2(n))):
     }
 
     return rounds;
+}
+
+function regenerateRoundRobin(rounds: Round[], i: number, force = false) {
+    if (!force)
+        return;
+
+    const c = rounds.length;
+    rounds.length = i + 1;
+    generateRoundRobin(rounds[0].expected, c, rounds);
 }
 
 function generateSingleElimination(n: number, rounds: Round[] = []): Round[] {
@@ -199,7 +215,7 @@ function generateSingleElimination(n: number, rounds: Round[] = []): Round[] {
     return rounds;
 }
 
-function regenerateSingleElimination(rounds: Round[], i: number) {
+function regenerateSingleElimination(rounds: Round[], i: number, force = false) {
     const round = rounds[i];
     if (!round.finished || i === rounds.length - 1)
         return;
@@ -207,7 +223,7 @@ function regenerateSingleElimination(rounds: Round[], i: number) {
     const cutoff = Math.ceil(0.5 * round.expected);
     const actual = round.placements.reduce((a, v) => a + Number(v < cutoff), 0);
     const extra = actual - rounds[i + 1].expected;
-    if (extra === 0)
+    if (!force && extra === 0)
         return;
 
     rounds.length = i + 1;
@@ -266,7 +282,9 @@ function generateDoubleElimination(w: number, l: number = 0, rounds: DoubleElimi
         return result;
     }
 
-    const sequence = recurse(w, l, last, streak, prev)[1];
+    const [cost, sequence] = recurse(w, l, last, streak, prev);
+    if (cost >= (1n << 127n))
+        throw new ValidationError("The current results cannot produce a valid bracket. Revert, or edit and reload the last round and try again.");
 
     for (const c of sequence) {
         const i = rounds.length;
@@ -350,7 +368,7 @@ function generateDoubleElimination(w: number, l: number = 0, rounds: DoubleElimi
     return rounds;
 }
 
-function regenerateDoubleElimination(rounds: DoubleEliminationRound[], i: number) {
+function regenerateDoubleElimination(rounds: DoubleEliminationRound[], i: number, force = false) {
     const round = rounds[i];
     if (!round.finished || round.id[0] === "F")
         return;
@@ -358,7 +376,7 @@ function regenerateDoubleElimination(rounds: DoubleEliminationRound[], i: number
     const cutoff = Math.ceil(0.5 * round.expected);
     const actual = round.placements.reduce((a, v) => a + Number(v < cutoff), 0);
     const extra = actual - (round.id[0] === "W" ? round.after.w : round.after.l);
-    if (extra === 0)
+    if (!force && extra === 0)
         return;
 
     if (round.id[0] === "W") {

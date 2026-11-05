@@ -183,6 +183,10 @@ export class Tournament {
             round.players = [];
             round.placements = [];
             this.races.pop();
+            if (this.races.length > 0)
+                Bracket.regenerate(this.rounds, true);
+            else
+                this.rounds = Bracket.generate(round.type, this.players.length, this.rounds.length);
             break;
         } case "next": {
             if (this.races.length > 0 && !this.rounds[this.races.length - 1].finished)

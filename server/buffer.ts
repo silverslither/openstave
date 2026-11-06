@@ -12,7 +12,7 @@ export type PlayerEvent =
     | { code: "SPLIT"; data: [index: number, frame: number] }
     | { code: "DNF"; data: number | null };
 
-const SMB1_SMB2J_WARPLESS_SPLITS = [...Array(31).keys()];
+const SMB1_SMB2J_WARPLESS_SPLITS = Array.from({ length: 31 }, (_, i) => ((i >> 2) << 4) + (i & 3));
 
 const SMB1_ANY_SPLITS = [
     0x000, // 1-1

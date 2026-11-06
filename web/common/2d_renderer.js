@@ -100,6 +100,7 @@ export class RendererCanvas {
 }
 
 export function screenshot(pCanvas, lCanvas) {
+    const showLeaderboard = lCanvas.canvas.style.display !== "none";
     const pBuffer = pCanvas.context.getImageData(0, 0, pCanvas.canvas.width, pCanvas.canvas.height).data;
     const lBuffer = lCanvas.context.getImageData(0, 0, lCanvas.canvas.width, lCanvas.canvas.height).data;
     const oBuffer = new Uint8ClampedArray(4 * pBuffer.length);
@@ -114,7 +115,7 @@ export function screenshot(pCanvas, lCanvas) {
             const pPixel = pOffset + 4 * (x >>> 1);
             const lPixel = lOffset + 4 * x;
 
-            if (x < lCanvas.canvas.width && lBuffer[lPixel + 3] !== 0) {
+            if (showLeaderboard && x < lCanvas.canvas.width && lBuffer[lPixel + 3] !== 0) {
                 const alpha = 0.00392156862745098 * lBuffer[lPixel + 3];
                 oBuffer[oPixel + 0] = alpha * lBuffer[lPixel + 0] + (1.0 - alpha) * pBuffer[pPixel + 0];
                 oBuffer[oPixel + 1] = alpha * lBuffer[lPixel + 1] + (1.0 - alpha) * pBuffer[pPixel + 1];

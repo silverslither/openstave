@@ -59,7 +59,7 @@ export default class Player {
         player.end = obj.end as number ?? NaN;
         player.dnf = obj.dnf as number ?? NaN;
         player.splits = (obj.splits as number[]).map(v => v ?? NaN);
-        player.buffers = (obj.buffers as string[])?.map(v => Buffer.from(v, "base64"));
+        player.buffers = (obj.buffers as string[]).map(v => Buffer.from(v, "base64"));
         player.totalLength = obj.totalLength as number;
         return player;
     }

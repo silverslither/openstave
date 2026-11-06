@@ -30,7 +30,7 @@ export class Tournament {
     constructor(password: string, id: string, game: string, players: string[], type: number, arg?: number) {
         this.path = "";
         this.queue = Promise.resolve();
-        this.hash = LowSecurityHasher.hash(password)!;
+        this.hash = LowSecurityHasher.hash(password);
         this.id = "";
         this.game = game;
         this.timeout = Date.now() + 24 * 3600 * 1000;
@@ -87,7 +87,7 @@ export class Tournament {
 
         const last = this.rounds[this.races.length - 1];
         const before = last.finished;
-        const finished = this.calculatePlacements(this.races.length - 1) && Boolean(this.rounds.at(-1)?.finished);
+        const finished = this.calculatePlacements(this.races.length - 1) && Boolean(this.rounds.at(-1)!.finished);
 
         if (!before && last.finished)
             this.write();
@@ -155,6 +155,15 @@ export class Tournament {
             }
 
             round.finished = true;
+
+            if (i === this.races.length - 1) {
+                try {
+                    Bracket.reduce(this.players, this.rounds);
+                } catch (e) {
+                    if (!(e instanceof ValidationError))
+                        throw e;
+                }
+            }
         }
 
         return true;

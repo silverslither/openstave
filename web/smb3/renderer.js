@@ -129,7 +129,7 @@ export class PlayerCanvas extends RendererCanvas {
     }
 
     drawPixelToBuffer(x, y, colourId, alpha) {
-        if (this.outline?.selection?.has(this.outline?.pair(x, y)) || this.mask?.has(this.outline?.pair(x, y)))
+        if (this.outline.selection.has(this.outline.pair(x, y)) || this.mask?.has(this.outline.pair(x, y)))
             return;
 
         const colour = typeof colourId === "number" ? COMPONENT_NES_COLOURS[colourId] : colourId;

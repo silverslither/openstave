@@ -72,7 +72,7 @@ export class Race implements AbstractRace {
     constructor(password: string, id: string, game: string, players: string[], raw = false, playerPasswords: string[] = []) {
         this.vacuumLock = false;
 
-        this.hash = raw ? password : LowSecurityHasher.hash(password)!;
+        this.hash = raw ? password : LowSecurityHasher.hash(password);
         this.id = "";
         this.game = game;
         this.timeout = 0;

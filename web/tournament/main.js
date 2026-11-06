@@ -57,7 +57,7 @@ async function updateLive() {
 
         for (let i = 0; i < data.rounds.length; i++) {
             const round = data.rounds[i];
-            const race = data.races?.[i];
+            const race = data.races[i];
 
             const id = document.createElement("td");
             id.width = "50%";

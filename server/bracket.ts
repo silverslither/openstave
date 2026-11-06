@@ -205,12 +205,15 @@ function generateSingleElimination(n: number, rounds: Round[] = []): Round[] {
             references,
             players: [],
             placements: [],
-            pointsTransform: next <= 2 ? affineTransform(n) : stepTransform(n, 2, 1),
+            pointsTransform: stepTransform(n, 2, 1),
         });
 
         references = [{ round: i, placementRange: [0, next] }];
         n = next;
     }
+
+    const last = rounds.at(-1)!;
+    last.pointsTransform = affineTransform(last.expected);
 
     return rounds;
 }

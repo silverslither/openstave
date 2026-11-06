@@ -109,8 +109,8 @@ export function regenerate(rounds: Round[], force = false) {
     return i;
 }
 
-export function reduce(seeding: string[], rounds: Round[]) {
-    const i = regenerate(rounds);
+export function reduce(seeding: string[], rounds: Round[], force = false) {
+    const i = regenerate(rounds, force);
 
     const round = rounds[i + 1];
     if (round == null)
@@ -190,6 +190,10 @@ function generateSingleElimination(n: number, rounds: Round[] = []): Round[] {
 
     if (rounds.length > 0) {
         const previous = rounds.at(-1)!;
+        if (Math.ceil(0.5 * previous.expected) <= 2)
+            n = 0;
+
+        previous.pointsTransform = stepTransform(previous.expected, 2, 1);
         references = [{ round: rounds.length - 1, placementRange: [0, Math.ceil(0.5 * previous.expected)] }];
     }
 
@@ -220,12 +224,12 @@ function generateSingleElimination(n: number, rounds: Round[] = []): Round[] {
 
 function regenerateSingleElimination(rounds: Round[], i: number, force = false) {
     const round = rounds[i];
-    if (!round.finished || i === rounds.length - 1)
+    if (!round.finished || (!force && i === rounds.length - 1))
         return;
 
     const cutoff = Math.ceil(0.5 * round.expected);
     const actual = round.placements.reduce((a, v) => a + Number(v < cutoff), 0);
-    const extra = actual - rounds[i + 1].expected;
+    const extra = actual - (rounds[i + 1]?.expected ?? 0);
     if (!force && extra === 0)
         return;
 
@@ -382,13 +386,15 @@ function regenerateDoubleElimination(rounds: DoubleEliminationRound[], i: number
     if (!force && extra === 0)
         return;
 
+    const regenerated = structuredClone(rounds.slice(0, i + 1));
+    const after = regenerated[i].after;
     if (round.id[0] === "W") {
-        round.after.w += extra;
-        round.after.l -= extra;
+        after.w += extra;
+        after.l -= extra;
     } else {
-        round.after.l += extra;
+        after.l += extra;
     }
-    rounds.length = i + 1;
 
-    generateDoubleElimination(round.after.w, round.after.l, rounds);
+    generateDoubleElimination(after.w, after.l, regenerated);
+    rounds.splice(0, rounds.length, ...regenerated);
 }

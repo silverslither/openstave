@@ -158,7 +158,7 @@ export class Tournament {
 
             if (i === this.races.length - 1) {
                 try {
-                    Bracket.reduce(this.players, this.rounds);
+                    Bracket.reduce(this.players, this.rounds, force);
                 } catch (e) {
                     if (!(e instanceof ValidationError))
                         throw e;

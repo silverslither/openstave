@@ -1,3 +1,20 @@
+const canvases = [];
+
+(function dprListener() {
+    const query = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+    query.addEventListener("change", () => {
+        dprListener();
+        resizeAll();
+    }, { once: true });
+})();
+
+window.addEventListener("resize", resizeAll);
+
+function resizeAll() {
+    for (const canvas of canvases)
+        canvas.resize().render(canvas.count);
+}
+
 export class Outline {
     constructor() {
         this.selection = new Set();
@@ -34,9 +51,26 @@ export class Outline {
     }
 }
 
-export class RendererCanvas {
+export class NESRendererCanvas {
     constructor(text) {
         this.text = text;
+        canvases.push(this);
+    }
+
+    dynamicResize(width, height, scaleMultiplier = 0.88, widthDisplay = 1.0, heightDisplay = 1.0) {
+        this.canvas.height = height;
+        this.scale = Math.max(
+            Math.min(
+                Math.floor(scaleMultiplier * innerHeight * devicePixelRatio / height + 1.0e-6),
+                Math.round(innerWidth * devicePixelRatio / 240),
+            ), 1) / devicePixelRatio;
+
+        if (width <= 1.0)
+            width *= Math.ceil(innerWidth / this.scale - 1.0e-6);
+        this.canvas.width = width;
+
+        this.canvas.style.width = `${widthDisplay * width * this.scale}px`;
+        this.canvas.style.height = `${heightDisplay * height * this.scale}px`;
     }
 
     createBuffer(colourComponents) {

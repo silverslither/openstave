@@ -1,6 +1,6 @@
-import { Outline, RendererCanvas } from "../common/2d_renderer.js";
+import { NESRendererCanvas, Outline } from "../common/2d_renderer.js";
 import { COMPONENT_NES_COLOURS, COMPONENT_OUTLINE_COLOURS, NES_COLOURS } from "../common/colours.js";
-import { DEFAULT_COLUMNS,formatTime, getPlacements } from "../common/leaderboard.js";
+import { DEFAULT_COLUMNS, formatTime, getPlacements } from "../common/leaderboard.js";
 
 export const FRAME_TIME_MS = 655171 / 39375;
 
@@ -56,7 +56,7 @@ export async function rendererInit() {
     await Promise.all(promises);
 }
 
-export class PlayerCanvas extends RendererCanvas {
+export class PlayerCanvas extends NESRendererCanvas {
     constructor(id, players, following = 0) {
         super(text);
 
@@ -69,8 +69,6 @@ export class PlayerCanvas extends RendererCanvas {
         this.canvas = document.createElement("canvas");
         this.canvas.id = `player${id}`;
 
-        if (this.id === 0)
-            window.addEventListener("resize", () => this.resize().render(this.count));
         this.resize(192);
 
         this.canvas.addEventListener("mousedown", event => this.onclick(event));
@@ -154,19 +152,15 @@ export class PlayerCanvas extends RendererCanvas {
     }
 
     resize(height) {
+        height ??= this.canvas.height;
+
         if (this.id !== 0) {
             this.canvas.className = "floating";
-            this.canvas.width = 384;
-            this.canvas.height = height ?? this.canvas.height;
+            this.dynamicResize(height + 128, height, 1 / 3);
             return this;
         }
 
-        this.canvas.height = height ?? this.canvas.height;
-        this.scale = Math.max(Math.min(Math.floor(innerHeight / this.canvas.height), Math.round(innerWidth / 240)), 1);
-        this.canvas.width = Math.ceil(innerWidth / this.scale);
-        this.canvas.style.width = `${this.canvas.width * this.scale}px`;
-        this.canvas.style.height = `${this.canvas.height * this.scale}px`;
-
+        this.dynamicResize(1.0, height);
         document.getElementById("size").innerText = `Size: ${2 * this.canvas.width}x${2 * this.canvas.height}`;
         return this;
     }

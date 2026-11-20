@@ -1,4 +1,4 @@
-import { RendererCanvas } from "./2d_renderer.js";
+import { NESRendererCanvas } from "./2d_renderer.js";
 import { OUTLINE_COLOURS } from "./colours.js";
 import { SUFFIX_LENGTH } from "./limits.js";
 
@@ -41,7 +41,7 @@ export const DEFAULT_COLUMNS = [
     { field: "time", width: 10, align: "right" },
 ];
 
-export class LeaderboardCanvas extends RendererCanvas {
+export class LeaderboardCanvas extends NESRendererCanvas {
     constructor(players, playerCanvas, frameTimeMs, columns) {
         super(playerCanvas.text);
 
@@ -56,8 +56,7 @@ export class LeaderboardCanvas extends RendererCanvas {
         this.canvas.id = "leaderboard";
         this.canvas.width = 24 + 8 * columns.reduce((a, v) => a + v.width, 0);
 
-        window.addEventListener("resize", () => this.resize().render(this.count));
-        this.resize(playerCanvas.canvas.height);
+        this.resize();
 
         this.canvas.addEventListener("mousedown", event => this.onclick(event), true);
         this.canvas.addEventListener("contextmenu", event => event.preventDefault(), false);
@@ -83,11 +82,8 @@ export class LeaderboardCanvas extends RendererCanvas {
         this.playerCanvas.render(this.playerCanvas.count);
     }
 
-    resize(height) {
-        this.canvas.height = height ?? this.canvas.height;
-        this.scale = Math.max(Math.min(Math.floor(innerHeight / this.canvas.height), Math.round(innerWidth / 240)), 1);
-        this.canvas.style.width = `${0.5 * this.canvas.width * this.scale}px`;
-        this.canvas.style.height = `${this.canvas.height * this.scale}px`;
+    resize() {
+        this.dynamicResize(this.canvas.width, this.playerCanvas.canvas.height, undefined, 0.5);
         return this;
     }
 

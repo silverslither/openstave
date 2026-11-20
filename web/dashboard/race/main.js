@@ -142,11 +142,11 @@ async function updateLive() {
                     getActionButton(i, "remove", () => confirm(`Are you sure you want to delete ${i.slice(0, -SUFFIX_LENGTH)}?`)),
                 );
             } else {
-                status.innerText =
-                    (player.connected ? "connected, " : "not connected, ") +
-                    ((player.dnf != null || player.time != null) ?
-                        "finished" :
-                        (player.length > 0 ? "started" : "not started"));
+                status.innerText
+                    = (player.connected ? "connected, " : "not connected, ")
+                        + ((player.dnf != null || player.time != null)
+                            ? "finished"
+                            : (player.length > 0 ? "started" : "not started"));
 
                 actions.append(
                     getActionButton(i, "dnf", []),

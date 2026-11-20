@@ -168,15 +168,15 @@ export const httpServer = http.createServer(tryAsync(async (request: http.Incomi
             const arg = requestBody.arg;
             const players = requestBody.players;
 
-            if (typeof key !== "string" ||
-                typeof password !== "string" ||
-                typeof id !== "string" ||
-                typeof game !== "string" ||
-                !Array.isArray(players) ||
-                players.some(v => typeof v !== "string")
-                || (requestBody.create === "tournament" &&
-                    (typeof type !== "number" ||
-                    (arg !== undefined && typeof arg !== "number"))))
+            if (typeof key !== "string"
+                || typeof password !== "string"
+                || typeof id !== "string"
+                || typeof game !== "string"
+                || !Array.isArray(players)
+                || players.some(v => typeof v !== "string")
+                || (requestBody.create === "tournament"
+                    && (typeof type !== "number"
+                        || (arg !== undefined && typeof arg !== "number"))))
             {
                 sendResponse(response, 400);
                 return;
@@ -191,9 +191,9 @@ export const httpServer = http.createServer(tryAsync(async (request: http.Incomi
                 return;
 
             try {
-                const created = requestBody.create === "race" ?
-                    new Race(password, id, game, players) :
-                    new Tournament(password, id, game, players, type as number, arg as (number | undefined));
+                const created = requestBody.create === "race"
+                    ? new Race(password, id, game, players)
+                    : new Tournament(password, id, game, players, type as number, arg as (number | undefined));
 
                 console.log(`created ${requestBody.create} ${created.id} with key ${key}`);
                 sendResponse(response, 200, created.id);

@@ -71,7 +71,7 @@ async function setup() {
         open("https://github.com/silverslither/openstave?tab=readme-ov-file#using-the-recorder-feature", "_blank").focus();
     });
 
-    (async() => {
+    (async () => {
         while (!await query())
             await new Promise(resolve => setTimeout(resolve, REREQUEST_INTERVAL_MS));
 

@@ -6,6 +6,28 @@ import tseslint from "typescript-eslint";
 
 import { defineConfig } from "eslint/config";
 
+const braceStyle = stylistic.rules["brace-style"];
+const localBraceStyle = {
+    ...braceStyle,
+    create(context) {
+        const standard = braceStyle.create(context);
+        const allman = braceStyle.create(Object.create(context, {
+            options: { value: ["allman", { allowSingleLine: false }] },
+        }));
+
+        return {
+            ...standard,
+            BlockStatement(node) {
+                const parent = node.parent;
+                const wrappedIf = parent.type === "IfStatement"
+                    && parent.consequent === node
+                    && context.sourceCode.getTokenBefore(node).loc.end.line > parent.loc.start.line;
+                (wrappedIf ? allman : standard).BlockStatement(node);
+            },
+        };
+    },
+};
+
 const unusedVarsOptions = {
     varsIgnorePattern: "^_",
     argsIgnorePattern: "^_",
@@ -17,7 +39,6 @@ const rules = {
     "camelcase": ["error", {
         allow: ["^zlib_"],
     }],
-    "sort-imports": ["off"],
     "prefer-template": ["error"],
     "prefer-const": ["error"],
     "no-empty": ["error", {
@@ -27,22 +48,21 @@ const rules = {
         "builtinGlobals": true,
     }],
     "require-await": ["error"],
+    "@stylistic/brace-style": "off",
+    "local/brace-style": ["error", "1tbs", { allowSingleLine: true }],
+    "@stylistic/comma-style": ["error", "last", { exceptions: { ArrayPattern: true } }],
     "@stylistic/indent": ["error", 4, {
         SwitchCase: 0,
     }],
+    "@stylistic/indent-binary-ops": ["error", 4],
     "@stylistic/quotes": ["error", "double"],
     "@stylistic/semi": ["error", "always"],
-    "@stylistic/no-trailing-spaces": ["error"],
-    "@stylistic/no-multi-spaces": ["error"],
-    "@stylistic/object-curly-spacing": ["error", "always"],
-    "@stylistic/template-curly-spacing": ["error", "never"],
-    "@stylistic/arrow-parens": ["error", "as-needed", {
-        "requireForBlockBody": true,
-    }],
-    "@stylistic/comma-dangle": ["error", "always-multiline"],
 };
 
 export default defineConfig([
+    {
+        plugins: { local: { rules: { "brace-style": localBraceStyle } } },
+    },
     {
         files: ["web/common/buffered_processor.js"],
         languageOptions: {
@@ -54,7 +74,7 @@ export default defineConfig([
     },
     {
         files: ["**/*.js"],
-        extends: [js.configs.recommended],
+        extends: [js.configs.recommended, stylistic.configs.recommended],
         languageOptions: {
             globals: globals.browser,
             ecmaVersion: "latest",
@@ -65,16 +85,14 @@ export default defineConfig([
             "simple-import-sort/imports": ["error"],
             "simple-import-sort/exports": ["error"],
             "no-unused-vars": ["error", unusedVarsOptions],
-            "sort-imports": ["off"],
         },
         plugins: {
-            "@stylistic": stylistic,
             "simple-import-sort": simpleImportSort,
         },
     },
     {
         files: ["**/*.ts"],
-        extends: [js.configs.recommended, tseslint.configs.recommended],
+        extends: [js.configs.recommended, tseslint.configs.recommended, stylistic.configs.recommended],
         languageOptions: {
             globals: globals.node,
             ecmaVersion: "latest",
@@ -84,12 +102,13 @@ export default defineConfig([
             ...rules,
             "simple-import-sort/imports": ["error"],
             "simple-import-sort/exports": ["error"],
-            "no-unused-vars": ["off"],
+            "@stylistic/member-delimiter-style": ["error", {
+                multiline: { delimiter: "semi", requireLast: true },
+                singleline: { delimiter: "semi", requireLast: false },
+            }],
             "@typescript-eslint/no-unused-vars": ["error", unusedVarsOptions],
-            "sort-imports": ["off"],
         },
         plugins: {
-            "@stylistic": stylistic,
             "simple-import-sort": simpleImportSort,
         },
     },

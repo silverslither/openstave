@@ -189,7 +189,6 @@ export class RawAudioEncoder {
 
         return this.handle;
     }
-
 }
 
 export class MultiEncoder {

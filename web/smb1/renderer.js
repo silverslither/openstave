@@ -1,6 +1,6 @@
-import { NESRendererCanvas,Outline } from "../common/2d_renderer.js";
+import { NESRendererCanvas, Outline } from "../common/2d_renderer.js";
 import { COMPONENT_NES_COLOURS, COMPONENT_OUTLINE_COLOURS, NES_COLOURS } from "../common/colours.js";
-import { DEFAULT_COLUMNS,formatTime, getPlacements } from "../common/leaderboard.js";
+import { DEFAULT_COLUMNS, formatTime, getPlacements } from "../common/leaderboard.js";
 
 export const FRAME_TIME_MS = 655171 / 39375;
 
@@ -131,9 +131,9 @@ export class PlayerCanvas extends NESRendererCanvas {
     }
 
     getFollowing(count) {
-        return typeof this.following === "string" ?
-            this.following :
-            getPlacements(this.players, Math.max(count, 0)).flat()[this.following]?.[0];
+        return typeof this.following === "string"
+            ? this.following
+            : getPlacements(this.players, Math.max(count, 0)).flat()[this.following]?.[0];
     }
 
     onclick(event) {

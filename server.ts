@@ -41,7 +41,6 @@ async function cleanup() {
         for (const [key, value] of inactiveRaces)
             if (value instanceof Race)
                 fs.writeFileSync(path.join(CRASH_PATH, key), value.serialize(), "utf8");
-
     } catch (e) {
         console.error(e);
         console.error("error in cleanup handler - forcefully shutting down");

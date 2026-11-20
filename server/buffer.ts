@@ -6,11 +6,11 @@ export type Frame = {
     ram: Buffer;
 };
 
-export type PlayerEvent =
-    | { code: "START"; data: number }
-    | { code: "END"; data: number }
-    | { code: "SPLIT"; data: [index: number, frame: number] }
-    | { code: "DNF"; data: number | null };
+export type PlayerEvent
+    = | { code: "START"; data: number }
+        | { code: "END"; data: number }
+        | { code: "SPLIT"; data: [index: number, frame: number] }
+        | { code: "DNF"; data: number | null };
 
 const SMB1_SMB2J_WARPLESS_SPLITS = Array.from({ length: 31 }, (_, i) => ((i >> 2) << 4) + (i & 3));
 
@@ -76,31 +76,31 @@ const SMB1_SMB2J_GENERATOR = (game: string, current: Frame, frames: Frame[], eve
                 code: "SPLIT",
                 data: [
                     SPLITS.indexOf(
-                        (Number(current.ram[0] === 0x00) << 8) +
-                        (current.ram[3] << 4) +
-                        current.ram[4],
+                        (Number(current.ram[0] === 0x00) << 8)
+                        + (current.ram[3] << 4)
+                        + current.ram[4],
                     ),
                     frames.length + current.ram[8],
                 ],
             });
         }
 
-        if (current.ram[0] === 0x07 && last.ram[0] === 0x00 &&
-            current.ram[1] === START_AREA &&
-            current.ram[2] === 0x01 && last.ram[2] === 0x01 &&
-            current.ram[3] === 0x00 &&
-            current.ram[4] === 0x00 &&
-            current.ram[5] === 0x00 &&
-            current.ram[6] === 0x28) {
-
+        if (current.ram[0] === 0x07 && last.ram[0] === 0x00
+            && current.ram[1] === START_AREA
+            && current.ram[2] === 0x01 && last.ram[2] === 0x01
+            && current.ram[3] === 0x00
+            && current.ram[4] === 0x00
+            && current.ram[5] === 0x00
+            && current.ram[6] === 0x28)
+        {
             events.push({ code: "START", data: frames.length + 2 });
         }
 
-        if (last.ram[1] === END_AREA &&
-            last.ram[2] === 0x02 &&
-            last.ram[3] === 0x07 &&
-            last.ram[4] === 0x03) {
-
+        if (last.ram[1] === END_AREA
+            && last.ram[2] === 0x02
+            && last.ram[3] === 0x07
+            && last.ram[4] === 0x03)
+        {
             events.push({ code: "END", data: frames.length });
         }
     }
@@ -116,24 +116,24 @@ const SMB3_ANYNWW_GENERATOR = (current: Frame, frames: Frame[], events: PlayerEv
 
         const currentFlags = current.ram[8];
         const lastFlags = last.ram[8];
-        const currentPosition =
-            (current.ram[1] << 24) +
-            (current.ram[10] << 16) +
-            (current.ram[11] << 8) +
-            (current.ram[12]);
-        const lastPosition =
-            (last.ram[1] << 24) +
-            (last.ram[10] << 16) +
-            (last.ram[11] << 8) +
-            (last.ram[12]);
+        const currentPosition
+            = (current.ram[1] << 24)
+                + (current.ram[10] << 16)
+                + (current.ram[11] << 8)
+                + (current.ram[12]);
+        const lastPosition
+            = (last.ram[1] << 24)
+                + (last.ram[10] << 16)
+                + (last.ram[11] << 8)
+                + (last.ram[12]);
 
         // exit splits
-        if (current.ram[2] === 0x00 &&
-            current.ram[3] === 0x00 &&
-            last.ram[2] !== 0x00 &&
-            last.ram[3] !== 0x00 &&
-            (lastFlags & 0b1000) === 0) {
-
+        if (current.ram[2] === 0x00
+            && current.ram[3] === 0x00
+            && last.ram[2] !== 0x00
+            && last.ram[3] !== 0x00
+            && (lastFlags & 0b1000) === 0)
+        {
             events.push({
                 code: "SPLIT",
                 data: [
@@ -154,23 +154,23 @@ const SMB3_ANYNWW_GENERATOR = (current: Frame, frames: Frame[], events: PlayerEv
             });
         }
 
-        if (current.ram[0] === 0x00 &&
-            current.ram[1] === 0x00 &&
-            current.ram[2] === 0x00 &&
-            current.ram[3] === 0x00 &&
-            current.ram[10] === 0x00 &&
-            currentFlags & 0b10) {
-
+        if (current.ram[0] === 0x00
+            && current.ram[1] === 0x00
+            && current.ram[2] === 0x00
+            && current.ram[3] === 0x00
+            && current.ram[10] === 0x00
+            && currentFlags & 0b10)
+        {
             events.push({ code: "START", data: frames.length });
         }
 
-        if (current.ram[0] === 0x02 &&
-            current.ram[1] === 0x07 &&
-            current.ram[10] === 0x70 &&
-            current.ram[11] === 0x03 &&
-            current.ram[12] === 0xc0 &&
-            currentFlags & 0b100) {
-
+        if (current.ram[0] === 0x02
+            && current.ram[1] === 0x07
+            && current.ram[10] === 0x70
+            && current.ram[11] === 0x03
+            && current.ram[12] === 0xc0
+            && currentFlags & 0b100)
+        {
             events.push({ code: "END", data: frames.length });
         }
     }
@@ -187,9 +187,9 @@ const eventGenerators: Record<string, (current: Frame, frames: Frame[], events: 
 export const supportedGames = new Set(Object.keys(eventGenerators));
 
 const RAM_OFFSET: Record<string, number> = {
-    "smb1": 8 + 32 + 256,
-    "smb2j": 8 + 32 + 256,
-    "smb3": 8 + 32 + 6 + 256,
+    smb1: 8 + 32 + 256,
+    smb2j: 8 + 32 + 256,
+    smb3: 8 + 32 + 6 + 256,
 };
 
 export function bufferHandler(buffer: Buffer, frames: Frame[], game: string) {

@@ -174,9 +174,9 @@ export class PlayerCanvas extends NESRendererCanvas {
         this.count = count;
         this.context.fillStyle = "#000000";
 
-        const following = typeof this.following === "string" ?
-            this.following :
-            getPlacements(this.players, Math.max(this.count, 0)).flat()[this.following]?.[0];
+        const following = typeof this.following === "string"
+            ? this.following
+            : getPlacements(this.players, Math.max(this.count, 0)).flat()[this.following]?.[0];
         if (following == null)
             return true;
 
@@ -347,9 +347,9 @@ export class PlayerCanvas extends NESRendererCanvas {
         }
         this.fromBuffer();
 
-        const map = gAreaPointer === 0 ?
-            `W${gWorldNumber}` :
-            `A${A000_PRG_BANK_LOOKUP[gTileset]}${gAreaPointer.toString(16).padStart(4, "0")}`;
+        const map = gAreaPointer === 0
+            ? `W${gWorldNumber}`
+            : `A${A000_PRG_BANK_LOOKUP[gTileset]}${gAreaPointer.toString(16).padStart(4, "0")}`;
         if (Object.hasOwn(maps, map))
             this.context.drawImage(maps[map], gXOffset, gYOffset);
 

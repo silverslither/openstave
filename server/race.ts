@@ -46,15 +46,15 @@ export interface AbstractRace {
     finished: () => boolean;
 
     getStatic: () => {
-        game: string,
-        finished: boolean,
-        players: Record<string, PlayerResponseObject>,
+        game: string;
+        finished: boolean;
+        players: Record<string, PlayerResponseObject>;
     } | null;
 
     getData: (start: number, length: number) => Awaitable<{
-        game: string,
-        finished: boolean,
-        players: Record<string, PlayerResponseObject>,
+        game: string;
+        finished: boolean;
+        players: Record<string, PlayerResponseObject>;
     } | null>;
 
     exec: (name: string, command: string, args: string[]) => Awaitable<void>;
@@ -399,9 +399,9 @@ export class RaceData implements AbstractRace {
         const player = s.players[name];
         const length = end - start;
 
-        const _i = start !== 0 ?
-            FILE_BUFFER * Math.floor(Math.min(start, length) / FILE_BUFFER) :
-            FILE_BUFFER * Math.floor(end / FILE_BUFFER);
+        const _i = start !== 0
+            ? FILE_BUFFER * Math.floor(Math.min(start, length) / FILE_BUFFER)
+            : FILE_BUFFER * Math.floor(end / FILE_BUFFER);
 
         let ptr = start !== 0 ? 0 : _i;
         let chunk: Record<string, string[]> | null = null;

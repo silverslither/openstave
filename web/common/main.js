@@ -435,12 +435,6 @@ async function query(start = 0, length = 0, noRecurse = false) {
 
             if (finished && end !== end)
                 players[name].dnf = -1;
-
-            if (!noRecurse && end === end) {
-                lock = false;
-                await query(Math.max(end - 2, 0), 3, true);
-                lock = true;
-            }
         }
 
         maxLength = Infinity;
@@ -460,6 +454,19 @@ async function query(start = 0, length = 0, noRecurse = false) {
             maxLength = -Infinity;
             for (const i in players)
                 maxLength = Math.max(maxLength, players[i].length);
+        }
+
+        if (!noRecurse) {
+            for (const name in players) {
+                const player = players[name];
+                const end = player.time === player.time ? player.time : player.dnf;
+                if (end !== end)
+                    continue;
+
+                lock = false;
+                await query(Math.max(end - 2, 0), 3, true);
+                lock = true;
+            }
         }
 
         pingLength = maxLength + Math.floor((performance.now() - pingStart) / FRAME_TIME_MS);

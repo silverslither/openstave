@@ -1,3 +1,5 @@
+import { RENDERER_INITIAL_SCALE } from "./limits.js";
+
 const canvases = [];
 
 (function dprListener() {
@@ -59,11 +61,23 @@ export class NESRendererCanvas {
 
     dynamicResize(width, height, scaleMultiplier = 0.88, widthDisplay = 1.0, heightDisplay = 1.0) {
         this.canvas.height = height;
-        this.scale = Math.max(
+        const visibleViewport = window.visualViewport;
+        // distinguish dpr correction factor
+        const fitScale = visibleViewport?.scale
+            ? visibleViewport.width * visibleViewport.scale / document.documentElement.clientWidth
+            : 1;
+        const initialScale = fitScale < 0.5 * (1 + RENDERER_INITIAL_SCALE) ? RENDERER_INITIAL_SCALE : 1;
+        const effectiveDpr = devicePixelRatio * initialScale;
+        let scale = Math.max(
             Math.min(
-                Math.floor(scaleMultiplier * innerHeight * devicePixelRatio / height + 1.0e-6),
-                Math.round(innerWidth * devicePixelRatio / 240),
-            ), 1) / devicePixelRatio;
+                Math.floor(scaleMultiplier * innerHeight * effectiveDpr / height + 1.0e-6),
+                Math.round(innerWidth * effectiveDpr / 240),
+            ), 1);
+
+        while (scale > 1 && width * widthDisplay * scale > innerWidth * effectiveDpr)
+            scale--;
+
+        this.scale = scale / effectiveDpr;
 
         if (width <= 1.0)
             width *= Math.ceil(innerWidth / this.scale - 1.0e-6);

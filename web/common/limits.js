@@ -12,3 +12,5 @@ export const MAX_REQUEST_BUFFER_FRAMES = 240;
 export const FILE_BUFFER = 240;
 export const MAX_FRAME_BYTES = 16 * 1024;
 export const MAX_ROUND_ROBIN_ROUNDS = 64;
+
+export const RENDERER_INITIAL_SCALE = 0.63;

@@ -1,5 +1,5 @@
 {
-  "version": "0.5.0-beta",
+  "version": "0.5.1-beta",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@stylistic/eslint-plugin": "^5.10.0",

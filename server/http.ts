@@ -6,6 +6,7 @@ import * as util from "node:util";
 import * as zlib from "node:zlib";
 
 import { MAX_BODY_SIZE_BYTES, TCP_ADDRESS, TCP_PORT } from "../env.ts";
+import packageJson from "../package.json" with { type: "json" };
 import { activeRaces, inactiveRaces, Race, RaceData } from "./race.ts";
 import { LowSecurityHasher, VerificationResult } from "./security.ts";
 import { Tournament, tournaments } from "./tournament.ts";
@@ -73,6 +74,15 @@ export const httpServer = http.createServer(tryAsync(async (request: http.Incomi
     if (request.method === "GET") {
         const query = url.split("?");
         const parts = query[0].split("/").filter(v => v !== "");
+
+        if (parts.length === 1 && parts[0] === "version") {
+            response.writeHead(200, {
+                "Cache-Control": "no-store",
+                "Content-Type": "text/plain; charset=utf-8",
+            }).end(packageJson.version);
+
+            return;
+        }
 
         let file: string;
         if (parts.length === 0) {

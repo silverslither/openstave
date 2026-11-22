@@ -8,6 +8,8 @@ let error;
 document.addEventListener("DOMContentLoaded", main);
 
 function main() {
+    loadVersion();
+
     key = document.getElementById("key");
     showHidePassword = document.getElementById("show-hide-password");
 
@@ -67,6 +69,20 @@ function main() {
             input[property] = lines.map(line => line.replace(invalid, "")).join(input.isContentEditable ? "\n" : "");
         });
     }
+}
+
+async function loadVersion() {
+    try {
+        const response = await fetch("/version");
+        if (!response.ok)
+            return;
+
+        const version = (await response.text()).trim();
+        if (!version)
+            return;
+
+        document.querySelector("h1").textContent = document.title = `OpenStave v${version}`;
+    } catch {}
 }
 
 async function createRace() {
